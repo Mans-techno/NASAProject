@@ -1,0 +1,1203 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Юный астронавт: База</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="Учебная игра: управляй базой на Луне или Марсе и балансируй кислород, воду, еду, энергию и защиту от радиации.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700&family=Golos+Text:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/* Layout: mission-control console. Left = stores, centre = live view of the base, right = power bus; crew tasks below. Single deliberate dark theme (space). */
+:root{
+  --bg:#080b14; --bg2:#0d1220; --panel:#111829; --panel2:#162036; --line:#24304a; --line2:#2f3d5c;
+  --fg:#e9eef8; --muted:#97a2ba; --dim:#6a7591;
+  --acc:#8fb8ff; --acc-ink:#0a1222;
+  --ok:#4fd08f; --warn:#f5b84a; --bad:#ff6363; --o2:#7fd3ff; --water:#4c9bff; --food:#8ddc6a; --power:#ffd35a; --rad:#d38bff; --hp:#ff8fa3;
+  --f-display:"Unbounded","Golos Text",system-ui,sans-serif;
+  --f-body:"Golos Text",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --r:10px; color-scheme:dark;
+}
+:root[data-planet="mars"]{ --acc:#ff8a5c; --acc-ink:#1c0b04; }
+html,body{height:100%}
+body{background:var(--bg);color:var(--fg);font:15px/1.5 var(--f-body);-webkit-font-smoothing:antialiased}
+*{box-sizing:border-box}
+button{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.wrap{max-width:1320px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:14px 28px;display:flex;flex-direction:column;gap:14px}
+
+/* top bar */
+.top{display:flex;align-items:center;gap:14px;flex-wrap:wrap;justify-content:space-between}
+.brand{display:flex;flex-direction:column;gap:2px;min-width:0}
+.brand h1{font:700 18px/1.15 var(--f-display);margin:0;letter-spacing:.01em}
+.brand .sub{color:var(--muted);font-size:13px}
+.daybox{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.daycount{display:flex;align-items:baseline;gap:8px}
+.daycount .lbl{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.08em}
+.daycount .big{font:700 26px/1 var(--f-mono)}
+.daycount .of{color:var(--dim);font:500 15px var(--f-mono)}
+.track{display:flex;gap:3px}
+.track i{width:9px;height:18px;border-radius:2px;background:var(--line);display:block}
+.track i.done{background:var(--acc);opacity:.55}
+.track i.now{background:var(--acc)}
+.track i.flare{box-shadow:inset 0 -4px 0 var(--rad)}
+.track i.dark{box-shadow:inset 0 4px 0 var(--muted)}
+.btn{border:1px solid var(--line2);background:var(--panel);padding:8px 12px;border-radius:8px;cursor:pointer;font-size:14px}
+.btn:hover{border-color:var(--acc)}
+.btn.primary{background:var(--acc);color:var(--acc-ink);border-color:var(--acc);font-weight:600}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn.big{font:700 16px/1 var(--f-display);padding:16px 22px;border-radius:12px}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+
+/* alerts */
+.alerts{display:flex;gap:8px;flex-wrap:wrap}
+.alert{display:flex;gap:8px;align-items:center;border:1px solid var(--line2);background:var(--panel);border-radius:999px;padding:6px 12px;font-size:13px}
+.alert b{font-weight:600}
+.alert.bad{border-color:color-mix(in srgb,var(--bad) 60%,transparent);background:color-mix(in srgb,var(--bad) 12%,var(--panel))}
+.alert.warn{border-color:color-mix(in srgb,var(--warn) 60%,transparent);background:color-mix(in srgb,var(--warn) 10%,var(--panel))}
+.alert.good{border-color:color-mix(in srgb,var(--ok) 55%,transparent);background:color-mix(in srgb,var(--ok) 10%,var(--panel))}
+.dot{width:8px;height:8px;border-radius:50%;background:currentColor;flex:none}
+.alert.bad .dot{color:var(--bad)} .alert.warn .dot{color:var(--warn)} .alert.good .dot{color:var(--ok)} .alert.info .dot{color:var(--acc)}
+
+/* main grid */
+.grid{display:grid;grid-template-columns:300px minmax(0,1fr) 340px;gap:14px;align-items:start}
+@media (max-width:1100px){.grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.scenecol{grid-column:1/-1;order:-1}}
+@media (max-width:720px){.grid{grid-template-columns:minmax(0,1fr)}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:14px;min-width:0}
+.card h2{font:700 12px/1 var(--f-display);text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin:0 0 12px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.card h2 .hint{font:500 11px var(--f-body);letter-spacing:0;text-transform:none;color:var(--dim)}
+
+/* meters */
+.meters{display:flex;flex-direction:column;gap:12px}
+.meter{display:grid;grid-template-columns:22px 1fr auto;gap:4px 10px;align-items:center}
+.meter svg{width:20px;height:20px}
+.meter .name{font-size:14px;font-weight:500}
+.meter .val{font:700 14px var(--f-mono);text-align:right;white-space:nowrap}
+.meter .val small{font-weight:500;color:var(--dim)}
+.meter .bar{grid-column:2/4;height:8px;border-radius:4px;background:var(--bg2);position:relative;overflow:hidden;border:1px solid var(--line)}
+.meter .bar span{position:absolute;inset:0 auto 0 0;border-radius:3px;transition:width .4s ease}
+.meter .bar .ghost{opacity:.35}
+.meter .bar .limit{position:absolute;top:-2px;bottom:-2px;width:2px;background:var(--bad)}
+.meter .fc{grid-column:2/4;display:flex;justify-content:space-between;font-size:12px;color:var(--muted);gap:8px}
+.fc .d{font-family:var(--f-mono)}
+.fc .up{color:var(--ok)} .fc .down{color:var(--warn)} .fc .crit{color:var(--bad);font-weight:600}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px;padding-top:14px;border-top:1px solid var(--line)}
+.stat{background:var(--bg2);border:1px solid var(--line);border-radius:8px;padding:8px 10px}
+.stat .k{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.stat .v{font:700 17px var(--f-mono)}
+.stat .v small{font-size:12px;color:var(--dim);font-weight:500}
+
+/* scene */
+.scenecol{display:flex;flex-direction:column;gap:14px;min-width:0}
+.scene{position:relative;border-radius:var(--r);overflow:hidden;border:1px solid var(--line);background:#000;aspect-ratio:16/8.4;max-width:100%}
+.scene canvas{display:block;width:100%;height:100%}
+.scene .tag{position:absolute;left:12px;top:12px;font:600 11px var(--f-mono);letter-spacing:.06em;text-transform:uppercase;background:rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.15);padding:5px 8px;border-radius:6px;color:#e9eef8}
+.scene .tag2{left:auto;right:12px}
+.tip{display:grid;grid-template-columns:auto 1fr;gap:12px;align-items:start}
+.tip .who{width:38px;height:38px;border-radius:50%;background:var(--panel2);border:1px solid var(--line2);display:grid;place-items:center;font:700 13px var(--f-display);color:var(--acc)}
+.tip p{margin:2px 0 0;font-size:14px}
+.tip .t{font-weight:600;font-size:13px;color:var(--acc);text-transform:uppercase;letter-spacing:.06em}
+
+/* power */
+.supply{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--muted);margin-bottom:12px}
+.supply div{display:flex;justify-content:space-between;gap:8px}
+.supply b{color:var(--fg);font-family:var(--f-mono)}
+.sys{border-top:1px solid var(--line);padding-block:10px;display:flex;flex-direction:column;gap:7px}
+.sys .row{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.sys .nm{font-weight:600;font-size:14px}
+.sys .kw{font:700 13px var(--f-mono);color:var(--power)}
+.sys .ds{font-size:12px;color:var(--muted)}
+.seg{display:grid;grid-template-columns:repeat(5,1fr);gap:3px;background:var(--bg2);padding:3px;border-radius:8px;border:1px solid var(--line)}
+.seg button{border:0;background:transparent;border-radius:6px;padding:7px 0;font:600 12px var(--f-mono);color:var(--muted);cursor:pointer;min-height:34px}
+.seg button[aria-pressed="true"]{background:var(--acc);color:var(--acc-ink)}
+.seg button:hover:not([aria-pressed="true"]){background:var(--panel2);color:var(--fg)}
+.sys.off .nm::after{color:var(--bad);font-weight:500}
+.sys.off .nm::after{content:attr(data-off)}
+.toprow{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.btn.lang{font:700 12px var(--f-mono);letter-spacing:.06em;padding:6px 10px;min-width:44px;min-height:36px}
+.demo-btn{font-size:15px}
+h1 .demo{font:600 11px var(--f-mono);text-transform:uppercase;letter-spacing:.08em;color:var(--warn);border:1px solid var(--warn);border-radius:4px;padding:2px 6px;vertical-align:middle}
+.chk{display:flex;gap:8px;align-items:flex-start;margin-top:6px;cursor:pointer}
+.chk input{margin-top:4px;width:18px;height:18px;accent-color:var(--acc)}
+.live .btn{margin-top:2px}
+.live span{display:block}
+.note{font-size:12.5px;color:var(--muted);margin:6px 0 0}
+.coach{position:relative;z-index:30;outline:3px solid var(--acc);outline-offset:3px;border-radius:var(--r);box-shadow:0 0 0 9999px rgba(3,5,12,.55)}
+.coachbox{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:40;width:min(440px,calc(100vw - 32px));background:var(--panel2);border:1px solid var(--acc);border-radius:12px;padding:14px 16px;box-shadow:0 12px 40px rgba(0,0,0,.5)}
+.coachbox .cstep{font:600 11px var(--f-mono);text-transform:uppercase;letter-spacing:.08em;color:var(--acc)}
+.coachbox p{margin:6px 0 12px}
+
+.balance{margin-top:6px;border-top:1px solid var(--line);padding-top:12px;display:flex;flex-direction:column;gap:8px}
+.bbar{position:relative;height:14px;background:var(--bg2);border:1px solid var(--line);border-radius:7px;overflow:hidden}
+.bbar .p{position:absolute;inset:0 auto 0 0;background:color-mix(in srgb,var(--power) 70%,transparent)}
+.bbar .d{position:absolute;top:0;bottom:0;width:2px;background:var(--fg)}
+.bline{display:flex;justify-content:space-between;font-size:13px;gap:8px;flex-wrap:wrap}
+.bline .res{font:700 14px var(--f-mono)}
+
+/* actions */
+.actions h2{margin-bottom:10px}
+.acts{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:8px}
+.act{text-align:left;border:1px solid var(--line2);background:var(--bg2);border-radius:10px;padding:11px 12px;cursor:pointer;display:flex;flex-direction:column;gap:5px;min-height:100%}
+.act:hover:not(:disabled){border-color:var(--acc)}
+.act[aria-pressed="true"]{border-color:var(--acc);background:color-mix(in srgb,var(--acc) 14%,var(--bg2));box-shadow:0 0 0 1px var(--acc) inset}
+.act:disabled{opacity:.42;cursor:not-allowed}
+.act .an{font-weight:600;font-size:14px;line-height:1.25}
+.act .ad{font-size:12.5px;color:var(--muted);line-height:1.35}
+.act .ac{display:flex;gap:6px;flex-wrap:wrap;margin-top:auto;padding-top:3px}
+.chip{font:600 11px var(--f-mono);border:1px solid var(--line2);border-radius:5px;padding:2px 6px;color:var(--muted);white-space:nowrap}
+.chip.eva{color:var(--rad);border-color:color-mix(in srgb,var(--rad) 45%,transparent)}
+.chip.why{color:var(--bad);border-color:color-mix(in srgb,var(--bad) 45%,transparent)}
+.endrow{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-top:14px;padding-top:14px;border-top:1px solid var(--line)}
+@media (max-width:720px){.endrow{position:sticky;bottom:0;background:var(--panel);margin-inline:-14px;padding:12px 14px calc(12px + env(safe-area-inset-bottom,0px));z-index:5;box-shadow:0 -10px 20px rgba(0,0,0,.35)}.endrow .btn.big{flex:1}}
+.codebox{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:13.5px;color:var(--muted)}
+.codebox input{background:var(--bg2);border:1px solid var(--line2);border-radius:8px;color:var(--fg);font:600 14px var(--f-mono);padding:8px 10px;width:130px;text-transform:uppercase}
+.hist svg{width:100%;height:110px;display:block}
+.hist .lg{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:6px}
+.hist .lg i{display:inline-block;width:10px;height:3px;border-radius:2px;margin-right:5px;vertical-align:middle}
+.endrow .sel{font-size:14px;color:var(--muted)} .endrow .sel b{color:var(--fg)}
+
+/* modal */
+.modal{position:fixed;inset:0;background:rgba(3,5,10,.78);display:grid;place-items:center;z-index:50;padding:max(16px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) max(16px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));overflow-y:auto}
+.dlg{background:var(--panel);border:1px solid var(--line2);border-radius:16px;max-width:760px;width:100%;padding:24px;display:flex;flex-direction:column;gap:16px;max-height:calc(100dvh - 32px);overflow-y:auto}
+.dlg>*{flex-shrink:0}
+.dlg h2{font:700 24px/1.2 var(--f-display);margin:0;text-wrap:balance}
+.dlg h3{font:700 13px/1.2 var(--f-display);margin:0;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.dlg p{margin:0}
+.dlg .lead{color:var(--muted);font-size:15px;max-width:62ch}
+.eyebrow{font:600 12px var(--f-mono);letter-spacing:.12em;text-transform:uppercase;color:var(--acc)}
+.planets{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media (max-width:620px){.planets{grid-template-columns:1fr}}
+.pcard{border:1px solid var(--line2);background:var(--bg2);border-radius:14px;padding:0;cursor:pointer;text-align:left;overflow:hidden;display:flex;flex-direction:column}
+.pcard:hover{border-color:var(--pc)}
+.pcard canvas{width:100%;height:120px;display:block}
+.pcard .pb{padding:14px;display:flex;flex-direction:column;gap:6px}
+.pcard .pn{font:700 18px var(--f-display)}
+.pcard ul{margin:0;padding-left:18px;color:var(--muted);font-size:13.5px;display:flex;flex-direction:column;gap:2px}
+.pcard .go{margin-top:6px;font-weight:600;color:var(--pc)}
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+@media (max-width:620px){.steps{grid-template-columns:1fr}}
+.modes{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media (max-width:620px){.modes{grid-template-columns:1fr}}
+.mode{border:1px solid var(--line2);background:var(--bg2);border-radius:10px;padding:10px 12px;text-align:left;cursor:pointer;display:flex;flex-direction:column;gap:2px;font-size:13.5px;color:var(--muted)}
+.mode b{color:var(--fg);font-size:14.5px}
+.mode[aria-pressed="true"]{border-color:var(--acc);box-shadow:0 0 0 1px var(--acc) inset;background:color-mix(in srgb,var(--acc) 12%,var(--bg2))}
+.gloss{border:1px solid var(--line);border-radius:10px;padding:10px 14px;background:var(--bg2)}
+.gloss summary{cursor:pointer;font-weight:600}
+.gloss dl{display:grid;grid-template-columns:max-content 1fr;gap:6px 14px;margin:10px 0 0;font-size:13.5px}
+.gloss dt{font-weight:600} .gloss dd{margin:0;color:var(--muted)}
+@media (max-width:520px){.gloss dl{grid-template-columns:1fr}.gloss dd{margin-bottom:6px}}
+.live{border:1px solid var(--line2);border-radius:8px;padding:8px 12px;font-size:13.5px;background:var(--bg2)}
+.live b{color:var(--acc)}
+.steps div{background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:13.5px;color:var(--muted)}
+.steps b{display:block;color:var(--fg);font-size:14px;margin-bottom:2px}
+.rep{display:flex;flex-direction:column;gap:10px}
+.deltas{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.dl{background:var(--bg2);border:1px solid var(--line);border-radius:8px;padding:8px 10px;display:flex;flex-direction:column;gap:2px}
+.dl .k{font-size:12px;color:var(--muted)}
+.dl .v{font:700 15px var(--f-mono)}
+.dl .v.up{color:var(--ok)} .dl .v.down{color:var(--warn)} .dl .v.crit{color:var(--bad)}
+.ev{border:1px solid var(--line2);border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:6px;background:var(--bg2)}
+.ev.bad{border-color:color-mix(in srgb,var(--bad) 55%,transparent)}
+.ev.warn{border-color:color-mix(in srgb,var(--warn) 55%,transparent)}
+.ev.good{border-color:color-mix(in srgb,var(--ok) 55%,transparent)}
+.ev .et{font-weight:700;font-size:15px;display:flex;gap:8px;align-items:center}
+.ev.bad .et .dot{color:var(--bad)} .ev.warn .et .dot{color:var(--warn)} .ev.good .et .dot{color:var(--ok)} .ev.info .et .dot{color:var(--acc)}
+.real{display:grid;grid-template-columns:auto 1fr;gap:2px 12px;align-items:baseline;border:1px dashed color-mix(in srgb,var(--rad) 60%,transparent);border-radius:8px;padding:8px 12px;font-size:13px;color:var(--muted)}
+.real .rk{grid-column:1/-1;font:600 11px var(--f-mono);letter-spacing:.1em;text-transform:uppercase;color:var(--rad)}
+.real .rv{grid-row:2/5;font:700 26px/1 var(--f-mono);color:var(--fg)}
+.real .rn{color:var(--fg)} .real .rs{font-size:12px}
+.why{border-left:3px solid var(--acc);padding:6px 10px;background:color-mix(in srgb,var(--acc) 7%,transparent);border-radius:0 6px 6px 0;font-size:13.5px;color:var(--fg)}
+.why b{color:var(--acc);font-size:11px;letter-spacing:.08em;text-transform:uppercase;display:block;margin-bottom:2px}
+.stars{display:flex;gap:6px}
+.stars svg{width:34px;height:34px}
+.endstats{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px}
+.lessons{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px}
+.src{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:8px;font-size:14px}
+.src li span{color:var(--muted)}
+.src a{color:var(--acc)}
+table.data{border-collapse:collapse;width:100%;font-size:13.5px}
+table.data th,table.data td{border-bottom:1px solid var(--line);padding:7px 8px;text-align:left;vertical-align:top}
+table.data th{color:var(--muted);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.05em}
+table.data td.n{font-family:var(--f-mono);white-space:nowrap}
+.tblwrap{overflow-x:auto}
+.row-btns{display:flex;gap:10px;flex-wrap:wrap}
+.seed{font:500 12px var(--f-mono);color:var(--dim)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+
+
+<div class="wrap" id="app" aria-live="off"></div>
+<div id="modalRoot"></div>
+
+<script>
+"use strict";
+/* ============================================================
+   LANGUAGE
+   ============================================================ */
+let LANG = 'ru';
+try { const q = new URLSearchParams(location.search).get('lang'); LANG = q || localStorage.getItem('outpost-lang') || ((navigator.language||'').startsWith('ru') ? 'ru' : 'en'); } catch(e) {}
+if(LANG!=='ru' && LANG!=='en') LANG = 'ru';
+const L = (ru, en) => LANG==='en' ? en : ru;
+const tr = x => (x && typeof x==='object' && 'ru' in x) ? x[LANG] : x;
+function setLang(l){ LANG = l; try{ localStorage.setItem('outpost-lang', l); }catch(e){} document.documentElement.lang = l; document.title = L('Юный астронавт: База','Junior Astronaut: Outpost'); }
+
+/* ============================================================
+   DATA — real-world anchors (see the "Science" screen)
+   ============================================================ */
+const CREW = 4;
+const O2_PER = 0.84;          // kg O2 per person per day — NASA BVAD
+const FOOD_PER = 1.8;         // kg food per person per day incl. packaging — NASA BVAD
+const WATER_GROSS = 10;       // L per person per day: drinking, food prep, hygiene (simplified)
+const RECOVERY = 0.90;        // ISS ECLSS ~93%, 98% since 2023
+const O2_SYS_KWH = 20, O2_SYS_KG = 3.6, O2_WATER_PER_KG = 1.125; // electrolysis: 9 g water -> 8 g O2
+const WATER_SYS_KWH = 8;
+const GH_KWH = 12, GH_FOOD = 1.6, GH_O2 = 0.4;
+const DOSE_LIMIT = 100;       // game mission limit, mSv
+const SHIELD = [1, 0.7, 0.45, 0.3, 0.2]; // dose multiplier per regolith layer (~0.5 m each)
+const BAT_START_CAP = 100, BAT_ADD = 60, O2_CAP = 60;
+const SCIENCE_GOAL = 6;
+const COMM_KWH = { moon:4, mars:10 }; // radio power at 100%: Mars is ~100-1000x farther, needs a stronger link
+
+const PLANETS = {
+  moon:{ id:'moon', name:{ru:'Луна',en:'Moon'}, base:{ru:'База «Шеклтон»',en:'Shackleton Base'}, where:{ru:'Южный полюс Луны, гребень кратера Шеклтон',en:'Lunar south pole, rim of Shackleton crater'},
+    dayName:{ru:'День',en:'Day'}, days:20, panel:16, heat:16, cadetPanels:3, bgDose:1.37, flareMul:1, panels:5, parts:8,
+    water:120, food:80, o2:30, darkName:{ru:'Тень от гор',en:'Mountain shadow'}, darkFactor:0.15, darkLen:2, cargo:[7,14],
+    meteor:0.10, fail:0.07, dustRate:0, eva:0.8,
+    science:{ru:'Взять керн льда со дна кратера',en:'Drill an ice core in the crater'}, scienceDesc:{ru:'+1 к науке. Лёд в вечной тени хранит историю Солнечной системы.',en:'+1 science. Ice in permanent shadow keeps a record of the Solar System.'},
+    iceDesc:{ru:'+60 л воды из льда в затенённом кратере. Бур тратит 10 кВт·ч.',en:'+60 L of water from ice in a shadowed crater. The drill uses 10 kWh.'},
+    accent:'#8fb8ff' },
+  mars:{ id:'mars', name:{ru:'Марс',en:'Mars'}, base:{ru:'База «Утопия»',en:'Utopia Base'}, where:{ru:'Равнина Утопия, где под грунтом нашли лёд',en:'Utopia Planitia, where ice was found under the ground'},
+    dayName:{ru:'Сол',en:'Sol'}, days:20, panel:14, heat:14, cadetPanels:3, bgDose:0.67, flareMul:0.6, panels:6, parts:12,
+    water:150, food:90, o2:30, darkName:{ru:'Пылевая буря',en:'Dust storm'}, darkFactor:0.3, darkLen:5, cargo:[],
+    meteor:0.03, fail:0.07, dustRate:0.025, eva:0.5,
+    science:{ru:'Искать следы древней жизни',en:'Search for signs of ancient life'}, scienceDesc:{ru:'+1 к науке. Буровая проба из древних осадочных пород.',en:'+1 science. A drill sample from ancient sedimentary rock.'},
+    iceDesc:{ru:'+60 л воды из подземного льда. Бур тратит 10 кВт·ч.',en:'+60 L of water from buried ice. The drill uses 10 kWh.'},
+    accent:'#ff8a5c' }
+};
+
+/* ---------- Real solar events (archived, curated) ----------
+   Flare class: NOAA/NASA flare records (DONKI from 2010). Proton storm (S-scale, peak >10 MeV flux in pfu):
+   NOAA "Solar Proton Events Affecting the Earth Environment" list. Archived data, not live.
+   Key lesson: radiation danger comes from the proton storm, not the flare's brightness. */
+const SOLAR = [
+  { date:'1972-08-04', cls:'≈X20', s:4, pfu:'≈70 000', ar:'MR 11976', dose:85, src:'NOAA · NASA', note:{ru:'Случилась между полётами «Аполлон-16» и «Аполлон-17». Будь астронавты в тот день на Луне, они получили бы опасную дозу.',en:'It happened between Apollo 16 and Apollo 17. Astronauts on the Moon that day would have received a dangerous dose.'} },
+  { date:'1989-10-19', cls:'X13', s:4, pfu:'40 000', ar:'5747', dose:75, src:'NOAA', note:{ru:'Одна из сильнейших протонных бурь космической эры.',en:'One of the strongest proton storms of the space age.'} },
+  { date:'2001-11-04', cls:'X1.0', s:4, pfu:'31 700', ar:'9684', dose:70, src:'NOAA', note:{ru:'Слабая вспышка класса X1, но огромная протонная буря. Яркость вспышки не говорит, насколько она опасна.',en:'Only an X1 flare, yet a huge proton storm. A flare’s brightness does not tell you how dangerous it is.'} },
+  { date:'2003-10-28', cls:'X17', s:4, pfu:'29 500', ar:'10486', dose:70, src:'NOAA · NASA', note:{ru:'«Хеллоуинские бури». Экипаж МКС укрывался в самых защищённых отсеках станции.',en:'The “Halloween storms”. The ISS crew sheltered in the best-protected parts of the station.'} },
+  { date:'2005-01-20', cls:'X7.1', s:3, pfu:'1 860', ar:'10720', dose:45, src:'NOAA', note:{ru:'Протоны пришли очень быстро и были очень энергичными: на подготовку почти не было времени.',en:'The protons arrived very fast and with very high energy, leaving almost no time to prepare.'} },
+  { date:'2012-01-23', cls:'M8.7', s:3, pfu:'6 310', ar:'11402', dose:50, src:'NOAA · NASA DONKI', note:{ru:'Вспышка даже не класса X, а буря одна из самых сильных за десятилетие.',en:'Not even an X-class flare, yet one of the strongest proton storms of the decade.'} },
+  { date:'2012-03-07', cls:'X5.4', s:3, pfu:'6 530', ar:'11429', dose:50, src:'NOAA · NASA DONKI', note:{ru:'Сильная протонная буря у Земли.',en:'A strong proton storm near Earth.'} },
+  { date:'2017-09-10', cls:'X8.2', s:3, pfu:'1 490', ar:'12673', dose:45, src:'NOAA · NASA DONKI', note:{ru:'Её частицы долетели до Марса: прибор RAD на марсоходе Curiosity увидел резкий скачок дозы прямо на поверхности.',en:'Its particles reached Mars: the RAD instrument on the Curiosity rover saw the dose jump right on the surface.'} },
+  { date:'2014-10-24', cls:'X3.1', s:0, pfu:'—', ar:'12192', dose:1, src:'NOAA · NASA DONKI', note:{ru:'Самая большая группа пятен за 24 года дала шесть вспышек класса X, но почти без протонов. Яркая вспышка ещё не значит опасная.',en:'The biggest sunspot group in 24 years fired six X-class flares but almost no protons. Bright does not mean dangerous.'} },
+  { date:'2014-10-22', cls:'X1.6', s:0, pfu:'—', ar:'12192', dose:1, src:'NOAA · NASA DONKI', note:{ru:'Та же гигантская группа пятен 12192: вспышка без протонной бури.',en:'The same giant sunspot group 12192: a flare with no proton storm.'} },
+];
+const S_NAME = s => s===0 ? L('нет протонной бури','no proton storm') : `S${s}`;
+function solarDate(d){ const [y,m,dd] = d.split('-').map(Number); return new Date(Date.UTC(y,m-1,dd)).toLocaleDateString(LANG==='en'?'en-GB':'ru-RU',{day:'numeric',month:'long',year:'numeric', timeZone:'UTC'}); }
+
+/* ---------- Communication delay from real orbits (JPL approximate Keplerian elements, J2000) ---------- */
+function helio(a,e,L0,Ldot,w,T){ const d2r=Math.PI/180; const M=((L0+Ldot*T-w)%360)*d2r; let E=M; for(let k=0;k<8;k++) E = E-(E-e*Math.sin(E)-M)/(1-e*Math.cos(E));
+  const x=a*(Math.cos(E)-e), y=a*Math.sqrt(1-e*e)*Math.sin(E); const wr=w*d2r; return [x*Math.cos(wr)-y*Math.sin(wr), x*Math.sin(wr)+y*Math.cos(wr)]; }
+function marsDistAU(date){ const T = (date.getTime()/86400000 + 2440587.5 - 2451545.0)/36525;
+  const E = helio(1.00000261,0.01671123,100.46457166,35999.37244981,102.93768193,T);
+  const M = helio(1.52371034,0.09339410,-4.55343205,19140.30268499,-23.94362959,T);
+  return Math.hypot(M[0]-E[0], M[1]-E[1]); }
+const MARS_AU = marsDistAU(new Date());
+const DELAY_MARS = MARS_AU * 499.005 / 60;
+function delayText(pid){ return pid==='moon' ? L('1,3 секунды','1.3 seconds') : L(`${Math.round(DELAY_MARS)} мин`, `${Math.round(DELAY_MARS)} min`); }
+
+/* ---------- seeded RNG so a mission can be replayed in class ---------- */
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+function rint(rng,a,b){return a+Math.floor(rng()*(b-a+1))}
+
+let LIVE = null; // {event, fetchedAt} when a real recent flare was fetched from NASA DONKI
+
+function makeSchedule(pid, seed){
+  const rng = mulberry32(seed*7919+13);
+  // every mission gets at least one real proton storm; the other event may be a "bright but harmless" flare
+  const storms = SOLAR.filter(x=>x.s>0);
+  const a = storms[rint(rng,0,storms.length-1)];
+  const rest = SOLAR.filter(x=>x!==a); const b = rest[rint(rng,0,rest.length-1)];
+  const ev = rng()<0.5 ? [a,b] : [b,a];
+  if(pid==='moon') return { dark:[rint(rng,5,8), rint(rng,12,15)], darkLens:[2,2], flares:[rint(rng,4,7), rint(rng,11,17)], ev };
+  return { dark:[rint(rng,6,9), rint(rng,14,16)], darkLens:[5,3], flares:[rint(rng,4,7), rint(rng,12,17)], ev };
+}
+const DEMO_SEED = 7777;
+function demoSchedule(pid){
+  const big = SOLAR.find(x=>x.date==='2003-10-28'), quiet = SOLAR.find(x=>x.date==='2014-10-24');
+  return pid==='moon' ? { dark:[5,13], darkLens:[2,2], flares:[3,9], ev:[big, quiet] } : { dark:[5,14], darkLens:[4,2], flares:[3,9], ev:[big, quiet] };
+}
+
+function newState(pid, seed, mode, opts={}){
+  const P = PLANETS[pid];
+  seed = seed || (Math.floor(Math.random()*9000)+1000);
+  mode = mode || 'cadet';
+  const sched = opts.demo ? demoSchedule(pid) : makeSchedule(pid, seed);
+  if(opts.live && LIVE) sched.ev[0] = LIVE;
+  return { pid, seed, mode, demo:!!opts.demo, day:1, battery:60, batCap:BAT_START_CAP, o2:P.o2, water:P.water, food:P.food, parts:P.parts,
+    health:100, dose:0, science:0, data:0, leak:false, panels: mode==='cadet' ? P.cadetPanels : P.panels, gh:2, ghBroken:0, shield:1, reactor:false, recyclerBroken:false,
+    dust:0, lv:{o2:100, water:100, heat:100, farm:100, comm:0}, action:'rest', sched,
+    over:null, stats:{blackouts:0, coldDays:0, hungryDays:0, evas:0, flaresTaken:[], vented:0, wasted:0, builds:0, repairs:0},
+    history:[], lastCause:null };
+}
+
+function darkLenAt(s, i){ return (s.sched.darkLens && s.sched.darkLens[i]) || PLANETS[s.pid].darkLen; }
+function isDark(s, day){ return s.sched.dark.some((st,i)=> day>=st && day<st+darkLenAt(s,i)); }
+function isFlare(s, day){ return s.sched.flares.includes(day); }
+function flareOn(s, day){ const k = s.sched.flares.indexOf(day); return k<0 ? null : s.sched.ev[k]; }
+function flareDose(s, day, shield){ const f = flareOn(s, day); if(!f) return 0; return f.dose * PLANETS[s.pid].flareMul * SHIELD[shield ?? s.shield]; }
+
+/* ============================================================
+   ACTIONS — one crew task per day
+   ============================================================ */
+const ACTIONS = [
+  { id:'rest', name:()=>L('Отдых и тренировки','Rest and exercise'), parts:0, desc:()=>L('+10 к здоровью. Тренажёры берегут мышцы и кости при низкой гравитации.','+10 health. Exercise protects muscles and bones in low gravity.') },
+  { id:'science', name:s=>tr(PLANETS[s.pid].science), parts:0, eva:true, desc:s=>tr(PLANETS[s.pid].scienceDesc) + L(' Данные надо передать на Землю по радио.',' The data must be radioed to Earth.') },
+  { id:'shield', name:()=>L('Насыпать слой реголита','Pile on a layer of regolith'), parts:0, eva:true, desc:()=>L('Грунт поверх жилого модуля ослабляет радиацию. Его не надо везти с Земли.','Soil over the habitat blocks radiation. No need to ship it from Earth.'),
+    avail:s=> s.shield>=4 ? L('Уже 4 слоя','Already 4 layers') : null },
+  { id:'panel', name:()=>L('Поставить солнечную панель','Install a solar panel'), parts:2, eva:true, desc:s=>L(`+${PLANETS[s.pid].panel} кВт·ч в день при ясном небе.`,`+${PLANETS[s.pid].panel} kWh per day under a clear sky.`) },
+  { id:'battery', name:()=>L('Добавить аккумулятор','Add a battery'), parts:2, desc:()=>L(`+${BAT_ADD} кВт·ч к ёмкости. Запас на тень, бурю и ночь.`,`+${BAT_ADD} kWh of storage for shadow, storms and night.`) },
+  { id:'greenhouse', eng:true, name:()=>L('Построить теплицу','Build a greenhouse'), parts:3, desc:()=>L(`+${fmt(GH_FOOD)} кг еды и +${fmt(GH_O2)} кг O₂ в день, но тратит ${GH_KWH} кВт·ч.`,`+${fmt(GH_FOOD)} kg food and +${fmt(GH_O2)} kg O₂ per day, but uses ${GH_KWH} kWh.`) },
+  { id:'ice', eng:true, name:()=>L('Добыть лёд','Mine ice'), parts:0, eva:true, energy:10, desc:s=>tr(PLANETS[s.pid].iceDesc) },
+  { id:'repair', name:()=>L('Ремонт','Repair'), parts:1, desc:s=> s.mode==='cadet' ? L('Заделать пробоину, через которую утекает воздух.','Patch the hole that is leaking air.') : L('Заделать пробоину и починить сломанное: теплицу или очистку воды.','Patch the hull and fix what is broken: greenhouse or water recycler.'),
+    avail:s=> (s.ghBroken>0 || s.recyclerBroken || s.leak) ? null : L('Всё исправно','Nothing broken') },
+  { id:'clean', name:()=>L('Очистить панели от пыли','Clean dust off the panels'), parts:0, eva:true, desc:()=>L('Пыль оседает на панелях и крадёт энергию.','Dust settles on the panels and steals power.'),
+    avail:s=> s.dust<0.005 ? L('Панели чистые','Panels are clean') : null, only:'mars' },
+  { id:'reactor', name:()=>L('Собрать ядерный реактор','Assemble a nuclear reactor'), parts:6, desc:()=>L('+40 кВт·ч каждый день: в тень, в бурю и ночью.','+40 kWh every day: in shadow, storms and at night.'),
+    avail:s=> s.reactor ? L('Уже построен','Already built') : null },
+];
+const ACT = Object.fromEntries(ACTIONS.map(a=>[a.id,a]));
+const val = (x,s)=> typeof x==='function' ? x(s) : tr(x);
+function actionBlock(s, a){
+  if(a.only && a.only!==s.pid) return 'hide';
+  if(a.eng && s.mode==='cadet') return 'hide';
+  const r = a.avail && a.avail(s); if(r) return r;
+  if(a.parts > s.parts) return L(`Нужно запчастей: ${a.parts}`,`Needs ${a.parts} spare parts`);
+  return null;
+}
+
+/* ============================================================
+   SIMULATION — one day. Same function drives the forecast and the real turn.
+   ============================================================ */
+function clone(o){ return JSON.parse(JSON.stringify(o)); }
+
+function simulate(s0){
+  const s = clone(s0), P = PLANETS[s.pid], A = ACT[s.action] || ACT.rest;
+  const eng = s.mode !== 'cadet';
+  const info = {};
+  if(A.parts) s.parts -= A.parts;
+  switch(A.id){
+    case 'panel': s.panels++; break;
+    case 'battery': s.batCap += BAT_ADD; break;
+    case 'greenhouse': s.gh++; break;
+    case 'shield': s.shield = Math.min(4, s.shield+1); break;
+    case 'repair': s.ghBroken = 0; s.recyclerBroken = false; s.leak = false; break;
+    case 'clean': s.dust = 0; break;
+    case 'reactor': s.reactor = true; break;
+    case 'science': s.data += 1; break;
+  }
+  const dark = isDark(s, s.day);
+  const sun = (dark ? P.darkFactor : 1) * (1 - s.dust);
+  info.sun = sun; info.dark = dark;
+  info.solar = s.panels * P.panel * sun;
+  info.nuc = s.reactor ? 40 : 0;
+  info.prod = info.solar + info.nuc;
+  const ghOn = eng ? Math.max(0, s.gh - s.ghBroken) : 0;
+  const dem = {
+    o2: O2_SYS_KWH * s.lv.o2/100,
+    water: (!eng || s.recyclerBroken) ? 0 : WATER_SYS_KWH * s.lv.water/100,
+    heat: P.heat * s.lv.heat/100,
+    farm: GH_KWH * ghOn * s.lv.farm/100,
+    comm: COMM_KWH[s.pid] * s.lv.comm/100,
+    task: A.energy || 0
+  };
+  info.dem = dem;
+  info.demand = dem.o2 + dem.water + dem.heat + dem.farm + dem.comm + dem.task;
+  const avail = info.prod + s.battery;
+  let k = 1; info.blackout = false; info.wasted = 0;
+  const bat0 = s.battery;
+  if(info.demand > avail + 1e-9){ k = info.demand>0 ? avail/info.demand : 1; s.battery = 0; info.blackout = true; }
+  else { s.battery = s.battery + info.prod - info.demand; if(s.battery > s.batCap){ info.wasted = s.battery - s.batCap; s.battery = s.batCap; } }
+  info.k = k; info.batDelta = s.battery - bat0;
+  const f = { o2: s.lv.o2/100*k, water: s.recyclerBroken?0:s.lv.water/100*k, heat: s.lv.heat/100*k, farm: s.lv.farm/100*k, comm: s.lv.comm/100*k };
+  info.f = f;
+  info.o2Made = O2_SYS_KG * f.o2; info.o2Plants = GH_O2 * ghOn * f.farm; info.o2Use = O2_PER*CREW;
+  info.o2Leak = s.leak ? 1.5 : 0;
+  s.o2 += info.o2Made + info.o2Plants - info.o2Use - info.o2Leak;
+  info.vented = 0; if(s.o2 > O2_CAP){ info.vented = s.o2 - O2_CAP; s.o2 = O2_CAP; }
+  const gross = WATER_GROSS*CREW;
+  info.waterBack = RECOVERY * f.water * gross;
+  info.waterElec = info.o2Made * O2_WATER_PER_KG;
+  info.waterIce = A.id==='ice' ? 60 : 0;
+  info.foodMade = GH_FOOD * ghOn * f.farm; info.foodUse = FOOD_PER*CREW;
+  if(eng){
+    s.water += -(gross - info.waterBack) - info.waterElec + info.waterIce;
+    s.food += info.foodMade - info.foodUse;
+  }
+  info.sent = Math.min(s.data, f.comm);
+  s.data -= info.sent; s.science += info.sent;
+  if(s.data < 1e-6) s.data = 0;
+  const sf = SHIELD[s.shield];
+  info.doseBg = P.bgDose * sf; info.doseEva = A.eva ? P.eva : 0; info.doseFlare = flareDose(s, s.day);
+  info.dose = info.doseBg + info.doseEva + info.doseFlare;
+  s.dose += info.dose;
+  let dh = 0; const causes = [];
+  if(f.heat < 0.999){ dh -= Math.round((1-f.heat)*30); causes.push('cold'); }
+  if(s.food < 0){ s.food = 0; dh -= 15; causes.push('hunger'); }
+  if(s.water < 0){ s.water = 0; dh -= 25; causes.push('thirst'); }
+  if(A.id==='rest') dh += 10;
+  if(!causes.length) dh += 3;
+  info.dh = dh; info.causes = causes;
+  s.health = Math.max(0, Math.min(100, s.health + dh));
+  if(s.o2 <= 0){ s.o2 = 0; s.over = 'o2'; }
+  else if(s.dose >= DOSE_LIMIT){ s.over = 'dose'; }
+  else if(s.health <= 0){ s.over = 'health'; s.lastCause = causes[0] || 'cold'; }
+  return { s, info };
+}
+
+/* Real turn: simulate, then roll tomorrow's events. */
+function endDay(){
+  const before = clone(S);
+  const { s, info } = simulate(S);
+  const P = PLANETS[s.pid], dn = tr(P.dayName).toLowerCase();
+  const rng = mulberry32(s.seed*1009 + s.day*97);
+  const ev = [];
+  const A = ACT[s.action];
+  if(info.blackout) s.stats.blackouts++;
+  if(info.causes.includes('cold')) s.stats.coldDays++;
+  if(info.causes.includes('hunger')) s.stats.hungryDays++;
+  if(A.eva) s.stats.evas++;
+  if(['panel','battery','greenhouse','shield','reactor'].includes(A.id)) s.stats.builds++;
+  if(A.id==='repair') s.stats.repairs++;
+  s.stats.vented += info.vented; s.stats.wasted += info.wasted;
+
+  if(isFlare(s, s.day)){
+    const fl = flareOn(s, s.day);
+    s.stats.flaresTaken.push({dose:+info.doseFlare.toFixed(1), cls:fl.cls, date:fl.date, s:fl.s});
+    const storm = fl.s>0;
+    ev.push({tone: info.doseFlare>30?'bad':storm?'warn':'good', real:fl,
+      title: storm ? L(`Вспышка ${fl.cls} и протонная буря ${S_NAME(fl.s)}`,`Flare ${fl.cls} and an ${S_NAME(fl.s)} proton storm`) : L(`Вспышка ${fl.cls} без протонной бури`,`Flare ${fl.cls} with no proton storm`),
+      text: storm ? L(`Экипаж укрылся в модуле. Доза от бури: ${fmt(info.doseFlare)} мЗв. Без реголита было бы ${fmt(flareDose(s,s.day,0))}. Слоёв реголита: ${s.shield}.`,`The crew sheltered in the habitat. Storm dose: ${fmt(info.doseFlare)} mSv. Without regolith it would be ${fmt(flareDose(s,s.day,0))}. Regolith layers: ${s.shield}.`)
+                  : L('Вспышка была яркой, но протонов почти не пришло. Доза почти не выросла.','The flare was bright, but almost no protons arrived. The dose barely changed.'),
+      why: storm ? (s.pid==='moon' ? L('Свет и рентген от вспышки долетают за 8 минут и почти безвредны внутри модуля. Опасны протоны, которые приходят потом. У Луны нет атмосферы и магнитного поля, поэтому базу засыпают грунтом.','Light and X-rays from a flare arrive in 8 minutes and are mostly harmless inside the habitat. The danger is the protons that follow. The Moon has no air and no magnetic field, so bases are buried under soil.')
+                                     : L('Тонкая атмосфера Марса задерживает часть протонов, но глобального магнитного поля нет. Прибор RAD на Curiosity измеряет радиацию на поверхности Марса с 2012 года.','Mars’s thin air stops some protons, but the planet has no global magnetic field. The RAD instrument on Curiosity has measured surface radiation since 2012.'))
+                 : L('Протонная буря случается только тогда, когда выброс с Солнца разгоняет частицы и они летят в нашу сторону. Поэтому учёные следят не только за вспышками, но и за потоком протонов.','A proton storm happens only when an eruption accelerates particles and they head our way. That is why scientists watch proton flux, not just flares.')});
+  }
+  if(info.blackout) ev.push({tone:'bad', title:L('Нехватка энергии','Power shortage'), text:L(`Батарея опустела, все системы работали только на ${Math.round(info.k*100)}% мощности.`,`The battery ran flat. Every system ran at only ${Math.round(info.k*100)}% power.`),
+      why:L('На настоящей базе инженеры заранее решают, что отключать первым. Сначала жертвуют тем, что может подождать, а кислород и тепло берегут до последнего.','On a real base, engineers decide in advance what to switch off first. Things that can wait go first; oxygen and heat are protected to the end.')});
+  if(info.causes.includes('cold')) ev.push({tone:'warn', title:L('В модуле холодно','The habitat is cold'), text:L('Обогреву не хватило энергии, экипаж мёрзнет и слабеет.','Heating did not get enough power. The crew is cold and getting weaker.'), why: s.pid==='moon' ? L('В тени на Луне бывает −170 °C и ниже. Тепло уходит в космос излучением, поэтому модуль надо всё время греть.','In shadow the Moon can drop below −170 °C. Heat radiates away into space, so the habitat must be heated all the time.') : L('Средняя температура на Марсе около −60 °C. Атмосфера слишком тонкая, чтобы держать тепло.','Mars averages about −60 °C. The air is too thin to hold heat.')});
+  if(info.causes.includes('hunger')) ev.push({tone:'bad', title:L('Закончилась еда','Out of food'), text:L('Экипаж голодает: здоровье падает каждый день.','The crew is hungry: health drops every day.'), why:L('Астронавту нужно около 1,8 кг еды в день вместе с упаковкой. Для Марса еду придётся выращивать на месте.','An astronaut needs about 1.8 kg of food a day including packaging. On Mars, food will have to be grown locally.')});
+  if(info.causes.includes('thirst')) ev.push({tone:'bad', title:L('Закончилась вода','Out of water'), text:L('Воды нет, экипажу очень плохо.','No water left. The crew is in a bad way.'), why:L('Вода нужна для питья, еды, гигиены и для получения кислорода. Поэтому на МКС перерабатывают почти всю воду, даже пот и мочу.','Water is needed for drinking, food, hygiene and making oxygen. That is why the ISS recycles nearly all its water, even sweat and urine.')});
+  if(info.vented>0.05) ev.push({tone:'info', title:L('Баки кислорода полны','Oxygen tanks are full'), text:L(`Лишние ${fmt(info.vented)} кг O₂ не поместились. Можно убавить электролиз и сэкономить энергию.`,`${fmt(info.vented)} kg of extra O₂ did not fit. You could turn electrolysis down and save power.`)});
+  if(info.wasted>1) ev.push({tone:'info', title:L('Батарея полна','Battery is full'), text:L(`${fmt(info.wasted,0)} кВт·ч энергии пропало зря. ${s.mode==='cadet'?'Можно было включить радио или построить аккумулятор.':'Можно было отдать их теплице или построить аккумулятор.'}`,`${fmt(info.wasted,0)} kWh went to waste. ${s.mode==='cadet'?'You could have used the radio or built a battery.':'You could have powered the greenhouse or built a battery.'}`)});
+  if(info.sent>0.01) ev.push({tone:'good', title:L('Данные ушли на Землю','Data sent to Earth'), text:L(`Передано: ${fmt(info.sent)}. Всего на Земле: ${fmt(s.science)} из ${SCIENCE_GOAL}. Сигнал идёт ${delayText(s.pid)}.`,`Sent: ${fmt(info.sent)}. Total at Earth: ${fmt(s.science)} of ${SCIENCE_GOAL}. The signal takes ${delayText(s.pid)}.`)});
+  if(A.id==='science') ev.push({tone:'good', title:L('Новые научные данные','New science data'), text: s.data>0.01 ? L(`Данные ждут отправки: ${fmt(s.data)}. Включи радиосвязь, иначе Земля их не получит.`,`Data waiting to be sent: ${fmt(s.data)}. Turn on the radio or Earth will never get it.`) : L('Данные сразу ушли на Землю по радио.','The data went straight to Earth by radio.'),
+      why: s.pid==='moon' ? L('В кратерах у южного полюса Луны есть области вечной тени. Там миллиарды лет хранится водяной лёд.','Craters near the lunar south pole hold regions of permanent shadow, where water ice has been stored for billions of years.') : L('Марсоход Perseverance собирает образцы в кратере Езеро, где когда-то было озеро. В них ищут следы древней жизни.','The Perseverance rover collects samples in Jezero crater, once a lake. Scientists search them for signs of ancient life.')});
+  if(A.id==='reactor') ev.push({tone:'good', title:L('Реактор запущен','Reactor online'), text:L('Теперь база получает 40 кВт·ч в день при любой погоде.','The base now gets 40 kWh a day in any weather.'), why:L('NASA разрабатывает проект Fission Surface Power: небольшой ядерный реактор около 40 кВт для Луны. Ему не нужно Солнце.','NASA’s Fission Surface Power project is a small ~40 kW nuclear reactor for the Moon. It does not need sunlight.')});
+  if(A.id==='shield') ev.push({tone:'good', title:L(`Слой реголита №${s.shield}`,`Regolith layer #${s.shield}`), text:L(`Теперь радиация внутри модуля в ${fmt(1/SHIELD[s.shield],1)} раза слабее, чем без защиты.`,`Radiation inside is now ${fmt(1/SHIELD[s.shield],1)} times weaker than with no shielding.`), why:L('Использовать местные материалы выгоднее, чем везти всё с Земли: запуск каждого килограмма стоит тысячи долларов.','Using local materials beats shipping everything from Earth: launching each kilogram costs thousands of dollars.')});
+  if(A.id==='clean') ev.push({tone:'good', title:L('Панели чистые','Panels clean'), text:L('Выработка солнечной энергии восстановлена.','Solar output is back to full.')});
+  if(A.id==='ice') ev.push({tone:'good', title:L('Лёд добыт','Ice mined'), text:L('+60 л воды. Из неё можно получить и кислород.','+60 L of water, which can also become oxygen.'), why: s.pid==='moon' ? L('Прибор NASA M3 на индийском аппарате Chandrayaan-1 подтвердил водяной лёд в затенённых кратерах у полюсов Луны.','NASA’s M3 instrument on India’s Chandrayaan-1 confirmed water ice in shadowed craters near the lunar poles.') : L('Аппарат MRO увидел под равниной Утопия слой льда: по объёму почти как озеро Верхнее.','The MRO orbiter found ice under Utopia Planitia holding about as much water as Lake Superior.')});
+  if(P.cargo.includes(s.day)){
+    s.food += 25; s.water += 40; s.parts += 4;
+    ev.push({tone:'good', title:L('Прилетел грузовой корабль','A cargo ship arrived'), text: s.mode==='cadet' ? L('+4 запчасти.','+4 spare parts.') : L('+25 кг еды, +40 л воды, +4 запчасти.','+25 kg food, +40 L water, +4 spare parts.'), why:L('До Луны лететь около 3 дней, поэтому базу можно снабжать с Земли. До Марса 6–9 месяцев, а окно старта открывается раз в 26 месяцев.','The Moon is about 3 days away, so Earth can resupply it. Mars is 6–9 months away, with a launch window every 26 months.')});
+  }
+
+  const t = s.day + 1;
+  if(!s.over && t <= P.days){
+    if(s.day >= 3){
+      const r = rng();
+      if(r < P.meteor){
+        s.o2 = Math.max(0.1, s.o2 - 5); s.leak = true;
+        const ghHit = s.mode!=='cadet' && s.gh - s.ghBroken > 0; if(ghHit) s.ghBroken++;
+        ev.push({tone:'bad', title:L('Удар микрометеорита','Micrometeoroid strike'), text:L(`Утекло 5 кг кислорода, и через пробоину уходит ещё 1,5 кг в день.${ghHit?' Теплица тоже пробита.':''} Нужен ремонт.`,`5 kg of oxygen escaped and 1.5 kg more leaks out every day.${ghHit?' A greenhouse was hit too.':''} Repair needed.`), why:L('У Луны нет атмосферы, в которой сгорают мелкие метеориты. Песчинка летит быстрее пули, поэтому модули закрывают многослойным щитом Уиппла, как на МКС.','The Moon has no air to burn up tiny meteoroids. A grain of sand flies faster than a bullet, so modules use layered Whipple shields, like the ISS.')});
+      } else if(s.mode!=='cadet' && r < P.meteor + P.fail && !s.recyclerBroken){
+        s.recyclerBroken = true;
+        ev.push({tone:'bad', title:L('Сломалась очистка воды','Water recycler broke'), text:L('Пока её не починят, вода не возвращается в оборот и запас тает в разы быстрее.','Until it is fixed, no water is recovered and the supply drains many times faster.'), why:L('Система на МКС возвращает около 98% воды. Без неё запас тает очень быстро, поэтому на борту держат запчасти.','The ISS system recovers about 98% of water. Without it supplies vanish fast, so spare parts are kept on board.')});
+      } else if(s.pid==='mars' && s.dust>0.08 && r > 0.88){
+        s.dust = 0;
+        ev.push({tone:'good', title:L('Ветер очистил панели','Wind cleaned the panels'), text:L('Порыв ветра сдул пыль, панели снова работают на полную.','A gust blew the dust away; panels are back to full power.'), why:L('Марсоходы Spirit и Opportunity не раз «оживали», когда ветер сдувал пыль с их панелей.','The Spirit and Opportunity rovers were revived more than once when wind blew dust off their panels.')});
+      }
+    }
+    if(s.pid==='mars') s.dust = Math.min(0.45, s.dust + P.dustRate*(isDark(s,t)?2:1));
+    if(isFlare(s,t)){
+      const fl = flareOn(s,t);
+      ev.push({tone:'warn', real:fl, title:L(`Завтра: солнечная вспышка`,`Tomorrow: a solar flare`), text:L(`Обсерватории видят опасную группу пятен. Вспышка ожидается в ${dn} ${t}. Возможная доза при нынешней защите: до ${fmt(flareDose(s,t))} мЗв. С ещё одним слоем реголита: ${fmt(flareDose(s,t,Math.min(4,s.shield+1)))}.`,`Observatories see a dangerous sunspot group. A flare is expected on ${dn} ${t}. Possible dose with current shielding: up to ${fmt(flareDose(s,t))} mSv. With one more regolith layer: ${fmt(flareDose(s,t,Math.min(4,s.shield+1)))}.`),
+        why:L('За Солнцем следят обсерватории SDO и SOHO. Свет вспышки долетает за 8 минут, а протонам нужно от получаса до нескольких часов. Этого хватает, чтобы укрыться.','Observatories such as SDO and SOHO watch the Sun. Flare light arrives in 8 minutes; protons take from half an hour to several hours. That is enough time to take shelter.')});
+    }
+    if(isDark(s,t) && !isDark(s,s.day)){
+      const i = s.sched.dark.indexOf(t); const len = i>=0 ? darkLenAt(s,i) : P.darkLen;
+      ev.push({tone:'warn', title: L(`Завтра: ${tr(P.darkName).toLowerCase()} на ${len} ${plural(len,'день','дня','дней')}`,`Tomorrow: ${tr(P.darkName).toLowerCase()} for ${len} ${s.pid==='mars'?'sols':'days'}`), text:L(`Панели дадут только ${Math.round(P.darkFactor*100)}% энергии. Запаси энергию в батарее или реши, что отключить.`,`Panels will give only ${Math.round(P.darkFactor*100)}% power. Fill the battery or decide what to switch off.`),
+        why: s.pid==='moon' ? L('На южном полюсе Солнце висит низко, и тени от гор тянутся на километры. Базу ставят на гребни с почти постоянным светом, но и там бывают дни в тени.','At the south pole the Sun hangs low and mountain shadows stretch for kilometres. Bases sit on ridges with near-constant light, but even there some days are shadowed.') : L('Марсианские бури закрывают Солнце на дни и даже месяцы. В 2018 году буря оставила марсоход Opportunity без энергии, и он больше не вышел на связь.','Martian storms can block the Sun for days or months. In 2018 a storm cut off power to the Opportunity rover and it never called home again.')});
+    }
+  }
+
+  s.history.push({ day:s.day, o2:s.o2, water:s.water, food:s.food, battery:s.battery, batCap:s.batCap, health:s.health, dose:s.dose });
+  const reportDay = s.day;
+  if(!s.over){ if(s.day >= P.days) s.over = 'win'; else s.day++; }
+  const blk = actionBlock(s, ACT[s.action]); if(blk) s.action = 'rest';
+  S = s;
+  render();
+  showReport(before, s, info, ev, reportDay);
+}
+
+/* ============================================================
+   HELPERS
+   ============================================================ */
+function fmt(n, d=1){ return Number(n).toLocaleString(LANG==='en'?'en-US':'ru-RU',{maximumFractionDigits:d, minimumFractionDigits:0}); }
+function sgn(n, d=1){ const r = Number(n.toFixed(d)); return (r>0?'+':r<0?'−':'±') + fmt(Math.abs(r), d); }
+function plural(n,a,b,c){ n=Math.abs(n)%100; const n1=n%10; if(n>10&&n<20) return c; if(n1>1&&n1<5) return b; if(n1===1) return a; return c; }
+function esc(t){ return String(t).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+const U = { kg:()=>L('кг','kg'), l:()=>L('л','L'), kwh:()=>L('кВт·ч','kWh'), msv:()=>L('мЗв','mSv') };
+
+const ICON = {
+  power:'<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M11.5 1.5 4 11h5l-1 7.5L15.5 9h-5z" fill="var(--power)"/></svg>',
+  o2:'<svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="8.5" fill="none" stroke="var(--o2)" stroke-width="1.6"/><text x="10" y="13.4" text-anchor="middle" font-size="8.5" font-weight="700" fill="var(--o2)" font-family="JetBrains Mono,monospace">O₂</text></svg>',
+  water:'<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2C10 2 4 9 4 12.5a6 6 0 0 0 12 0C16 9 10 2 10 2z" fill="var(--water)"/></svg>',
+  food:'<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M16.5 3.5C8 3.5 3.5 7.5 3.5 13c0 1.3.3 2.4.8 3.3C6 12 9 9.5 12.5 8 9.5 10 7 13 5.6 17.3c.9.5 2 .7 3.2.7 5.8 0 7.7-6.3 7.7-14.5z" fill="var(--food)"/></svg>',
+  hp:'<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 17.5S2.5 13 2.5 7.6A4 4 0 0 1 10 5.5a4 4 0 0 1 7.5 2.1C17.5 13 10 17.5 10 17.5z" fill="var(--hp)"/></svg>',
+  rad:'<svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="1.8" fill="var(--rad)"/><path d="M10 10 6.2 3.4A7.6 7.6 0 0 1 13.8 3.4zM10 10l7.6 0a7.6 7.6 0 0 1-3.8 6.6zM10 10l-3.8 6.6A7.6 7.6 0 0 1 2.4 10z" fill="var(--rad)"/></svg>',
+};
+
+/* ============================================================
+   RENDER
+   ============================================================ */
+let S = null;
+const app = document.getElementById('app');
+const modalRoot = document.getElementById('modalRoot');
+
+function meterHTML({name, icon, value, unit, max, color, delta, digits=1, inverse=false, limit=null, note=''}){
+  const pct = Math.max(0, Math.min(100, value/max*100));
+  const next = Math.max(0, Math.min(100, (value+delta)/max*100));
+  const dTxt = `<span class="d ${delta>0.05?(inverse?'down':'up'):delta<-0.05?(inverse?'up':'down'):''}">${sgn(delta,digits)} ${unit} ${L('за день','per day')}</span>`;
+  let right = note;
+  if(!inverse && delta < -0.05 && !right){
+    const days = value / -delta;
+    right = days < 3 ? `<span class="crit">${L(`хватит на ${fmt(days,1)} дн.`,`lasts ${fmt(days,1)} days`)}</span>` : L(`хватит на ~${Math.floor(days)} дн.`,`lasts ~${Math.floor(days)} days`);
+  }
+  if(inverse && limit){ const left = limit - value; right = `<span class="${left<25?'crit':''}">${L('до лимита','to limit')} ${fmt(left,1)}</span>`; }
+  const fc = `<div class="fc">${dTxt}<span>${right}</span></div>`;
+  const bars = delta < 0 && !inverse ? `<span class="ghost" style="width:${pct}%;background:${color}"></span><span style="width:${next}%;background:${color}"></span>`
+                                     : `<span style="width:${pct}%;background:${color}"></span>${inverse||delta<=0?'':`<span class="ghost" style="width:${next}%;background:${color}"></span>`}`;
+  return `<div class="meter" role="group" aria-label="${esc(name)}: ${fmt(value,digits)} ${unit}">
+    ${icon}<span class="name">${name}</span><span class="val">${fmt(value,digits)}<small> ${unit}${max&&!inverse&&unit!=='%'?' / '+fmt(max,0):''}</small></span>
+    <div class="bar">${bars}${limit?`<span class="limit" style="left:calc(100% - 2px)"></span>`:''}</div>${fc}</div>`;
+}
+
+function engineerTip(s, pv){
+  const P = PLANETS[s.pid], i = pv.info, n = pv.s;
+  const tips = [];
+  const days = (v,d)=> d<0 ? v/-d : Infinity;
+  if(i.blackout) tips.push([10,L('Энергии не хватит!','Not enough power!'),L(`Расход ${fmt(i.demand,0)} кВт·ч больше, чем есть вместе с батареей. Все системы просядут. `,`Demand of ${fmt(i.demand,0)} kWh is more than you have, battery included. Every system will brown out. `) + (s.mode==='cadet'?L('Выключи радио или убавь кислород: запаса в баках хватит на несколько дней.','Turn off the radio or lower oxygen: the tanks hold a few days’ supply.'):L('Убавь теплицу, очистку воды или радио: кислород и тепло важнее.','Lower the greenhouse, water recycler or radio: oxygen and heat matter more.'))]);
+  if(s.leak) tips.push([9,L('Утечка воздуха','Air leak'),L('Через пробоину уходит 1,5 кг кислорода в день. Назначь ремонт.','1.5 kg of oxygen leaks out each day. Assign a repair.')]);
+  if(days(s.o2, n.o2-s.o2) < 4) tips.push([9,L('Кислород на исходе','Oxygen running low'),L('Подними мощность электролиза.','Raise electrolysis power.')]);
+  if(s.data > 0.01 && s.lv.comm === 0) tips.push([6,L('Данные ждут','Data waiting'),L('Научные данные лежат на базе. Включи радиосвязь, чтобы отправить их на Землю.','Science data is sitting on the base. Turn on the radio to send it to Earth.')]);
+  if(s.data < 0.01 && s.lv.comm > 0 && s.action!=='science') tips.push([4,L('Радио работает впустую','Radio is idle'),L(`Отправлять нечего, а радио тратит ${fmt(i.dem.comm,0)} кВт·ч. Можно выключить его до новой вылазки.`,`Nothing to send, yet the radio uses ${fmt(i.dem.comm,0)} kWh. Switch it off until the next sortie.`)]);
+  if(s.recyclerBroken) tips.push([9,L('Очистка воды сломана','Water recycler broken'),L('Каждый день без неё уносит десятки литров воды. Назначь ремонт.','Every day without it costs tens of litres. Assign a repair.')]);
+  if(isFlare(s, s.day)) tips.push([9,L('Сегодня вспышка','Flare today'),L('Сегодня безопаснее не выходить наружу. Слой реголита, насыпанный утром, защитит уже сегодня.','Better not go outside today. A regolith layer added this morning protects you today.')]);
+  if(days(s.water, n.water-s.water) < 4) tips.push([8,L('Мало воды','Low water'),L('Добудь лёд или подними мощность очистки воды.','Mine ice or raise water recycling.')]);
+  if(days(s.food, n.food-s.food) < 4) tips.push([8,L('Мало еды','Low food'),L('Включи теплицы на полную или построй ещё одну.','Run greenhouses at full power or build another one.')]);
+  if(s.ghBroken>0) tips.push([6,L('Теплица пробита','Greenhouse damaged'),L('Она не даёт ни еды, ни кислорода, пока её не починят.','It gives no food or oxygen until repaired.')]);
+  const left = s.sched.flares.filter(d=>d>=s.day);
+  if(left.length && s.dose + left.reduce((a,d)=>a+flareDose(s,d),0) + P.bgDose*SHIELD[s.shield]*(P.days-s.day+1) > DOSE_LIMIT*0.85)
+    tips.push([7,L('Радиация','Radiation'),L('Если придёт сильная протонная буря, при нынешней защите можно превысить лимит дозы. Насыпь ещё слой реголита.','If a strong proton storm hits, current shielding may not keep you under the dose limit. Add a regolith layer.')]);
+  if(i.dark && !i.blackout) tips.push([5,tr(P.darkName),L(`Солнце даёт только ${Math.round(P.darkFactor*100)}% энергии. Следи, чтобы батарея не опустела.`,`The Sun gives only ${Math.round(P.darkFactor*100)}% power. Watch the battery.`)]);
+  if(s.pid==='mars' && s.dust>=0.12) tips.push([5,L('Пыль на панелях','Dusty panels'),L(`Пыль съедает ${Math.round(s.dust*100)}% солнечной энергии. Пора чистить.`,`Dust is eating ${Math.round(s.dust*100)}% of solar power. Time to clean.`)]);
+  if(s.health < 50) tips.push([6,L('Экипаж устал','Crew is worn out'),L('Дай экипажу отдохнуть: отдых добавляет 10 к здоровью.','Let the crew rest: rest adds 10 health.')]);
+  if(s.dose > 70) tips.push([6,L('Высокая доза','High dose'),L('Меньше выходов наружу. Каждый выход добавляет дозу.','Fewer trips outside. Every trip adds dose.')]);
+  if(i.wasted > 5) tips.push([3,L('Энергия пропадает','Power is wasted'),L(`${fmt(i.wasted,0)} кВт·ч не влезут в батарею. Добавь аккумулятор или займи энергию делом.`,`${fmt(i.wasted,0)} kWh will not fit in the battery. Add a battery or put the power to work.`)]);
+  if(s.science < SCIENCE_GOAL && P.days - s.day + 1 <= SCIENCE_GOAL - s.science + 1) tips.push([4,L('Наука ждёт','Science is waiting'),L(`Для трёх звёзд нужно ${SCIENCE_GOAL} научных результатов, а дней осталось мало.`,`Three stars need ${SCIENCE_GOAL} science results, and few days are left.`)]);
+  if(!tips.length){
+    const g = [
+      [L('Всё в норме','All good'),L('Хороший момент, чтобы построить что-то на будущее или заняться наукой.','A good moment to build for the future or do some science.')],
+      [L('Подумай заранее','Plan ahead'),L('Вспышки и тени предупреждают за день. Лучше готовиться до предупреждения.','Flares and shadows come with one day’s warning. Better to prepare before that.')],
+      [L('Совет','Tip'),L('Сравни, сколько энергии ест каждая система. Радио нужно только тогда, когда есть что отправить.','Compare how much power each system uses. The radio is only needed when there is data to send.')],
+    ][s.day % 3]; tips.push([0,g[0],g[1]]);
+  }
+  tips.sort((a,b)=>b[0]-a[0]);
+  return tips[0];
+}
+
+function histHTML(s){
+  const H = [{day:0, o2:PLANETS[s.pid].o2, battery:60, batCap:BAT_START_CAP, dose:0}, ...s.history];
+  const P = PLANETS[s.pid], W = 400, Ht = 100, x = d => 8 + d/P.days*(W-16), y = v => Ht-6 - Math.max(0,Math.min(1,v))*(Ht-12);
+  const line = (fn, col) => `<polyline fill="none" stroke="${col}" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke" points="${H.map(h=>`${x(h.day).toFixed(1)},${y(fn(h)).toFixed(1)}`).join(' ')}"/>`;
+  const last = H[H.length-1];
+  const marks = s.sched.flares.filter(d=>d<s.day).map(d=>`<line x1="${x(d)}" x2="${x(d)}" y1="4" y2="${Ht-4}" stroke="var(--rad)" stroke-dasharray="3 3" opacity=".7" vector-effect="non-scaling-stroke"/>`).join('');
+  const darks = s.sched.dark.map((st,i)=>{ const e = Math.min(st+darkLenAt(s,i)-1, s.day-1); return e>=st ? `<rect x="${x(st-0.5)}" y="4" width="${x(e+0.5)-x(st-0.5)}" height="${Ht-8}" fill="var(--muted)" opacity=".12"/>` : ''; }).join('');
+  const grid = [0.25,0.5,0.75].map(v=>`<line x1="8" x2="${W-8}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)" stroke-width="1" vector-effect="non-scaling-stroke"/>`).join('');
+  const series = [[h=>h.o2/O2_CAP,'var(--o2)'],[h=>h.battery/(h.batCap||s.batCap),'var(--power)'],[h=>h.dose/DOSE_LIMIT,'var(--rad)']];
+  return `<div class="card hist" id="c-hist"><h2>${L('Журнал миссии','Mission log')} <span class="hint">${L('в % от максимума','% of maximum')}</span></h2>
+    <svg viewBox="0 0 ${W} ${Ht}" preserveAspectRatio="none" role="img" aria-label="${L('График запасов по дням','Supplies by day')}">${grid}${darks}${marks}${series.map(([f,c])=>line(f,c)).join('')}${series.map(([f,c])=>`<circle cx="${x(last.day)}" cy="${y(f(last))}" r="3.5" fill="${c}"/>`).join('')}</svg>
+    <div class="lg"><span><i style="background:var(--o2)"></i>${L('Кислород','Oxygen')}</span><span><i style="background:var(--power)"></i>${L('Батарея','Battery')}</span><span><i style="background:var(--rad)"></i>${L('Доза от лимита','Dose vs limit')}</span><span><i style="background:var(--rad);opacity:.6"></i>${L('пунктир: вспышка','dashed: flare')}</span><span><i style="background:var(--muted);opacity:.5"></i>${L('серый','grey')}: ${tr(P.darkName).toLowerCase()}</span></div></div>`;
+}
+
+function trackHTML(s){
+  const P = PLANETS[s.pid]; let h = '';
+  for(let d=1; d<=P.days; d++){
+    const cls = [d<s.day?'done':'', d===s.day?'now':'', (isFlare(s,d) && d<=s.day)?'flare':'', (isDark(s,d) && d<=s.day)?'dark':''].join(' ');
+    h += `<i class="${cls}" title="${tr(P.dayName)} ${d}"></i>`;
+  }
+  return `<div class="track" aria-hidden="true">${h}</div>`;
+}
+
+function langBtn(){ return `<button class="btn lang" type="button" data-cmd="lang" aria-label="${L('Switch to English','Переключить на русский')}">${L('EN','RU')}</button>`; }
+
+function render(){
+  if(!S){ app.innerHTML=''; return; }
+  const s = S, P = PLANETS[s.pid], dn = tr(P.dayName), eng = s.mode !== 'cadet';
+  document.documentElement.dataset.planet = s.pid;
+  const pv = simulate(s), n = pv.s, i = pv.info;
+  const tip = engineerTip(s, pv);
+  const alerts = [];
+  if(i.dark) alerts.push(['warn', `${tr(P.darkName)}: ${L('солнце','sun')} ${Math.round(P.darkFactor*100)}%`]);
+  if(isFlare(s,s.day)) alerts.push(['bad',L('Сегодня солнечная вспышка','Solar flare today')]);
+  if(isFlare(s,s.day+1)) alerts.push(['warn',L('Завтра солнечная вспышка','Solar flare tomorrow')]);
+  if(isDark(s,s.day+1) && !i.dark) alerts.push(['warn',`${L('Завтра','Tomorrow')}: ${tr(P.darkName).toLowerCase()}`]);
+  if(s.leak) alerts.push(['bad',L('Утечка воздуха','Air leak')]);
+  if(s.data>0.01) alerts.push(['warn',L(`Данные ждут отправки: ${fmt(s.data)}`,`Data waiting to send: ${fmt(s.data)}`)]);
+  if(s.recyclerBroken) alerts.push(['bad',L('Очистка воды сломана','Water recycler broken')]);
+  if(s.ghBroken) alerts.push(['bad',L(`Пробита теплица (${s.ghBroken})`,`Greenhouse damaged (${s.ghBroken})`)]);
+  if(P.cargo.includes(s.day)) alerts.push(['good',L('Сегодня прилетит грузовой корабль','Cargo ship arrives today')]);
+  if(!alerts.length) alerts.push(['good',L('Системы в норме','All systems normal')]);
+  alerts.push(['info',`${L('Сигнал до Земли','Signal to Earth')}: ${delayText(s.pid)}`]);
+  if(s.sched.ev.some(e=>e.live)) alerts.push(['info',L('В миссии настоящая вспышка за последние 30 дней (онлайн, NASA DONKI)','This mission includes a real flare from the last 30 days (live, NASA DONKI)')]);
+
+  const systems = [
+    {id:'o2', nm:L('Кислород (электролиз)','Oxygen (electrolysis)'), ds: eng ? L(`Расщепляет воду: до ${fmt(O2_SYS_KG)} кг O₂ в день, тратит ${fmt(O2_SYS_KG*O2_WATER_PER_KG)} л воды.`,`Splits water: up to ${fmt(O2_SYS_KG)} kg O₂ a day, uses ${fmt(O2_SYS_KG*O2_WATER_PER_KG)} L of water.`) : L(`Ток расщепляет воду на водород и кислород: до ${fmt(O2_SYS_KG)} кг O₂ в день. Экипаж дышит ${fmt(O2_PER*CREW,2)} кг.`,`Electric current splits water into hydrogen and oxygen: up to ${fmt(O2_SYS_KG)} kg O₂ a day. The crew breathes ${fmt(O2_PER*CREW,2)} kg.`), kw:i.dem.o2},
+    eng && {id:'water', nm:L('Очистка воды','Water recycler'), ds:L(`Возвращает ${RECOVERY*100}% использованной воды.`,`Recovers ${RECOVERY*100}% of used water.`), kw:i.dem.water, off:s.recyclerBroken},
+    {id:'heat', nm:L('Обогрев','Heating'), ds:L(`Держит в модуле +21 °C. Нужно ${P.heat} кВт·ч в день.`,`Keeps the habitat at +21 °C. Needs ${P.heat} kWh a day.`), kw:i.dem.heat},
+    eng && {id:'farm', nm:L(`Теплицы (${s.gh - s.ghBroken} из ${s.gh})`,`Greenhouses (${s.gh - s.ghBroken} of ${s.gh})`), ds:L(`Светодиоды для растений. Каждая даёт ${fmt(GH_FOOD)} кг еды и ${fmt(GH_O2)} кг O₂.`,`Grow lights for plants. Each gives ${fmt(GH_FOOD)} kg food and ${fmt(GH_O2)} kg O₂.`), kw:i.dem.farm},
+    {id:'comm', nm:L('Радиосвязь с Землёй','Radio link to Earth'), ds:L(`Отправляет 1 научный результат в день. Сигнал идёт ${delayText(s.pid)}${s.pid==='mars'?', поэтому антенне нужно больше энергии':''}.`,`Sends 1 science result a day. The signal takes ${delayText(s.pid)}${s.pid==='mars'?', so the antenna needs more power':''}.`), kw:i.dem.comm},
+  ].filter(Boolean);
+  const levels = [0,25,50,75,100];
+  const sysHTML = systems.map(x=>`<div class="sys ${x.off?'off':''}" data-off="${L(' · сломан',' · broken')}">
+      <div class="row"><span class="nm">${x.nm}</span><span class="kw">${fmt(x.kw,1)} ${U.kwh()}</span></div>
+      <div class="ds">${x.ds}</div>
+      <div class="seg" role="group" aria-label="${L('Мощность','Power')}: ${esc(x.nm)}">${levels.map(l=>`<button type="button" data-lv="${x.id}" data-v="${l}" aria-pressed="${s.lv[x.id]===l}" ${x.off?'disabled':''}>${l}%</button>`).join('')}</div>
+    </div>`).join('');
+
+  const maxScale = Math.max(i.prod + s.battery, i.demand, 1);
+  const net = i.prod - i.demand;
+  const balTxt = i.blackout ? `<span class="res" style="color:var(--bad)">${L('Не хватит','Short by')} ${fmt(i.demand - i.prod - s.battery,0)} ${U.kwh()}</span>`
+              : net >= 0 ? `<span class="res" style="color:var(--ok)">+${fmt(net,0)} ${L('в батарею','to battery')}</span>` : `<span class="res" style="color:var(--warn)">−${fmt(-net,0)} ${L('из батареи','from battery')}</span>`;
+
+  const acts = ACTIONS.map(a=>{
+    const b = actionBlock(s,a); if(b==='hide') return '';
+    const chips = [];
+    if(a.parts) chips.push(`<span class="chip">${a.parts} ${L(plural(a.parts,'запчасть','запчасти','запчастей'), a.parts===1?'part':'parts')}</span>`);
+    if(a.energy) chips.push(`<span class="chip">${a.energy} ${U.kwh()}</span>`);
+    if(a.eva) chips.push(`<span class="chip eva">${L('выход','EVA')}: +${fmt(P.eva)} ${U.msv()}</span>`);
+    if(b) chips.push(`<span class="chip why">${b}</span>`);
+    return `<button type="button" class="act" data-act="${a.id}" aria-pressed="${s.action===a.id}" ${b?'disabled':''}>
+      <span class="an">${esc(val(a.name,s))}</span><span class="ad">${esc(val(a.desc,s))}</span><span class="ac">${chips.join('')}</span></button>`;
+  }).join('');
+
+  const shieldTxt = `${s.shield} ${L(plural(s.shield,'слой','слоя','слоёв'), s.shield===1?'layer':'layers')} · ×${fmt(SHIELD[s.shield],2)}`;
+
+  app.innerHTML = `
+  <header class="top">
+    <div class="brand"><h1>${tr(P.base)}${s.demo?` <span class="demo">${L('демо','demo')}</span>`:''}</h1><span class="sub">${tr(P.where)} · ${L('экипаж','crew')} ${CREW} · ${s.mode==='cadet'?L('режим «Кадет»','Cadet mode'):L('режим «Инженер»','Engineer mode')}</span></div>
+    <div class="daybox">
+      <div class="daycount"><span class="lbl">${dn}</span><span class="big">${s.day}</span><span class="of">/ ${P.days}</span></div>
+      ${trackHTML(s)}
+      <button class="btn" type="button" data-cmd="science">${L('Наука в игре','The science')}</button>
+      <button class="btn" type="button" data-cmd="menu">${L('Новая миссия','New mission')}</button>
+      ${langBtn()}
+    </div>
+  </header>
+  <div class="alerts" role="status">${alerts.map(a=>`<span class="alert ${a[0]}"><span class="dot"></span>${a[1]}</span>`).join('')}</div>
+  <main class="grid">
+    <section class="card" id="c-res" aria-labelledby="h-res">
+      <h2 id="h-res">${L('Запасы базы','Base supplies')} <span class="hint">${L('прогноз на день','forecast for today')}</span></h2>
+      <div class="meters">
+        ${meterHTML({name:L('Кислород','Oxygen'), icon:ICON.o2, value:s.o2, unit:U.kg(), max:O2_CAP, color:'var(--o2)', delta:n.o2-s.o2})}
+        ${eng?meterHTML({name:L('Вода','Water'), icon:ICON.water, value:s.water, unit:U.l(), max:Math.max(200,s.water), color:'var(--water)', delta:n.water-s.water, digits:0}):''}
+        ${eng?meterHTML({name:L('Еда','Food'), icon:ICON.food, value:s.food, unit:U.kg(), max:Math.max(120,s.food), color:'var(--food)', delta:n.food-s.food}):''}
+        ${meterHTML({name:L('Батарея','Battery'), icon:ICON.power, value:s.battery, unit:U.kwh(), max:s.batCap, color:'var(--power)', delta:n.battery-s.battery, digits:0})}
+        ${meterHTML({name:L('Здоровье','Health'), icon:ICON.hp, value:s.health, unit:'%', max:100, color:'var(--hp)', delta:n.health-s.health, digits:0, note: s.health<40?`<span class="crit">${L('опасно','danger')}</span>`:''})}
+        ${meterHTML({name:L('Доза радиации','Radiation dose'), icon:ICON.rad, value:s.dose, unit:U.msv(), max:DOSE_LIMIT, color:'var(--rad)', delta:n.dose-s.dose, inverse:true, limit:DOSE_LIMIT})}
+      </div>
+      <div class="stats">
+        <div class="stat"><div class="k">${L('Запчасти','Spare parts')}</div><div class="v">${s.parts}</div></div>
+        <div class="stat"><div class="k">${L('Наука','Science')}</div><div class="v">${fmt(s.science)}<small> / ${SCIENCE_GOAL}${s.data>0.01?L(' · ждёт ',' · waiting ')+fmt(s.data):''}</small></div></div>
+        <div class="stat"><div class="k">${L('Защита','Shielding')}</div><div class="v" style="font-size:14px">${shieldTxt}</div></div>
+        <div class="stat"><div class="k">${L('Панели','Panels')}</div><div class="v">${s.panels}${s.reactor?`<small> + ${L('реактор','reactor')}</small>`:''}</div></div>
+      </div>
+    </section>
+    <section class="scenecol" id="c-scene">
+      <div class="scene"><canvas id="scene" role="img" aria-label="${L('Вид базы','View of the base')}"></canvas>
+        <span class="tag">${tr(P.name)} · ${L('солнце','sun')} ${Math.round(i.sun*100)}%</span>
+        <span class="tag tag2">${s.pid==='mars'?L('пыль на панелях ','panel dust ')+Math.round(s.dust*100)+'%':(eng?L('грузы: дни ','cargo: days ')+P.cargo.join(L(' и ',' & ')):L('связь 1,3 с','signal 1.3 s'))}</span></div>
+      ${histHTML(s)}
+      <div class="card tip"><div class="who" aria-hidden="true">${s.pid==='mars'?L('ИИ','AI'):L('ЦУП','MC')}</div><div><div class="t">${s.pid==='mars'?L('Бортовой компьютер','Onboard computer'):L('ЦУП','Mission Control')} · ${esc(tip[1])}</div><p>${esc(tip[2])}</p></div></div>
+    </section>
+    <section class="card" id="c-pow" aria-labelledby="h-pow">
+      <h2 id="h-pow">${L('Энергия на сегодня','Power for today')} <span class="hint">${L('кВт·ч в день','kWh per day')}</span></h2>
+      <div class="supply">
+        <div><span>${L('Солнце','Sun')}: ${s.panels} ${L('пан.','panels')} × ${P.panel} × ${Math.round(i.sun*100)}%</span><b>${fmt(i.solar,0)}</b></div>
+        ${s.reactor?`<div><span>${L('Ядерный реактор','Nuclear reactor')}</span><b>40</b></div>`:''}
+        <div><span>${L('В батарее сейчас','In the battery now')}</span><b>${fmt(s.battery,0)} / ${s.batCap}</b></div>
+      </div>
+      ${sysHTML}
+      ${i.dem.task?`<div class="sys"><div class="row"><span class="nm">${L('Бур (задание дня)','Drill (today’s task)')}</span><span class="kw">${i.dem.task} ${U.kwh()}</span></div></div>`:''}
+      <div class="balance">
+        <div class="bbar" aria-hidden="true"><span class="p" style="width:${i.prod/maxScale*100}%"></span><span class="d" style="left:calc(${Math.min(100,i.demand/maxScale*100)}% - 1px)"></span></div>
+        <div class="bline"><span>${L('Выработка','Supply')} <b class="num">${fmt(i.prod,0)}</b> · ${L('расход','demand')} <b class="num">${fmt(i.demand,0)}</b></span>${balTxt}</div>
+      </div>
+    </section>
+  </main>
+  <section class="card actions" id="c-act" aria-labelledby="h-act">
+    <h2 id="h-act">${L(`Задание экипажу на ${dn.toLowerCase()} ${s.day}`,`Crew task for ${dn.toLowerCase()} ${s.day}`)} <span class="hint">${L('одно в день','one per day')}</span></h2>
+    <div class="acts">${acts}</div>
+    <div class="endrow"><span class="sel">${L('Выбрано','Selected')}: <b>${esc(val(ACT[s.action].name,s))}</b></span>
+      <button class="btn primary big" type="button" data-cmd="end" id="c-end">${L(`Завершить ${dn.toLowerCase()} ${s.day}`,`End ${dn.toLowerCase()} ${s.day}`)} →</button></div>
+  </section>`;
+  drawScene();
+  renderTutorial();
+}
+
+/* ============================================================
+   TUTORIAL (first mission): highlight one area at a time
+   ============================================================ */
+let TUT = null;
+const TUT_STEPS = [
+  { sel:'#c-res', t:()=>L('Это запасы базы. Зелёное число показывает, сколько прибавится за день, жёлтое — сколько уйдёт. Самое важное: кислород и доза радиации.','These are the base’s supplies. Green shows what you gain each day, yellow what you lose. Most important: oxygen and radiation dose.') },
+  { sel:'#c-pow', t:()=>L('Здесь ты делишь энергию. Нажимай проценты: каждая система берёт свою часть. Внизу видно, хватает ли энергии.','Here you split the power. Tap the percentages: each system takes its share. The bar at the bottom shows if there is enough.') },
+  { sel:'#c-act', t:()=>L('Выбери одно задание на день. У каждого есть цена: запчасти, энергия или доза радиации, если выходить наружу.','Pick one task for the day. Each has a cost: spare parts, power, or radiation dose for going outside.') },
+  { sel:'#c-scene', t:()=>L('Тут видна база и подсказки. Солнечные вспышки и тени предупреждают за день. Подготовься заранее!','Here you see the base and tips. Solar flares and shadows come with a day’s warning. Get ready early!') },
+  { sel:'#c-end', t:()=>L('Нажми, чтобы прожить день и увидеть, что случилось. Удачи, командир!','Press to live through the day and see what happened. Good luck, commander!') },
+];
+function renderTutorial(){
+  document.querySelectorAll('.coach').forEach(e=>e.classList.remove('coach'));
+  const old = document.getElementById('coachbox'); if(old) old.remove();
+  if(TUT===null || !S || modalRoot.innerHTML) return;
+  const st = TUT_STEPS[TUT]; const el = document.querySelector(st.sel); if(el) el.classList.add('coach');
+  const box = document.createElement('div'); box.id='coachbox'; box.className='coachbox'; box.setAttribute('role','dialog'); box.setAttribute('aria-label',L('Подсказка','Tip'));
+  box.innerHTML = `<div class="cstep">${L('Обучение','Tutorial')} ${TUT+1} / ${TUT_STEPS.length}</div><p>${esc(st.t())}</p><div class="row-btns"><button class="btn primary" type="button" data-cmd="tut-next">${TUT===TUT_STEPS.length-1?L('Понятно!','Got it!'):L('Дальше','Next')}</button><button class="btn" type="button" data-cmd="tut-skip">${L('Пропустить','Skip')}</button></div>`;
+  document.body.appendChild(box);
+  if(el && !reduceMotion) el.scrollIntoView({block:'center', behavior:'smooth'}); else if(el) el.scrollIntoView({block:'center'});
+}
+function tutDone(){ TUT = null; try{ localStorage.setItem('outpost-tut','1'); }catch(e){} renderTutorial(); }
+
+/* ============================================================
+   SCENE (canvas)
+   ============================================================ */
+let anim = null, tAnim = 0;
+const reduceMotion = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+function drawScene(){
+  const cv = document.getElementById('scene'); if(!cv || !S) return;
+  const dpr = Math.min(2, window.devicePixelRatio||1);
+  const w = cv.clientWidth, h = cv.clientHeight; if(!w||!h) return;
+  if(cv.width !== Math.round(w*dpr)){ cv.width = Math.round(w*dpr); cv.height = Math.round(h*dpr); }
+  const c = cv.getContext('2d'); c.setTransform(dpr,0,0,dpr,0,0);
+  paintBase(c, w, h, S, tAnim);
+  const storm = S.pid==='mars' && isDark(S,S.day);
+  cancelAnimationFrame(anim);
+  if(storm && !reduceMotion){ anim = requestAnimationFrame(t=>{ tAnim = t/1000; drawScene(); }); }
+}
+function paintBase(c, w, h, s, t){
+  const mars = s.pid==='mars', dark = isDark(s, s.day);
+  const rng = mulberry32(42);
+  const g = c.createLinearGradient(0,0,0,h);
+  if(mars){ if(dark){ g.addColorStop(0,'#5a3622'); g.addColorStop(1,'#a0613a'); } else { g.addColorStop(0,'#1c1420'); g.addColorStop(.6,'#6b3b2a'); g.addColorStop(1,'#c27a4f'); } }
+  else { g.addColorStop(0,'#000003'); g.addColorStop(1,'#05070f'); }
+  c.fillStyle = g; c.fillRect(0,0,w,h);
+  if(!mars || !dark){ for(let k=0;k<140;k++){ const x=rng()*w, y=rng()*h*0.62, r=rng()*1.2+0.2; c.fillStyle=`rgba(255,255,255,${mars?0.25*rng():0.35+0.6*rng()})`; c.fillRect(x,y,r,r);} } else { for(let k=0;k<140;k++) rng(); }
+  if(!mars){ c.fillStyle='#2f6fcf'; c.beginPath(); c.arc(w*0.82, h*0.2, h*0.055, 0, Math.PI*2); c.fill(); c.fillStyle='rgba(255,255,255,.65)'; c.beginPath(); c.arc(w*0.82-h*0.012, h*0.2-h*0.015, h*0.022, 0, Math.PI*2); c.fill(); }
+  const sunY = mars ? h*0.22 : h*0.5, sunX = mars ? w*0.18 : w*0.08;
+  const sunA = dark ? (mars?0.25:0) : 1;
+  if(sunA>0){ const sg = c.createRadialGradient(sunX,sunY,0,sunX,sunY,h*0.18); sg.addColorStop(0,`rgba(255,246,220,${sunA})`); sg.addColorStop(.15,`rgba(255,236,190,${sunA*0.8})`); sg.addColorStop(1,'rgba(255,220,160,0)'); c.fillStyle=sg; c.fillRect(0,0,w,h); }
+  c.fillStyle = mars ? (dark?'#7a4a30':'#8e4f33') : '#2a2c33';
+  c.beginPath(); c.moveTo(0,h*0.62); for(let x=0;x<=w;x+=w/24){ c.lineTo(x, h*0.6 - Math.sin(x/w*7+1)*h*0.03 - Math.sin(x/w*17)*h*0.012 - (mars?0:Math.max(0,Math.sin(x/w*3.2))*h*0.06)); } c.lineTo(w,h); c.lineTo(0,h); c.fill();
+  const gg = c.createLinearGradient(0,h*0.62,0,h);
+  if(mars){ gg.addColorStop(0, dark?'#8a5536':'#a65b37'); gg.addColorStop(1, dark?'#5a3522':'#6e3820'); } else { gg.addColorStop(0,'#5d606a'); gg.addColorStop(1,'#33353c'); }
+  c.fillStyle = gg; c.beginPath(); c.moveTo(0,h*0.7); for(let x=0;x<=w;x+=w/30){ c.lineTo(x, h*0.69 + Math.sin(x/w*11)*h*0.008); } c.lineTo(w,h); c.lineTo(0,h); c.fill();
+  for(let k=0;k<26;k++){ const x=rng()*w, y=h*0.74+rng()*h*0.25, r=(rng()*0.02+0.004)*w; c.fillStyle= mars?'rgba(60,25,10,.35)':'rgba(0,0,0,.28)'; c.beginPath(); c.ellipse(x,y,r,r*0.3,0,0,Math.PI*2); c.fill(); }
+  const base = h*0.78;
+  const S2 = Math.min(w/16, h/8.4);
+  const nP = Math.min(s.panels, 16);
+  for(let k=0;k<nP;k++){
+    const col = k%4, row = Math.floor(k/4);
+    const x = w*0.04 + col*S2*1.55 + row*S2*0.35, y = base - row*S2*0.42 + S2*0.2;
+    c.fillStyle='#555a66'; c.fillRect(x+S2*0.55, y-S2*0.1, S2*0.08, S2*0.45);
+    c.save(); c.translate(x, y-S2*0.55); c.transform(1,0,-0.25,1,0,0);
+    const pg = c.createLinearGradient(0,0,S2*1.3,S2*0.6); pg.addColorStop(0, '#2b4c9a'); pg.addColorStop(1, '#16285a');
+    c.fillStyle = pg; c.fillRect(0,0,S2*1.3,S2*0.55);
+    c.strokeStyle='rgba(180,200,255,.35)'; c.lineWidth=1; for(let q=1;q<4;q++){ c.beginPath(); c.moveTo(q*S2*1.3/4,0); c.lineTo(q*S2*1.3/4,S2*0.55); c.stroke(); }
+    if(s.dust>0){ c.fillStyle=`rgba(190,110,70,${s.dust*1.6})`; c.fillRect(0,0,S2*1.3,S2*0.55); }
+    if(!dark){ c.fillStyle='rgba(255,255,255,.12)'; c.fillRect(0,0,S2*1.3,S2*0.12); }
+    c.restore();
+  }
+  const hx = w*0.5, hy = base, hw = S2*3.4, hh = S2*1.3;
+  for(let Ly=s.shield; Ly>=1; Ly--){
+    const e = Ly*S2*0.22;
+    c.fillStyle = mars ? ['#7e4126','#8a4a2c','#955233','#a05a39'][Ly-1] : ['#4a4c54','#55575f','#5f626a','#6a6d75'][Ly-1];
+    c.beginPath(); c.ellipse(hx, hy, hw/2+e+S2*0.3, hh+e, 0, Math.PI, 0); c.fill();
+  }
+  c.fillStyle='#d9dde6'; c.beginPath(); c.ellipse(hx, hy, hw/2, hh, 0, Math.PI, 0); c.fill();
+  if(s.shield>0){ c.fillStyle = mars ? '#a05a39' : '#6a6d75'; c.globalAlpha = Math.min(0.85, 0.25*s.shield); c.beginPath(); c.ellipse(hx, hy, hw/2, hh, 0, Math.PI, 0); c.fill(); c.globalAlpha=1; }
+  const lit = !dark;
+  c.fillStyle= lit ? '#ffd88a' : '#6b5a3a'; for(let q=-1;q<=1;q++){ c.beginPath(); c.arc(hx+q*S2*0.7, hy-hh*0.45, S2*0.11, 0, Math.PI*2); c.fill(); }
+  c.fillStyle='#b8bdc8'; c.fillRect(hx-S2*0.25, hy-S2*0.55, S2*0.5, S2*0.55);
+  const nG = s.mode==='cadet' ? 0 : Math.min(s.gh, 8);
+  for(let k=0;k<nG;k++){
+    const broken = k >= s.gh - s.ghBroken;
+    const on = s.lv.farm>0 && !broken;
+    const gx = hx + hw/2 + S2*1.2 + (k%4)*S2*1.25, gy = base - Math.floor(k/4)*S2*0.55 + S2*0.12;
+    const dg = c.createRadialGradient(gx, gy-S2*0.2, 0, gx, gy-S2*0.2, S2*0.7);
+    dg.addColorStop(0, on ? `rgba(255,120,220,${0.35+0.4*s.lv.farm/100})` : 'rgba(80,90,110,.5)'); dg.addColorStop(1, on ? 'rgba(120,220,130,.25)' : 'rgba(60,70,90,.3)');
+    c.fillStyle = dg; c.beginPath(); c.ellipse(gx, gy, S2*0.55, S2*0.5, 0, Math.PI, 0); c.fill();
+    c.strokeStyle='rgba(220,235,255,.6)'; c.lineWidth=1.2; c.beginPath(); c.ellipse(gx, gy, S2*0.55, S2*0.5, 0, Math.PI, 0); c.stroke();
+    if(on){ c.fillStyle='#5fd17a'; for(let q=-2;q<=2;q++){ c.fillRect(gx+q*S2*0.16-1, gy-S2*0.14, 2.5, S2*0.14); } }
+    if(broken){ c.strokeStyle='#ff6363'; c.lineWidth=2; c.beginPath(); c.moveTo(gx-S2*0.2,gy-S2*0.42); c.lineTo(gx,gy-S2*0.25); c.lineTo(gx-S2*0.08,gy-S2*0.12); c.lineTo(gx+S2*0.12,gy-S2*0.02); c.stroke(); }
+  }
+  const nB = Math.min(Math.round((s.batCap-BAT_START_CAP)/BAT_ADD)+1, 8);
+  for(let k=0;k<nB;k++){ const bx = hx - hw/2 - S2*1.1 - (k%4)*S2*0.42, by = base + S2*0.25 - Math.floor(k/4)*S2*0.5; c.fillStyle='#3a4150'; c.fillRect(bx, by-S2*0.42, S2*0.32, S2*0.42); c.fillStyle='#ffd35a'; c.fillRect(bx+S2*0.05, by-S2*0.42+S2*0.05+ (1-s.battery/s.batCap)*S2*0.32, S2*0.22, Math.max(1,(s.battery/s.batCap)*S2*0.32)); }
+  if(s.reactor){ const rx = w*0.93, ry = h*0.71; c.fillStyle='#c9ced8'; c.fillRect(rx-S2*0.18, ry-S2*0.75, S2*0.36, S2*0.75); c.fillStyle='#8890a0'; for(let q=0;q<4;q++){ c.fillRect(rx-S2*0.7, ry-S2*0.68+q*S2*0.16, S2*0.48, S2*0.08); c.fillRect(rx+S2*0.22, ry-S2*0.68+q*S2*0.16, S2*0.48, S2*0.08);} c.fillStyle='#ffd35a'; c.beginPath(); c.arc(rx, ry-S2*0.85, S2*0.08, 0, Math.PI*2); c.fill(); }
+  if(dark && !mars){ c.fillStyle='rgba(0,0,10,.55)'; c.fillRect(0,0,w,h); }
+  if(dark && mars){
+    c.fillStyle='rgba(160,90,50,.35)'; c.fillRect(0,0,w,h);
+    const r2 = mulberry32(7);
+    c.fillStyle='rgba(230,170,120,.45)';
+    for(let k=0;k<180;k++){ const x = ((r2()*w + t*(120+r2()*220)) % (w+20)) - 10, y = r2()*h; c.fillRect(x, y, 6+r2()*14, 1.2); }
+  }
+}
+
+/* ============================================================
+   MODALS
+   ============================================================ */
+let reopen = null; // re-renders the open modal after a language switch
+function openModal(html, label, again){
+  reopen = again || null;
+  modalRoot.innerHTML = `<div class="modal" role="dialog" aria-modal="true" aria-label="${esc(label)}"><div class="dlg">${html}</div></div>`;
+  const first = modalRoot.querySelector('[data-focus]') || modalRoot.querySelector('button');
+  if(first) setTimeout(()=>first.focus(), 30);
+}
+function closeModal(){ modalRoot.innerHTML=''; reopen = null; const b = app.querySelector('[data-cmd="end"]'); if(b) b.focus({preventScroll:true}); renderTutorial(); }
+
+function planetPreview(pid){ return `<canvas data-preview="${pid}" aria-hidden="true"></canvas>`; }
+function paintPreviews(){
+  modalRoot.querySelectorAll('canvas[data-preview]').forEach(cv=>{
+    const pid = cv.dataset.preview; const dpr = Math.min(2, window.devicePixelRatio||1);
+    const w = cv.clientWidth, h = cv.clientHeight; if(!w||!h) return; cv.width = w*dpr; cv.height = h*dpr;
+    const c = cv.getContext('2d'); c.setTransform(dpr,0,0,dpr,0,0);
+    const fake = newState(pid, 1234, 'engineer'); fake.sched = {dark:[99], darkLens:[1], flares:[99], ev:[SOLAR[0],SOLAR[1]]};
+    paintBase(c, w, h, fake, 0);
+  });
+}
+
+let chosenMode = 'cadet';
+let useLive = false;
+function liveBoxHTML(){
+  if(liveState==='idle') return `<button class="btn" type="button" data-cmd="live-check">${L('Проверить космическую погоду сегодня (NASA DONKI)','Check today’s space weather (NASA DONKI)')}</button>`;
+  if(liveState==='loading') return `<span>${L('Связываемся с NASA DONKI…','Contacting NASA DONKI…')}</span>`;
+  if(liveState==='fail') return `<span>${L('Онлайн-данные сейчас недоступны. Миссия использует архив настоящих событий, это честно указано в игре.','Live data is not reachable right now. The mission uses the archive of real past events, and the game says so.')}</span>`;
+  // ok
+  const f = LIVE;
+  const sum = liveSummary ? `<span>${liveSummary}</span>` : '';
+  if(!f) return `${sum}<span>${L('Сильных вспышек за 30 дней не было: Солнце спокойно. Миссия возьмёт события из архива.','No strong flares in the last 30 days: the Sun is calm. The mission will use archived events.')}</span>`;
+  return `${sum}<label class="chk"><input type="checkbox" id="useLive" ${useLive?'checked':''}> ${L(`Добавить в миссию настоящую вспышку ${esc(f.cls)} от ${solarDate(f.date)}`,`Add the real ${esc(f.cls)} flare from ${solarDate(f.date)} to the mission`)}</label>`;
+}
+function showStart(){
+  openModal(`
+    <div class="toprow"><div class="eyebrow">${L('Тренажёр юного астронавта','Junior Astronaut Mission Trainer')}</div>${langBtn()}</div>
+    <h2>${L('Построй базу и продержись 20 дней','Build a base and survive 20 days')}</h2>
+    <p class="lead">${L('Ты руководишь базой, где живут четыре астронавта. Энергии на всё не хватает. Каждый день решай, что важнее: воздух, тепло, связь с Землёй или защита от радиации. Солнечные бури в игре настоящие: они взяты из архивов NASA и NOAA.','You run a base where four astronauts live. There is never enough power for everything. Each day, decide what matters most: air, heat, the radio link to Earth, or radiation shielding. The solar storms in the game are real, taken from NASA and NOAA records.')}</p>
+    <div class="steps">
+      <div><b>${L('1. Раздай энергию','1. Share the power')}</b>${L('Выбери, сколько энергии получат кислород, обогрев и радио.','Choose how much power oxygen, heating and the radio get.')}</div>
+      <div><b>${L('2. Дай задание','2. Give a task')}</b>${L('Одно в день: построить, починить или сделать научное открытие.','One a day: build, repair, or make a discovery.')}</div>
+      <div><b>${L('3. Заверши день','3. End the day')}</b>${L('Посмотри, что случилось, и узнай, почему так бывает по-настоящему.','See what happened and learn why it happens for real.')}</div>
+    </div>
+    <div class="row-btns"><button class="btn primary demo-btn" type="button" data-cmd="demo">${L('▶ Демо-миссия для жюри (3 минуты)','▶ Judges’ demo mission (3 minutes)')}</button></div>
+    <h3>${L('Уровень','Level')}</h3>
+    <div class="modes" role="group" aria-label="${L('Уровень сложности','Difficulty')}">
+      <button type="button" class="mode" data-mode="cadet" aria-pressed="${chosenMode==='cadet'}"><b>${L('Кадет · 7–9 лет','Cadet · ages 7–9')}</b><span>${L('Энергия, кислород и радиация. Три главных ресурса.','Power, oxygen and radiation. Three core resources.')}</span></button>
+      <button type="button" class="mode" data-mode="engineer" aria-pressed="${chosenMode==='engineer'}"><b>${L('Инженер · 10–12 лет и старше','Engineer · ages 10–12+')}</b><span>${L('Плюс вода, еда, теплицы и поломки. Как у настоящих планировщиков миссий.','Plus water, food, greenhouses and breakdowns, like real mission planners.')}</span></button>
+    </div>
+    <h3>${L('Космическая погода','Space weather')}</h3>
+    <div class="live" id="liveStart">${liveBoxHTML()}</div>
+    <h3>${L('Выбери место для базы','Choose where to build')}</h3>
+    <div class="planets">
+      <button class="pcard" type="button" data-start="moon" style="--pc:${PLANETS.moon.accent}" data-focus>${planetPreview('moon')}<div class="pb">
+        <span class="pn">${L('Луна · кратер Шеклтон','Moon · Shackleton crater')}</span>
+        <ul><li>${L('Связь с Землёй почти мгновенная: 1,3 секунды','Talking to Earth is almost instant: 1.3 seconds')}</li><li>${L('Радиация в 2 раза сильнее, чем на Марсе','Radiation is twice as strong as on Mars')}</li><li>${L('Бывают дни в тени гор','Some days are in mountain shadow')}</li></ul>
+        <span class="go">${L('Лететь на Луну →','Fly to the Moon →')}</span></div></button>
+      <button class="pcard" type="button" data-start="mars" style="--pc:${PLANETS.mars.accent}">${planetPreview('mars')}<div class="pb">
+        <span class="pn">${L('Марс · равнина Утопия','Mars · Utopia Planitia')}</span>
+        <ul><li>${L(`Сигнал до Земли идёт ${delayText('mars')} (сегодняшнее расстояние), помощь не успеет`,`A signal to Earth takes ${delayText('mars')} (today’s distance), so help can’t arrive in time`)}</li><li>${L('Пылевые бури и пыль на панелях','Dust storms and dusty panels')}</li><li>${L('Тонкая атмосфера немного защищает от радиации','Thin air gives a little radiation protection')}</li></ul>
+        <span class="go">${L('Лететь на Марс →','Fly to Mars →')}</span></div></button>
+    </div>
+    <form class="codebox" id="codeForm"><label for="mcode">${L('Есть код миссии от учителя?','Have a mission code from your teacher?')}</label><input id="mcode" name="mcode" placeholder="M-1234" autocomplete="off" maxlength="7"><button class="btn" type="submit">${L('Начать по коду','Start with code')}</button><span id="codeErr" role="alert"></span></form>
+    <details class="gloss"><summary>${L('Словарик: что значат трудные слова','Glossary: tricky words explained')}</summary>
+      <dl>
+        <dt>${L('Сол','Sol')}</dt><dd>${L('Марсианские сутки. Они длиннее земных на 40 минут.','A Martian day. It is 40 minutes longer than an Earth day.')}</dd>
+        <dt>${L('кВт·ч (киловатт-час)','kWh (kilowatt-hour)')}</dt><dd>${L('Количество энергии. Чайник тратит примерно 0,1 кВт·ч, чтобы вскипятить воду.','An amount of energy. A kettle uses about 0.1 kWh to boil water.')}</dd>
+        <dt>${L('Электролиз','Electrolysis')}</dt><dd>${L('Электрический ток разделяет воду на водород и кислород. Так получают воздух для дыхания.','Electric current splits water into hydrogen and oxygen. That is how breathing air is made.')}</dd>
+        <dt>${L('Реголит','Regolith')}</dt><dd>${L('Пыль и камешки на поверхности Луны и Марса. Из них можно насыпать защиту над домом.','Dust and pebbles on the Moon and Mars. You can pile it over a habitat as a shield.')}</dd>
+        <dt>${L('мЗв (миллизиверт)','mSv (millisievert)')}</dt><dd>${L('Мера дозы радиации. Рентген зуба даёт около 0,005 мЗв, а день на Луне около 1,4 мЗв.','A measure of radiation dose. A dental X-ray is about 0.005 mSv; a day on the Moon is about 1.4 mSv.')}</dd>
+        <dt>${L('Солнечная вспышка','Solar flare')}</dt><dd>${L('Яркий взрыв на Солнце. Класс X самый сильный по свету и рентгену.','A bright explosion on the Sun. Class X is the brightest in light and X-rays.')}</dd>
+        <dt>${L('Протонная буря (шкала S1–S5)','Proton storm (S1–S5 scale)')}</dt><dd>${L('Поток быстрых протонов после выброса с Солнца. Именно он опасен для астронавтов. NOAA оценивает бури от S1 (слабая) до S5 (экстремальная).','A flood of fast protons after a solar eruption. This is what is dangerous to astronauts. NOAA rates storms from S1 (minor) to S5 (extreme).')}</dd>
+        <dt>${L('Задержка связи','Signal delay')}</dt><dd>${L('Радиосигнал летит со скоростью света. До Луны чуть больше секунды, до Марса от 3 до 22 минут.','Radio travels at the speed of light: just over a second to the Moon, 3 to 22 minutes to Mars.')}</dd>
+      </dl></details>
+    <div class="row-btns"><button class="btn" type="button" data-cmd="science">${L('Какие данные NASA использованы','Which NASA data is used')}</button></div>`, L('Начало миссии','Mission start'), showStart);
+  requestAnimationFrame(paintPreviews);
+}
+
+function realFlareHTML(f){
+  const storm = f.s>0;
+  return `<div class="real"><span class="rk">${f.live?L('Настоящая вспышка · онлайн','Real flare · live'):L('Настоящее событие · архив','Real event · archive')}</span><span class="rv">${esc(f.cls)} · ${esc(S_NAME(f.s))}</span><span>${solarDate(f.date)}${f.ar?` · ${L('группа пятен','sunspot region')} ${esc(f.ar)}`:''}${storm&&f.pfu&&f.pfu!=='—'?` · ${L('пик потока протонов','peak proton flux')} ${esc(f.pfu)} pfu`:''}</span><span class="rn">${esc(tr(f.note))}</span><span class="rs">${L('Данные','Data')}: ${esc(f.src)}${f.live?L(', получено сейчас',', fetched now'):L(', архив',', archive')}</span></div>`;
+}
+function showReport(b, s, info, ev, day){
+  const P = PLANETS[s.pid];
+  const d = (k, label, unit, digits=1, inv=false) => {
+    const v = s[k]-b[k]; const cls = Math.abs(v)<0.05 ? '' : ((v>0)!==inv ? 'up' : (k==='o2'||k==='water'||k==='food') && s[k]<10 ? 'crit' : 'down');
+    return `<div class="dl"><span class="k">${label}</span><span class="v ${cls}">${sgn(v,digits)} ${unit}</span><span class="k">${L('теперь','now')} ${fmt(s[k],digits)}</span></div>`;
+  };
+  const evHTML = ev.map(e=>`<div class="ev ${e.tone}"><div class="et"><span class="dot"></span>${esc(e.title)}</div><p>${esc(e.text)}</p>${e.real?realFlareHTML(e.real):''}${e.why?`<div class="why"><b>${L('Почему так?','Why?')}</b>${esc(e.why)}</div>`:''}</div>`).join('');
+  const eng = s.mode !== 'cadet';
+  const finished = !!s.over;
+  const dn = tr(P.dayName);
+  openModal(`
+    <div class="eyebrow">${s.pid==='mars'?L('Бортовой журнал','Ship’s log'):L('Отчёт ЦУП','Mission Control report')} · ${dn} ${day}</div>
+    <h2>${ev.some(e=>e.tone==='bad') ? L('Непростой день','A tough day') : L('День завершён','Day complete')}</h2>
+    <div class="deltas">
+      ${d('o2',L('Кислород','Oxygen'),U.kg())}${eng?d('water',L('Вода','Water'),U.l(),0)+d('food',L('Еда','Food'),U.kg()):''}${d('battery',L('Батарея','Battery'),U.kwh(),0)}${d('health',L('Здоровье','Health'),'%',0)}${d('dose',L('Доза','Dose'),U.msv(),1,true)}${d('science',L('Наука на Земле','Science at Earth'),'')}
+    </div>
+    <p class="lead">${L(`Выработано ${fmt(info.prod,0)} кВт·ч, потрачено ${fmt(Math.min(info.demand, info.prod+b.battery),0)}. Электролиз дал ${fmt(info.o2Made)} кг O₂${eng?`, растения ${fmt(info.o2Plants)}`:''}, экипаж вдохнул ${fmt(info.o2Use)}${info.o2Leak?`, утекло ${fmt(info.o2Leak)}`:''}.${eng?` Очистка вернула ${fmt(info.waterBack,0)} л воды из ${WATER_GROSS*CREW}.`:''}`,
+      `Produced ${fmt(info.prod,0)} kWh, used ${fmt(Math.min(info.demand, info.prod+b.battery),0)}. Electrolysis made ${fmt(info.o2Made)} kg of O₂${eng?`, plants ${fmt(info.o2Plants)}`:''}; the crew breathed ${fmt(info.o2Use)}${info.o2Leak?`, ${fmt(info.o2Leak)} leaked`:''}.${eng?` The recycler returned ${fmt(info.waterBack,0)} L of water out of ${WATER_GROSS*CREW}.`:''}`)}</p>
+    <div class="rep">${evHTML}</div>
+    <div class="row-btns"><button class="btn primary big" type="button" data-cmd="${finished?'final':'close'}" data-focus>${finished ? L('Итоги миссии →','Mission results →') : L(`Начать ${dn.toLowerCase()} ${s.day} →`,`Start ${dn.toLowerCase()} ${s.day} →`)}</button></div>`, L('Отчёт за день','Daily report'), ()=>showReport(b, s, info, ev, day));
+}
+
+function showFinal(){
+  const s = S, P = PLANETS[s.pid];
+  const win = s.over==='win';
+  const dn = tr(P.dayName).toLowerCase();
+  const nd = n => L(`${n} ${plural(n,'день','дня','дней')}`, `${n} ${n===1?'day':'days'}`);
+  let stars = 0; if(win){ stars = 1; if(s.science>=3) stars = 2; if(s.science>=SCIENCE_GOAL && s.health>=50) stars = 3; }
+  const starSVG = k => `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5l2.9 6 6.6.8-4.9 4.5 1.3 6.5L12 17.1l-5.9 3.2 1.3-6.5L2.5 9.3l6.6-.8z" fill="${k<stars?'var(--power)':'var(--line2)'}"/></svg>`;
+  const nf = s.stats.flaresTaken.length;
+  const R = {
+    win:{ t:L('Миссия выполнена!','Mission complete!'), p:L(`Экипаж продержался все ${nd(P.days)} и вернётся домой. ${stars===3?'Идеальная работа: наука сделана, экипаж в форме.':stars===2?`Неплохо! Для трёх звёзд нужно ${SCIENCE_GOAL} научных результатов и здоровье не ниже 50%.`:'Выжить уже успех. Попробуй найти время и для науки.'}`,
+        `The crew lasted all ${nd(P.days)} and is coming home. ${stars===3?'Perfect work: the science is done and the crew is healthy.':stars===2?`Nice! For three stars you need ${SCIENCE_GOAL} science results and health of at least 50%.`:'Surviving is already a success. Try to make time for science too.'}`),
+        why:L('Настоящие миссии планируют с запасом: системы дублируют, расходники берут с избытком, а ЦУП каждый день сверяет прогноз с реальностью. Именно так ты и играл.','Real missions are planned with margins: systems are doubled, supplies are packed with extra, and Mission Control checks the forecast against reality every day. That is exactly how you played.') },
+    o2:{ t:L('Миссия прервана: кончился кислород','Mission aborted: out of oxygen'), p:L(`На ${dn} ${s.day} баки кислорода опустели. Экипаж надел скафандры и эвакуировался.`,`On ${dn} ${s.day} the oxygen tanks ran empty. The crew suited up and evacuated.`),
+        why:L('Кислород на базе получают электролизом воды, а он требует много энергии и воды. Если энергии не хватает, кислорода тоже не будет. Поэтому на МКС есть запасные баллоны и кислородные «свечи»: химические генераторы на случай аварии.','Oxygen on a base comes from splitting water, which needs lots of power and water. No power means no oxygen. That is why the ISS carries spare tanks and oxygen “candles”, chemical generators for emergencies.') },
+    dose:{ t:L('Миссия прервана: превышен лимит радиации','Mission aborted: radiation limit exceeded'), p:L(`Экипаж набрал ${fmt(s.dose)} мЗв, это выше лимита миссии ${DOSE_LIMIT} мЗв. Врачи ЦУП отправили всех домой.`,`The crew received ${fmt(s.dose)} mSv, above the mission limit of ${DOSE_LIMIT} mSv. Flight surgeons sent everyone home.`),
+        why:L(`Вне магнитного поля Земли главная угроза — радиация: галактические лучи и протонные бури. NASA ограничивает дозу астронавта за всю карьеру 600 мЗв. Лучшая защита — масса над головой: грунт, вода, полиэтилен. Ты встретил ${nf} ${plural(nf,'солнечное событие','солнечных события','солнечных событий')} при защите ${s.shield} ${plural(s.shield,'слой','слоя','слоёв')}.`,
+              `Outside Earth’s magnetic field, radiation is the main threat: cosmic rays and proton storms. NASA limits an astronaut’s whole-career dose to 600 mSv. The best protection is mass overhead: soil, water, plastic. You faced ${nf} solar ${nf===1?'event':'events'} with ${s.shield} shielding ${s.shield===1?'layer':'layers'}.`) },
+    health:{ t:L('Миссия прервана: экипаж выбился из сил','Mission aborted: the crew is exhausted'), p:L(`На ${dn} ${s.day} здоровье экипажа упало до нуля. Миссию досрочно завершили.`,`On ${dn} ${s.day} crew health fell to zero. The mission ended early.`),
+        why:({cold:L('Главная причина — холод. Тепло в космосе быстро уходит излучением, и без энергии модуль остывает за часы. Обогрев — одна из самых важных систем базы.','The main cause was cold. Heat radiates away fast in space, and without power a habitat cools in hours. Heating is one of the base’s most vital systems.'),
+              hunger:L('Главная причина — голод. На долгой миссии еду нужно выращивать: теплицы дорого обходятся по энергии, но без них не прокормиться.','The main cause was hunger. On a long mission food must be grown: greenhouses cost a lot of power, but you cannot eat without them.'),
+              thirst:L('Главная причина — нехватка воды. Без переработки воды запасы тают очень быстро. На МКС система регенерации возвращает в оборот почти всю воду.','The main cause was lack of water. Without recycling, supplies vanish fast. On the ISS the recycler returns almost all the water.')})[s.lastCause||'cold'] },
+  }[s.over];
+  const lessons = [];
+  if(s.stats.blackouts) lessons.push(L(`Было ${nd(s.stats.blackouts)} с нехваткой энергии. Аккумуляторы и реактор дают запас на тень и бурю.`,`There ${s.stats.blackouts===1?'was':'were'} ${nd(s.stats.blackouts)} without enough power. Batteries and a reactor give a reserve for shadow and storms.`));
+  if(nf){
+    const list = s.stats.flaresTaken.map(x=>L(`${x.cls} от ${solarDate(x.date)} (${S_NAME(x.s)}, ${fmt(x.dose)} мЗв)`,`${x.cls} from ${solarDate(x.date)} (${S_NAME(x.s)}, ${fmt(x.dose)} mSv)`)).join(L(' и ',' and '));
+    lessons.push(L(`Ты пережил настоящие солнечные события: ${list}. Опасна протонная буря, а не яркость вспышки. Каждый слой реголита заметно снижает дозу.`,`You lived through real solar events: ${list}. The proton storm is the danger, not how bright the flare is. Each regolith layer cuts the dose a lot.`));
+  }
+  if(s.stats.coldDays) lessons.push(L(`${nd(s.stats.coldDays)} экипаж мёрз. Обогрев нельзя выключать надолго.`,`The crew was cold for ${nd(s.stats.coldDays)}. Heating can’t be off for long.`));
+  if(s.stats.wasted > 30) lessons.push(L(`${fmt(s.stats.wasted,0)} кВт·ч пропало, потому что батарея была полна. Лишнюю энергию лучше во что-то вложить.`,`${fmt(s.stats.wasted,0)} kWh was lost because the battery was full. Spare power is better put to use.`));
+  if(s.stats.vented > 5) lessons.push(L(`${fmt(s.stats.vented)} кг кислорода не поместились в баки. Электролиз можно было убавить.`,`${fmt(s.stats.vented)} kg of oxygen did not fit in the tanks. Electrolysis could have been turned down.`));
+  if(s.pid==='mars') lessons.push(L('На Марс нельзя быстро прислать помощь, поэтому марсианская база должна сама производить почти всё.','Help can’t reach Mars quickly, so a Mars base must make almost everything itself.'));
+  else lessons.push(L('Луна близко: грузы с Земли выручают. Это одна из причин, почему NASA сначала возвращается на Луну по программе «Артемида», а потом летит к Марсу.','The Moon is close, so cargo from Earth can help. That is one reason NASA returns to the Moon with Artemis before going on to Mars.'));
+  lessons.push(L('Каждая система тратит энергию. Инженеры всё время ищут баланс между безопасностью экипажа, наукой и запасом на случай аварий.','Every system uses power. Engineers constantly balance crew safety, science and a reserve for emergencies.'));
+  const code = `${s.pid==='moon'?'L':'M'}-${s.seed}`;
+  openModal(`
+    <div class="toprow"><div class="eyebrow">${tr(P.base)} · ${L('итоги','results')}</div>${langBtn()}</div>
+    <h2>${R.t}</h2>
+    ${win?`<div class="stars" aria-label="${L(`${stars} из 3 звёзд`,`${stars} of 3 stars`)}">${[0,1,2].map(starSVG).join('')}</div>`:''}
+    <p>${R.p}</p>
+    <div class="why"><b>${L('Как это в реальной жизни','How it works in real life')}</b>${esc(R.why)}</div>
+    <div class="endstats">
+      <div class="dl"><span class="k">${L('Дней на базе','Days at base')}</span><span class="v">${s.over==='win'?P.days:s.day}</span></div>
+      <div class="dl"><span class="k">${L('Наука','Science')}</span><span class="v">${fmt(s.science)} / ${SCIENCE_GOAL}</span></div>
+      <div class="dl"><span class="k">${L('Здоровье','Health')}</span><span class="v">${fmt(s.health,0)}%</span></div>
+      <div class="dl"><span class="k">${L('Доза','Dose')}</span><span class="v">${fmt(s.dose)} ${U.msv()}</span></div>
+      <div class="dl"><span class="k">${L('Построено','Built')}</span><span class="v">${s.stats.builds}</span></div>
+      <div class="dl"><span class="k">${L('Выходов наружу','Trips outside')}</span><span class="v">${s.stats.evas}</span></div>
+    </div>
+    <h3>${L('Чему научилась команда','What the team learned')}</h3>
+    <ul class="lessons">${lessons.map(l=>`<li>${esc(l)}</li>`).join('')}</ul>
+    ${s.demo ? `<p class="seed">${L('Это была демо-миссия с заранее выбранными событиями. В обычной игре события и их порядок случайные.','This was the demo mission with preset events. In a normal game the events and their order are random.')}</p>`
+             : `<p class="seed">${L(`Код миссии: ${code}. Введи его на стартовом экране, и события повторятся. Так весь класс может сыграть одну миссию и сравнить решения.`,`Mission code: ${code}. Enter it on the start screen to replay the same events, so a whole class can play one mission and compare decisions.`)}</p>`}
+    <div class="row-btns">
+      <button class="btn primary" type="button" data-cmd="replay" data-focus>${L('Повторить эту миссию','Replay this mission')}</button>
+      <button class="btn" type="button" data-start="${s.pid}" data-mode="${s.mode}">${L(`Новая миссия: ${tr(P.name)}`,`New mission: ${tr(P.name)}`)}</button>
+      <button class="btn" type="button" data-start="${s.pid==='moon'?'mars':'moon'}" data-mode="${s.mode}">${s.pid==='moon'?L('Попробовать Марс','Try Mars'):L('Попробовать Луну','Try the Moon')}</button>
+      <button class="btn" type="button" data-cmd="menu">${L('Главное меню','Main menu')}</button>
+    </div>`, L('Итоги миссии','Mission results'), showFinal);
+}
+
+function showScience(){
+  const back = S ? (S.over ? 'final' : 'close') : 'start';
+  const rows = SOLAR.map(f=>`<tr><td class="n">${f.date}</td><td class="n">${esc(f.cls)}</td><td class="n">${esc(S_NAME(f.s))}</td><td class="n">${esc(f.pfu)}</td><td>${esc(f.src)}</td><td class="n">${fmt(f.dose*PLANETS.moon.flareMul,0)} / ${fmt(f.dose*PLANETS.mars.flareMul,0)}</td></tr>`).join('');
+  const row = (a,b,c)=>`<tr><td>${a}</td><td class="n">${b}</td><td>${c}</td></tr>`;
+  openModal(`
+    <div class="toprow"><div class="eyebrow">${L('Наука в игре','The science in the game')}</div>${langBtn()}</div>
+    <h2>${L('Откуда взяты числа','Where the numbers come from')}</h2>
+    <p class="lead">${L('Игра упрощает расчёты, но опирается на измерения и проектные данные NASA. Ниже видно, что взято из источника, а что упрощено ради игры.','The game simplifies the maths but is built on NASA measurements and design figures. Below you can see what comes from a source and what is simplified for play.')}</p>
+    <h3>${L('1. Настоящие солнечные события','1. Real solar events')}</h3>
+    <p class="lead">${L('В каждой миссии случайно выбираются два события из этого списка. Класс вспышки взят из записей NOAA и базы космической погоды NASA DONKI (с 2010 года). Сила протонной бури (шкала NOAA S1–S5) и пиковый поток протонов >10 МэВ взяты из списка NOAA «Solar Proton Events Affecting the Earth Environment». Это <b>архив</b>, а не прямая трансляция. Доза в игре зависит от протонной бури, а не от класса вспышки, как и в реальности. Сами числа доз подобраны для игры.',
+      'Each mission draws two events at random from this list. Flare class comes from NOAA records and NASA’s DONKI space-weather database (from 2010). Proton storm strength (NOAA S1–S5 scale) and peak >10 MeV proton flux come from NOAA’s “Solar Proton Events Affecting the Earth Environment” list. This is an <b>archive</b>, not a live feed. As in reality, the game’s dose depends on the proton storm, not the flare class. The dose numbers themselves are tuned for the game.')}</p>
+    <div class="tblwrap"><table class="data"><thead><tr><th>${L('Дата','Date')}</th><th>${L('Вспышка','Flare')}</th><th>${L('Протонная буря','Proton storm')}</th><th>${L('Пик, pfu','Peak, pfu')}</th><th>${L('Источник','Source')}</th><th>${L('Доза в игре без защиты, мЗв (Луна / Марс)','Game dose, no shielding, mSv (Moon / Mars)')}</th></tr></thead><tbody>${rows}</tbody></table></div>
+    <p class="note">${L('* Пары X3.1 и X1.6 от октября 2014 года показывают главный урок: очень яркие вспышки могут пройти без протонной бури.','* The X3.1 and X1.6 flares of October 2014 show the key lesson: very bright flares can come with no proton storm.')}</p>
+    <div id="live" class="live"><b>${L('Сейчас на Солнце (онлайн, NASA DONKI):','On the Sun right now (live, NASA DONKI):')}</b> <span>${liveState==='ok'?(liveSummary||''):liveState==='fail'?L('онлайн-данные сейчас недоступны. Игра использует архив выше.','live data is not reachable right now. The game uses the archive above.'):L('проверяем связь…','checking the link…')}</span></div>
+    <h3>${L('2. Задержка связи','2. Signal delay')}</h3>
+    <p class="lead">${L(`Задержка до Марса считается по реальным орбитам Земли и Марса на сегодняшнюю дату (приближённые элементы орбит JPL). Сегодня сигнал идёт ${fmt(DELAY_MARS,1)} мин в одну сторону, это ${fmt(MARS_AU,2)} а. е. до Марса. До Луны сигнал идёт 1,3 секунды. Поэтому на Марсе советы даёт бортовой компьютер: ответ с Земли придёт слишком поздно.`,
+      `The Mars delay is computed from the real orbits of Earth and Mars for today’s date (JPL approximate orbital elements). Today a signal takes ${fmt(DELAY_MARS,1)} min one way: Mars is ${fmt(MARS_AU,2)} AU away. To the Moon it takes 1.3 seconds. That is why on Mars the onboard computer gives advice: an answer from Earth would come too late.`)}</p>
+    <h3>${L('3. Жизнеобеспечение, радиация, энергия','3. Life support, radiation, power')}</h3>
+    <div class="tblwrap"><table class="data">
+      <thead><tr><th>${L('Параметр','Parameter')}</th><th>${L('В игре','In the game')}</th><th>${L('В реальности','In reality')}</th></tr></thead>
+      <tbody>
+        ${row(L('Кислород на человека','Oxygen per person'), L('0,84 кг/день','0.84 kg/day'), L('0,82–0,84 кг/день (NASA BVAD)','0.82–0.84 kg/day (NASA BVAD)'))}
+        ${row(L('Еда на человека','Food per person'), L('1,8 кг/день','1.8 kg/day'), L('около 1,8 кг/день вместе с упаковкой (NASA BVAD)','about 1.8 kg/day incl. packaging (NASA BVAD)'))}
+        ${row(L('Переработка воды','Water recycling'), '90%', L('на МКС около 93%, с 2023 года до 98% (NASA)','ISS about 93%, up to 98% since 2023 (NASA)'))}
+        ${row(L('Вода для кислорода','Water for oxygen'), L('1,125 л на 1 кг O₂','1.125 L per kg O₂'), L('по химии электролиза: из 9 г воды выходит 8 г кислорода','electrolysis chemistry: 9 g of water gives 8 g of oxygen'))}
+        ${row(L('Фон радиации на Марсе','Background radiation, Mars'), L('0,67 мЗв/день','0.67 mSv/day'), L('≈0,67 мЗв/день, прибор RAD марсохода Curiosity (Hassler и др., 2014)','≈0.67 mSv/day, Curiosity RAD (Hassler et al., 2014)'))}
+        ${row(L('Фон радиации на Луне','Background radiation, Moon'), L('1,37 мЗв/день','1.37 mSv/day'), L('≈1,37 мЗв/день, аппарат Chang’e-4 (Zhang и др., 2020)','≈1.37 mSv/day, Chang’e-4 LND (Zhang et al., 2020)'))}
+        ${row(L('Протонная буря','Proton storm'), L('S0 ≈ 1, S3 ≈ 45–50, S4 ≈ 70–85 мЗв без защиты','S0 ≈ 1, S3 ≈ 45–50, S4 ≈ 70–85 mSv unshielded'), L('порядок величины по оценкам для бури августа 1972 года без укрытия; реальная доза сильно зависит от энергии протонов и защиты','order of magnitude from estimates for the unsheltered August 1972 storm; real dose depends strongly on proton energy and shielding'))}
+        ${row(L('Лимит дозы','Dose limit'), L('100 мЗв за миссию','100 mSv per mission'), L('NASA: 600 мЗв за всю карьеру астронавта. Для игры лимит снижен','NASA: 600 mSv over a whole career. Lowered for the game'))}
+        ${row(L('Защита реголитом','Regolith shielding'), L('×0,7 за первый слой','×0.7 for the first layer'), L('около 0,5 м грунта заметно ослабляет протоны бури. Точный эффект зависит от энергии частиц','about 0.5 m of soil noticeably weakens storm protons. The exact effect depends on particle energy'))}
+        ${row(L('Реактор','Reactor'), L('40 кВт·ч/день','40 kWh/day'), L('Fission Surface Power: около 40 кВт. В игре взято меньше для баланса','Fission Surface Power: about 40 kW. Less in the game for balance'))}
+        ${row(L('Перелёт до Луны / Марса','Trip to Moon / Mars'), L('грузы на 7 и 14 день / нет','cargo on days 7 and 14 / none'), L('около 3 дней / 6–9 месяцев, окно старта к Марсу раз в 26 месяцев','about 3 days / 6–9 months, Mars launch window every 26 months'))}
+      </tbody></table></div>
+    <h3>${L('Источники','Sources')}</h3>
+    <ol class="src">
+      <li>NASA, <a href="https://kauai.ccmc.gsfc.nasa.gov/DONKI/" target="_blank" rel="noopener">DONKI</a> <span>— ${L('вспышки (FLR) и протонные события (SEP); онлайн-режим «Космическая погода сегодня».','flares (FLR) and proton events (SEP); the “space weather today” live mode.')}</span></li>
+      <li>NOAA SWPC, <a href="https://umbra.nascom.nasa.gov/SEP/" target="_blank" rel="noopener">Solar Proton Events Affecting the Earth Environment</a> <span>— ${L('пиковый поток протонов и уровни S.','peak proton flux and S-levels.')}</span></li>
+      <li>NOAA, <a href="https://www.swpc.noaa.gov/noaa-scales-explanation" target="_blank" rel="noopener">${L('Шкалы космической погоды NOAA','NOAA Space Weather Scales')}</a> <span>— ${L('что значат S1–S5.','what S1–S5 mean.')}</span></li>
+      <li>NASA, <a href="https://ntrs.nasa.gov/citations/20210024855" target="_blank" rel="noopener">Life Support Baseline Values and Assumptions Document (BVAD)</a> <span>— ${L('нормы кислорода, воды и еды.','oxygen, water and food rates.')}</span></li>
+      <li>NASA, <a href="https://www.nasa.gov/missions/station/iss-research/nasa-achieves-water-recovery-milestone-on-international-space-station/" target="_blank" rel="noopener">${L('98% переработки воды на МКС','98% water recovery on the ISS')}</a> <span>— 2023.</span></li>
+      <li>Hassler D. M. et al., <a href="https://doi.org/10.1126/science.1244797" target="_blank" rel="noopener">Mars’ Surface Radiation Environment Measured with Curiosity</a> <span>— Science, 2014.</span></li>
+      <li>Zhang S. et al., <a href="https://doi.org/10.1126/sciadv.aaz1334" target="_blank" rel="noopener">First measurements of the radiation dose on the lunar surface</a> <span>— Science Advances, 2020.</span></li>
+      <li>NASA, <a href="https://osdr.nasa.gov/" target="_blank" rel="noopener">Open Science Data Repository (OSDR)</a> <span>— ${L('опыты с растениями и здоровьем в космосе. Основа идеи теплиц и восстановления здоровья.','plant and health experiments in space; the basis for greenhouses and crew health.')}</span></li>
+      <li>JPL, <a href="https://ssd.jpl.nasa.gov/planets/approx_pos.html" target="_blank" rel="noopener">Approximate Positions of the Planets</a> <span>— ${L('элементы орбит для расчёта задержки связи.','orbital elements for the signal delay.')}</span></li>
+      <li>NASA, <a href="https://www.nasa.gov/space-technology-mission-directorate/tdm/fission-surface-power/" target="_blank" rel="noopener">Fission Surface Power</a> <span>— ${L('малый реактор для Луны.','a small reactor for the Moon.')}</span></li>
+      <li>NASA, <a href="https://science.nasa.gov/mission/mer-opportunity/" target="_blank" rel="noopener">Opportunity</a> <span>— ${L('миссия завершилась после пылевой бури 2018 года.','the mission ended after the 2018 dust storm.')}</span></li>
+      <li>NASA, <a href="https://www.nasa.gov/humans-in-space/artemis/" target="_blank" rel="noopener">Artemis</a> <span>— ${L('возвращение людей на Луну, район южного полюса.','returning people to the Moon, south-pole region.')}</span></li>
+      <li>NASA/JPL, <a href="https://www.jpl.nasa.gov/news/mars-ice-deposit-holds-as-much-water-as-lake-superior/" target="_blank" rel="noopener">${L('Лёд под равниной Утопия','Ice under Utopia Planitia')}</a> <span>— MRO, 2016.</span></li>
+    </ol>
+    <div class="row-btns"><button class="btn primary" type="button" data-cmd="${back}" data-focus>${L('Вернуться','Back')}</button></div>`, L('Наука в игре','The science'), showScience);
+  if(liveState==='idle') loadLive();
+}
+
+/* ============================================================
+   LIVE NASA DONKI ("space weather today")
+   Only shown as live when the request actually succeeded.
+   ============================================================ */
+let liveState = 'idle', liveSummary = '';
+function refreshLiveBoxes(){
+  const a = document.getElementById('liveStart'); if(a) a.innerHTML = liveBoxHTML();
+  const b = document.querySelector('#live span'); if(b) b.innerHTML = liveState==='ok' ? liveSummary : liveState==='fail' ? L('онлайн-данные сейчас недоступны. Игра использует архив выше.','live data is not reachable right now. The game uses the archive above.') : L('проверяем связь…','checking the link…');
+}
+async function getJSON(paths){
+  for(const u of paths){
+    try{
+      const ctl = new AbortController(); const to = setTimeout(()=>ctl.abort(), 7000);
+      const r = await fetch(u, {signal: ctl.signal}); clearTimeout(to);
+      if(!r.ok) continue; const d = await r.json(); if(Array.isArray(d)) return d;
+    }catch(e){ /* next */ }
+  }
+  return null;
+}
+async function loadLive(){
+  if(liveState==='loading' || liveState==='ok') return;
+  liveState = 'loading'; refreshLiveBoxes();
+  const end = new Date(), start = new Date(end.getTime() - 30*86400000);
+  const q = d => d.toISOString().slice(0,10);
+  const both = kind => [`https://kauai.ccmc.gsfc.nasa.gov/DONKI/WS/get/${kind}?startDate=${q(start)}&endDate=${q(end)}`, `https://api.nasa.gov/DONKI/${kind}?startDate=${q(start)}&endDate=${q(end)}&api_key=DEMO_KEY`];
+  const flr = await getJSON(both('FLR'));
+  if(!flr){ liveState = 'fail'; refreshLiveBoxes(); return; }
+  const sep = (await getJSON(both('SEP'))) || [];
+  const xs = flr.filter(f=>/^X/.test(f.classType||'')).length;
+  const rank = c => { const m = /^([CMX])(\d+(?:\.\d+)?)/.exec(c||''); return m ? ({C:1,M:10,X:100})[m[1]]*parseFloat(m[2]) : 0; };
+  const strong = flr.filter(f=>/^[MX]/.test(f.classType||'')).sort((a,b)=>rank(b.classType)-rank(a.classType));
+  liveSummary = flr.length
+    ? L(`за последние 30 дней ${flr.length} ${plural(flr.length,'вспышка','вспышки','вспышек')}, из них класса X: ${xs}; протонных событий: ${sep.length}.`,`in the last 30 days: ${flr.length} ${flr.length===1?'flare':'flares'}, ${xs} of class X; ${sep.length} proton ${sep.length===1?'event':'events'}.`)
+    : L('за последние 30 дней вспышек не записано.','no flares recorded in the last 30 days.');
+  if(strong.length){
+    const f = strong[0]; const t = new Date(f.peakTime || f.beginTime);
+    const hasSep = sep.some(e=>{ const st = new Date(e.eventTime); return st >= t - 3600e3 && st - t < 3*86400e3; });
+    LIVE = { date: (f.peakTime||f.beginTime||'').slice(0,10), cls: f.classType, s: hasSep?1:0, pfu:'—', ar: f.activeRegionNum ? String(f.activeRegionNum) : '', dose: hasSep?20:1, src:'NASA DONKI', live:true,
+      note: hasSep ? {ru:'Онлайн-данные NASA DONKI: после этой вспышки зарегистрирован поток протонов (SEP). В игре он считается слабой бурей S1.',en:'Live NASA DONKI data: a proton event (SEP) was recorded after this flare. The game treats it as a minor S1 storm.'}
+                   : {ru:'Онлайн-данные NASA DONKI: протонного события после вспышки не зарегистрировано, поэтому доза почти не вырастет.',en:'Live NASA DONKI data: no proton event was recorded after this flare, so the dose barely changes.'} };
+    useLive = true;
+  }
+  liveState = 'ok'; refreshLiveBoxes();
+}
+
+/* ============================================================
+   EVENTS
+   ============================================================ */
+function startMission(pid, seed, mode, opts={}){
+  S = newState(pid, seed, mode || chosenMode, {live: useLive && !!LIVE && !opts.demo, ...opts});
+  modalRoot.innerHTML=''; reopen = null;
+  let seen = false; try{ seen = localStorage.getItem('outpost-tut')==='1'; }catch(e){}
+  TUT = (opts.demo || !seen) ? 0 : null;
+  render(); window.scrollTo({top:0});
+}
+
+document.addEventListener('change', e=>{ if(e.target.id==='useLive') useLive = e.target.checked; });
+document.addEventListener('click', e=>{
+  const t = e.target.closest('button'); if(!t) return;
+  if(t.dataset.start){ startMission(t.dataset.start, null, t.dataset.mode || chosenMode); return; }
+  if(t.dataset.mode && !t.dataset.start){ chosenMode = t.dataset.mode; modalRoot.querySelectorAll('[data-mode]').forEach(b=>b.setAttribute('aria-pressed', String(b.dataset.mode===chosenMode))); return; }
+  if(t.dataset.lv && S && !S.over){ S.lv[t.dataset.lv] = +t.dataset.v; render(); return; }
+  if(t.dataset.act && S && !S.over){ S.action = t.dataset.act; render(); return; }
+  switch(t.dataset.cmd){
+    case 'end': if(S && !S.over){ if(TUT!==null) tutDone(); endDay(); } break;
+    case 'close': closeModal(); break;
+    case 'final': showFinal(); break;
+    case 'replay': startMission(S.pid, S.seed, S.mode, {demo:S.demo}); break;
+    case 'menu': case 'start': showStart(); break;
+    case 'science': showScience(); break;
+    case 'demo': chosenMode = 'cadet'; startMission('moon', DEMO_SEED, 'cadet', {demo:true}); break;
+    case 'live-check': loadLive(); break;
+    case 'tut-next': TUT++; if(TUT>=TUT_STEPS.length) tutDone(); else renderTutorial(); break;
+    case 'tut-skip': tutDone(); break;
+    case 'lang': {
+      setLang(LANG==='ru'?'en':'ru');
+      const again = reopen;
+      if(S) render();
+      if(again) again(); else if(!S) showStart();
+      break;
+    }
+  }
+});
+document.addEventListener('submit', e=>{
+  if(e.target.id!=='codeForm') return; e.preventDefault();
+  const v = (document.getElementById('mcode').value||'').trim().toUpperCase();
+  const m = v.match(/^([LM])-?(\d{4})$/);
+  if(!m){ document.getElementById('codeErr').textContent = L('Код выглядит так: буква L (Луна) или M (Марс), дефис и 4 цифры. Например M-1234.','A code looks like this: L (Moon) or M (Mars), a dash and 4 digits. For example M-1234.'); return; }
+  startMission(m[1]==='L'?'moon':'mars', +m[2], chosenMode);
+});
+document.addEventListener('keydown', e=>{
+  if(e.key==='Escape' && modalRoot.innerHTML && S && !S.over){ closeModal(); }
+  else if(e.key==='Escape' && TUT!==null){ tutDone(); }
+});
+let rz; window.addEventListener('resize', ()=>{ clearTimeout(rz); rz = setTimeout(()=>{ drawScene(); if(modalRoot.querySelector('canvas[data-preview]')) paintPreviews(); }, 80); });
+
+/* ---------- boot (with hot-reload support in the artifact viewer) ---------- */
+setLang(LANG);
+function start(data){
+  if(data && data.S){ S = data.S; render(); if(S.over) showFinal(); }
+  else {
+    let demo = false; try{ demo = new URLSearchParams(location.search).has('demo'); }catch(e){}
+    if(demo) startMission('moon', DEMO_SEED, 'cadet', {demo:true}); else { render(); showStart(); }
+  }
+}
+window.claude?.hot?.snapshot?.(()=>({ S }));
+window.claude?.hot?.ready ? window.claude.hot.ready(start) : start(window.claude?.hot?.data ?? {});
+/* expose for automated playtests */
+window.__game = { simulate, newState, PLANETS, ACTIONS, SOLAR, isDark, isFlare, flareOn, get S(){return S}, set S(v){S=v}, endDay, setLang, startMission, loadLive };
+</script>
+
+</body>
+</html>
