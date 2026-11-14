@@ -298,7 +298,7 @@ def build_hab():
             for j in range(4):
                 objs.append(cube((0.015, 0.34, 0.006), gp(a, R-0.02, 0.0+j*0.035, 1.247), M_DARK(), 'drainer', rot=(0,0,rr)))
             objs.append(cyl(0.022, 0.36, gp(a, R+0.22, -0.33, 1.42), M_STEEL, 'tap', verts=12))
-            objs.append(cyl(0.02, 0.28, gp(a, R+0.09, -0.33, 1.6), M_STEEL, 'tapneck', verts=12, rot=(math.pi/2,0,a+math.pi/2)))
+            objs.append(cyl(0.02, 0.28, gp(a, R+0.09, -0.33, 1.6), M_STEEL, 'tapneck', verts=12, rot=(0,math.pi/2,a)))   # horizontal, pointing from the wall over the sink
             objs.append(cyl(0.022, 0.08, gp(a, R-0.04, -0.33, 1.56), M_STEEL, 'spout', verts=12))
             objs.append(cube((0.1, 0.028, 0.022), gp(a, R+0.22, -0.33+0.068, 1.5), M_STEEL, 'taplever', rot=(0,0,rr)))   # touches the tap body
             objs.append(cyl(0.05, 0.16, gp(a, R+0.18, 0.55, 1.31), mat('soap', C(110,200,170), 0.0, 0.3), 'soap', verts=12))
@@ -314,9 +314,6 @@ def build_hab():
             objs.append(cube((0.78, 0.02, 0.62), gp(a, R-0.33, 0, 0.78), M_STEEL, 'ovendoor', rot=(0,0,rr), bevel=0.01))
             objs.append(cube((0.46, 0.012, 0.24), gp(a, R-0.348, 0, 0.7), mat('oven_glass', C(20,20,26), 0.3, 0.1, emit=C(255,140,60), estr=0.25), 'ovenwin', rot=(0,0,rr)))
             objs.append(cyl(0.015, 0.56, gp(a, R-0.37, 0, 1.02), M_STEEL, 'ovenbar', verts=8, rot=(0,math.pi/2,rr)))
-            # extractor hood with a light
-            objs.append(cube((0.85, 0.48, 0.12), gp(a, R+0.12, 0, 1.92), M_STEEL, 'hood', rot=(0,0,rr), bevel=0.02))
-            objs.append(cube((0.6, 0.02, 0.02), gp(a, R-0.05, 0, 1.855), M_LIGHT(), 'hoodlight', rot=(0,0,rr)))
             objs.append(cyl(0.12, 0.08, gp(a, R+0.12, 0.25, 1.29), M_DARK(), 'pot', verts=18))
         if k == 2:
             # food prep: rehydration station, cutting board, kettle and a food warmer
@@ -385,9 +382,9 @@ def build_hab():
     # vitals monitor mounted flat on the dome wall (tilted with the wall), on a short bracket
     zc = 1.95; rw = math.sqrt(10.48**2 - zc*zc); tilt = math.asin(zc/10.48)
     _, _, a = radm(rw, -34); ca, sa = math.cos(a), math.sin(a)
-    objs.append(cube((0.24, 0.3, 0.2), (ca*(rw+0.1), sa*(rw+0.1), zc), M_METAL(), 'monarm', rot=(0,tilt,a)))
-    objs.append(cube((0.06, 0.8, 0.52), (ca*(rw-0.04), sa*(rw-0.04), zc), M_DARK(), 'medbezel', rot=(0,tilt,a), bevel=0.015))
-    objs.append(cube((0.02, 0.72, 0.44), (ca*(rw-0.075), sa*(rw-0.075), zc), mat('vitals', C(10,30,20), 0.0, 0.3, emit=C(60,230,140), estr=0.7), 'medscreen', rot=(0,tilt,a)))
+    objs.append(cube((0.24, 0.3, 0.2), (ca*(rw+0.1), sa*(rw+0.1), zc), M_METAL(), 'monarm', rot=(0,-tilt,a)))
+    objs.append(cube((0.06, 0.8, 0.52), (ca*(rw-0.04), sa*(rw-0.04), zc), M_DARK(), 'medbezel', rot=(0,-tilt,a), bevel=0.015))
+    objs.append(cube((0.02, 0.72, 0.44), (ca*(rw-0.075), sa*(rw-0.075), zc), mat('vitals', C(10,30,20), 0.0, 0.3, emit=C(60,230,140), estr=0.7), 'medscreen', rot=(0,-tilt,a)))
     # IV stand
     x, y, a = radm(9.0, -51)
     objs.append(cyl(0.025, 1.9, (x, y, 1.27), M_METAL(), 'ivpole', verts=8))
@@ -494,16 +491,16 @@ def build_hab():
     # sits flat on the dome wall, tilted back like the wall, with a bracket behind it
     zc = 1.95; rw = math.sqrt(10.48**2 - zc*zc); tilt = math.asin(zc/10.48)
     x, y, a = rad(rw - 0.06, 160)
-    objs.append(cube((0.2, 0.5, 0.3), (math.cos(a)*(rw+0.12), math.sin(a)*(rw+0.12), zc), M_METAL(), 'gymscreenmount', rot=(0,tilt,a)))
-    objs.append(cube((0.05, 1.3, 0.72), (x, y, zc), M_DARK(), 'gymscreenframe', rot=(0,tilt,a), bevel=0.02))
-    objs.append(cube((0.02, 1.2, 0.62), (x-math.cos(a)*0.03, y-math.sin(a)*0.03, zc), M_SCREEN(), 'gymscreen', rot=(0,tilt,a)))
+    objs.append(cube((0.2, 0.5, 0.3), (math.cos(a)*(rw+0.12), math.sin(a)*(rw+0.12), zc), M_METAL(), 'gymscreenmount', rot=(0,-tilt,a)))
+    objs.append(cube((0.05, 1.3, 0.72), (x, y, zc), M_DARK(), 'gymscreenframe', rot=(0,-tilt,a), bevel=0.02))
+    objs.append(cube((0.02, 1.2, 0.62), (x-math.cos(a)*0.03, y-math.sin(a)*0.03, zc), M_SCREEN(), 'gymscreen', rot=(0,-tilt,a)))
     # galley extras: fridge and wall shelf
     x, y, rr = tang(9.3, -57); objs.append(cube((0.9, 0.75, 2.0), (x, y, 1.3), M_WHITE(), 'fridge', rot=(0,0,rr), bevel=0.05))
     objs.append(cube((0.05, 0.05, 0.9), (x+math.cos(rr)*0.3-math.cos(rr-math.pi/2)*0.4, y+math.sin(rr)*0.3-math.sin(rr-math.pi/2)*0.4, 1.4), M_METAL(), 'handle', rot=(0,0,rr)))
     # coloured accent panel on the back wall of every room (Blender angle = -game angle)
     for gdeg, col in ((41,(255,211,90)),(103,(143,184,255)),(-42,(255,143,163)),(-138,(127,211,255))):  # no green strip in the gym
         a = -math.radians(gdeg); r = 10.25
-        objs.append(cube((0.06, 2.6, 0.5), (math.cos(a)*r, math.sin(a)*r, 2.2), mat('accent%d' % gdeg, C(*col), 0.1, 0.5), 'accent', rot=(0,0,a)))
+        pass   # flat accent panels removed: on the curved dome wall they stood off it like floating boards
     # wardrobes: a row of tall cabinets on the wall behind the bunks, one pair per bunk, door colour = blanket colour
     for k, gd in enumerate((76, 94, 112, 130)):
         col = [(230,120,90),(110,180,120),(240,200,90),(160,120,210)][k]
