@@ -5,17 +5,20 @@ A browser game for kids aged 7–12, in **Russian and English** (RU/EN button on
 **For judges:** press **"▶ Judges' demo mission"** on the start screen, or open `index.html?demo&lang=en`. The demo starts with a 5-step tutorial. On day 3 it plays the real 28 Oct 2003 "Halloween" proton storm (X17, S4). On day 9 it plays the 24 Oct 2014 X3.1 flare, which was very bright but brought almost no protons.
 
 ## Walk the base (survival mode)
-When a mission starts, you are an astronaut standing outside the airlock. Move with WASD or the arrow keys (Shift to run), or with the on-screen joystick on a phone. Drag to turn the camera.
-- **Work sites** are glowing rings with icons: the airlock, power console, solar field, battery bank, regolith quarry, drill site, radio antenna, greenhouses and reactor pad. Press **E**, or tap the round button, to choose the day's task there or to split the power.
-- **Survival:** your suit holds about 2.5 minutes of oxygen and refills at the airlock. If it runs out, the crew drags you back and you lose 10% health. During a real proton storm, every second outside adds radiation dose, so get back inside. End each day at the airlock, then watch the crew carry out the task.
-- The base is built in code with no external model files. It includes the entrance tunnel through the berm, path lights, a landing pad, an excavator and regolith bags, pipes, supply crates, rover tracks and an invented mission flag.
+When a mission starts, you are the commander standing inside the habitat dome.
+- **Move:** WASD or arrow keys (Shift to run), or the on-screen joystick on a phone. Drag to turn the camera.
+- **First or third person:** press **V** (or the eye button).
+- **Jump with real gravity:** press **Space**. The jump uses the real surface gravity: 1.62 m/s² on the Moon and 3.71 m/s² on Mars, so the same push gives a much higher, slower jump on the Moon. Ceilings stop you indoors.
+- **The base is five connected modules:** the main dome (22 m across, with rooms for bunks, galley, gym, comms and a medical bay), an airlock tunnel to the east, a tunnel to the geodesic greenhouse in the west, and a tunnel to the cylindrical lab in the south. Walls, doorways and floors are solid, and bilingual signs label every room.
+- **Work sites** are glowing rings with our own line symbols (no emoji). Press **E** to pick the day's task there. Indoors: bunks (sleep to end the day), medical bay, comms desk (radio link), lab (science), tool locker (repair), greenhouse (build a grow bed, harvest). Outdoors: solar field, battery bank, regolith quarry, drill site, radio dish, reactor pad.
+- **Crew:** three crew members (engineer, doctor, biologist) walk between rooms and jobs. Walk up and press E to talk; each gives advice based on the live mission state.
+- **Harvest (Engineer mode):** once a day, collect fresh food from working grow beds (+0.4 kg per bed and +2% health). Plants regrow over the next days.
+- **Power** is split with the Power button (**Q**). There is no separate console to walk to.
+- **Survival:** the suit refills while you are inside any pressurised module. Outside it holds about 2.5 minutes of oxygen; if it runs out, the crew drags you back and you lose 10% health. During a real proton storm, every second outside adds radiation dose. A mini-map shows modules, work sites and crew.
+- **Terrain:** 900 × 900 m with craters, polar massifs on the Moon and mesas on Mars.
 
-## 3D view and step replay
-- The base is a real-time 3D scene (Three.js r149, bundled inside the file, so it works offline). It has procedural lunar and Martian terrain, low polar sunlight on the Moon, a dusty sky on Mars, and Earth in the lunar sky. Drag to rotate, scroll to zoom, or use the arrow keys.
-- Everything the player builds appears in 3D: solar panels, batteries, greenhouses, the reactor, and a regolith berm that grows with each shielding layer.
-- **Every step is shown.** After "End day", an astronaut walks out of the airlock and does the task while the camera follows. The radio dish beams data to Earth, cargo landers touch down, and proton storms rain particles. Click the scene to skip.
-- **Commander's steps** keeps a log of every day: the task, the power split and the outcome (dose, science, storms). Tap any day to replay it in 3D.
-- If WebGL is not available, the game falls back to the 2D picture. With "reduce motion" on, the animations are skipped.
+## Models
+All base models were built in **Blender 5.3** with a Python script (`bpy`) and exported as glTF (.glb). They are embedded in `index.html`, gzip-compressed (about 0.6 MB), and loaded with Three.js GLTFLoader, so the game still runs from a single offline file. Models: habitat dome with furnished interior, lab, geodesic greenhouse, grow beds, lettuce, tomato and wheat plants, three tunnels, solar panel, battery, fission reactor, radio dish, rover, cargo lander, drill rig, excavator, crates, path lights, an EVA astronaut and crew members with jointed arms and legs.
 
 ## The trade-off loop
 Each day the player:
@@ -56,5 +59,5 @@ The **Наука в игре / The science** screen shows all of this inside the
 | Mars / Engineer | 0 | 0 | 6 | 54 |
 
 ## Files
-- `index.html`: the standalone game (a single file with Three.js inlined, no network needed except optional fonts and live DONKI).
+- `index.html`: the standalone game (a single file with Three.js, GLTFLoader and the Blender models inlined; no network needed except optional fonts and live DONKI).
 - `README.md`: this explainer.
