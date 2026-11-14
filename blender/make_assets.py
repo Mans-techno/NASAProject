@@ -337,6 +337,7 @@ def build_lab():
         bmesh.ops.delete(bm, geom=rm, context='VERTS'); bm.to_mesh(cap.data); bm.free(); objs.append(cap)
     for k in range(9):
         x = -L/2 + k*L/8
+        if abs(x) < 2.0: continue   # no rib across the doorway
         objs.append(torus(r+0.1, 0.08, (x,0,r), M_PANEL(), 'rib', rot=(0,math.pi/2,0), maj=40, mnr=6))
     objs.append(cube((L, 4.6, 0.2), (0,0,0.55), M_FLOOR(), 'floor'))
     objs.append(cube((L*0.9, 0.3, 0.06), (0,0,2*r-0.15), M_LIGHT(), 'strip'))
