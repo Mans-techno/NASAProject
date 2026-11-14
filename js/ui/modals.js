@@ -65,12 +65,11 @@ function liveBoxHTML(){
 let ST_VIEW = 'new';
 function showStart(view){
   if(view) ST_VIEW = view;
+  if(ST_VIEW==='code' || ST_VIEW==='weather') ST_VIEW = 'new';
   const canGo = !!(S && !S.over);
   const nav = [
     ['new', L('Новая миссия','New mission'), 'rocket'],
     ...(canGo ? [['continue', L('Продолжить','Continue'), 'play']] : []),
-    ['code', L('Код миссии','Mission code'), 'key'],
-    ['weather', L('Космическая погода','Space weather'), 'sun'],
     ['gloss', L('Словарик','Glossary'), 'book'],
     ['science', L('Данные NASA','NASA data'), 'flask'],
   ];
