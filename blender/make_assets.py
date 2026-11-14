@@ -261,8 +261,13 @@ def build_hab():
         for sgn in (-1,1):
             px, py = cx + tx*1.07*sgn, cy + ty*1.07*sgn
             objs.append(cube((0.06, 0.95, 2.3), (px, py, 1.15+0.3), M_DARK(), 'bunkend', rot=(0,0,rot), bevel=0.02))
-        lx, ly = cx - math.cos(a)*0.5 + tx*0.6, cy - math.sin(a)*0.5 + ty*0.6
-        for h in (0.95, 1.3): objs.append(cube((0.04, 0.4, 0.04), (lx, ly, h), M_METAL(), 'ladder', rot=(0,0,rot)))
+        rx, ry = -math.cos(a), -math.sin(a)          # towards the hall
+        for q in (0.55, 0.9):
+            px, py = cx + rx*0.5 + tx*q, cy + ry*0.5 + ty*q
+            objs.append(cyl(0.022, 1.65, (px, py, 1.12), M_METAL(), 'ladderrail', verts=8))
+        for h in (0.75, 1.1, 1.45):
+            px, py = cx + rx*0.5 + tx*0.725, cy + ry*0.5 + ty*0.725
+            objs.append(cube((0.35, 0.035, 0.035), (px, py, h), M_METAL(), 'rung', rot=(0,0,rot)))
     # galley: counter + table + 4 stools (east-north)
     for k, gd in enumerate((27, 38, 49)):
         a = math.radians(-gd); x, y = math.cos(a)*9.35, math.sin(a)*9.35; rr = a + math.pi/2
@@ -285,25 +290,94 @@ def build_hab():
         sx, sy = tx + math.cos(b)*1.05, ty + math.sin(b)*1.05
         objs.append(cyl(0.24, 0.07, (sx, sy, 0.78), M_BLUE(), 'stool', verts=16))
         objs.append(cyl(0.04, 0.45, (sx, sy, 0.53), M_METAL(), 'sleg', verts=8))
-    # command / comms desk with screens (south-west, Blender +Y side, x<0)
-    for k, a in enumerate([2.2, 2.5, 2.8]):
-        cx, cy = math.cos(a)*8.6, math.sin(a)*8.6
-        rot = a + math.pi/2
-        objs.append(cube((1.6, 0.8, 0.9), (cx, cy, 0.45), M_PANEL(), 'desk', rot=(0,0,rot), bevel=0.04))
-        objs.append(cube((1.3, 0.08, 0.8), (cx+math.cos(a)*0.35, cy+math.sin(a)*0.35, 1.5), M_SCREEN(), 'screen', rot=(0.25,0,rot)))
-    # medical bay (south-east)
-    objs.append(cube((2.2, 0.9, 0.7), (6.5, 5.5, 0.55), M_WHITE(), 'medbed', rot=(0,0,0.75), bevel=0.06))
-    objs.append(cube((0.5, 0.5, 1.6), (7.6, 4.0, 0.8), M_PANEL(), 'medcab', rot=(0,0,0.75), bevel=0.04))
-    objs.append(cube((0.4, 0.05, 0.3), (7.45, 3.85, 1.4), M_RED(), 'medlight', rot=(0,0,0.75)))
-    # medical bay extras: mattress, pillow, monitor, IV pole, red-cross cabinet
-    objs.append(cube((2.0, 0.8, 0.14), (6.5, 5.5, 0.97), M_BED(), 'medmat', rot=(0,0,0.75), bevel=0.05))
-    objs.append(cube((0.5, 0.6, 0.14), (5.85, 4.85, 1.1), M_WHITE(), 'pillow', rot=(0,0,0.75), bevel=0.06))
-    objs.append(cyl(0.03, 1.9, (5.3, 6.3, 1.25), M_METAL(), 'ivpole', verts=8))
-    objs.append(cube((0.25, 0.08, 0.35), (5.3, 6.3, 2.05), M_GLASS(), 'ivbag', bevel=0.03))
-    objs.append(cyl(0.04, 1.2, (7.9, 6.6, 0.9), M_METAL(), 'monpole', verts=8))
-    objs.append(cube((0.7, 0.06, 0.45), (7.8, 6.5, 1.65), M_SCREEN(), 'medscreen', rot=(0,0,0.75+math.pi/2)))
-    objs.append(cube((0.12, 0.05, 0.42), (7.62, 3.92, 1.95), M_RED(), 'cross1', rot=(0,0,0.75)))
-    objs.append(cube((0.42, 0.05, 0.12), (7.62, 3.92, 1.95), M_RED(), 'cross2', rot=(0,0,0.75)))
+    # comms post (game angles -125..-151): three desks with monitors on stands, keyboards, swivel chairs,
+    # a big wall display with the Earth link and a radio rack with status lights
+    def rad(r, gdeg): a = math.radians(-gdeg); return math.cos(a)*r, math.sin(a)*r, a
+    M_GREEN = mat('led_green', C(90,230,120), 0.0, 0.3, emit=C(80,255,120), estr=3.0)
+    for gdeg in (-125, -138, -151):
+        x, y, a = rad(8.75, gdeg); rot = a + math.pi/2; ux, uy = math.cos(a), math.sin(a)
+        objs.append(cube((1.75, 0.8, 0.06), (x, y, 1.05), M_WOOD(), 'desktop', rot=(0,0,rot), bevel=0.02))
+        objs.append(cube((1.7, 0.06, 0.7), (x+ux*0.36, y+uy*0.36, 0.67), M_PANEL(), 'deskback', rot=(0,0,rot)))
+        for q in (-0.82, 0.82):
+            objs.append(cube((0.05, 0.75, 0.72), (x - uy*q, y + ux*q, 0.67), M_PANEL(), 'deskside', rot=(0,0,rot)))
+        mx, my = x+ux*0.2, y+uy*0.2
+        objs.append(cube((0.3, 0.2, 0.03), (mx, my, 1.095), M_DARK(), 'monbase', rot=(0,0,rot)))
+        objs.append(cube((0.06, 0.04, 0.4), (mx+ux*0.03, my+uy*0.03, 1.3), M_DARK(), 'monneck', rot=(0,0,rot)))
+        objs.append(cube((1.0, 0.05, 0.6), (mx, my, 1.68), M_DARK(), 'bezel', rot=(0,0,rot), bevel=0.015))
+        objs.append(cube((0.92, 0.02, 0.52), (mx-ux*0.03, my-uy*0.03, 1.68), M_SCREEN(), 'monitor', rot=(0,0,rot)))
+        objs.append(cube((0.55, 0.18, 0.025), (x-ux*0.12, y-uy*0.12, 1.09), M_DARK(), 'keyboard', rot=(0,0,rot)))
+        objs.append(cube((0.08, 0.12, 0.03), (x-ux*0.1-uy*0.45, y-uy*0.1+ux*0.45, 1.09), M_DARK(), 'mouse', rot=(0,0,rot)))
+        objs.append(torus(0.09, 0.015, (x+ux*0.15+uy*0.6, y+uy*0.15-ux*0.6, 1.17), M_DARK(), 'headset', rot=(math.pi/2,0,rot), maj=14, mnr=4))
+        # swivel chair facing the desk
+        cx2, cy2 = x - ux*1.05, y - uy*1.05
+        objs.append(cyl(0.27, 0.09, (cx2, cy2, 0.78), M_BLUE(), 'chairseat', verts=18))
+        objs.append(cube((0.48, 0.07, 0.5), (cx2-ux*0.27, cy2-uy*0.27, 1.12), M_BLUE(), 'chairback', rot=(0,0,rot), bevel=0.03))
+        objs.append(cyl(0.035, 0.42, (cx2, cy2, 0.53), M_METAL(), 'chairpost', verts=8))
+        for k in range(5):
+            b = k*2*math.pi/5
+            objs.append(cube((0.32, 0.05, 0.04), (cx2+math.cos(b)*0.16, cy2+math.sin(b)*0.16, 0.33), M_DARK(), 'chairfoot', rot=(0,0,b)))
+    x, y, a = rad(10.05, -138); rot = a + math.pi/2
+    objs.append(cube((0.1, 3.0, 1.5), (x, y, 2.55), M_DARK(), 'wallframe', rot=(0,0,a), bevel=0.03))
+    objs.append(cube((0.04, 2.8, 1.3), (x-math.cos(a)*0.06, y-math.sin(a)*0.06, 2.55), M_SCREEN(), 'wallscreen', rot=(0,0,a)))
+    x, y, a = rad(9.65, -117)
+    objs.append(cube((0.6, 0.7, 2.1), (x, y, 1.35), M_DARK(), 'radiorack', rot=(0,0,a), bevel=0.03))
+    for k in range(6):
+        for j in range(3):
+            m = (M_GREEN, M_LIGHT(), M_RED())[(k+j) % 3] if (k*3+j) % 4 else M_GREEN
+            objs.append(cube((0.03, 0.05, 0.03), (x-math.cos(a)*0.31 - math.sin(a)*(-0.2+j*0.2), y-math.sin(a)*0.31 + math.cos(a)*(-0.2+j*0.2), 1.0+k*0.22), m, 'rackled', rot=(0,0,a)))
+        objs.append(cube((0.02, 0.6, 0.02), (x-math.cos(a)*0.31, y-math.sin(a)*0.31, 0.92+k*0.22), M_METAL(), 'rackslot', rot=(0,0,a)))
+    # medical bay (game angles -22..-62): radial exam bed, wall monitor on an arm, IV stand, ultrasound cart,
+    # tall medicine cabinet with a red cross, counter with sink and drawers, stool, first-aid kit
+    def radm(r, gdeg): a = math.radians(-gdeg); return math.cos(a)*r, math.sin(a)*r, a
+    x, y, a = radm(8.3, -42); ux, uy = math.cos(a), math.sin(a)
+    objs.append(cube((2.0, 0.85, 0.12), (x, y, 0.85), M_PANEL(), 'bedframe', rot=(0,0,a), bevel=0.03))
+    for q in (-0.85, 0.85):
+        for w2 in (-0.35, 0.35):
+            objs.append(cyl(0.035, 0.5, (x+ux*q-uy*w2, y+uy*q+ux*w2, 0.55), M_METAL(), 'bedleg', verts=8))
+            objs.append(sphere(0.05, (x+ux*q-uy*w2, y+uy*q+ux*w2, 0.33), M_DARK(), 'caster', seg=8, ring=6))
+    objs.append(cube((1.95, 0.8, 0.14), (x, y, 0.98), M_WHITE(), 'medmat', rot=(0,0,a), bevel=0.05))
+    objs.append(cube((0.42, 0.62, 0.12), (x+ux*0.72, y+uy*0.72, 1.1), M_WHITE(), 'pillow', rot=(0,0,a), bevel=0.05))
+    objs.append(cube((0.9, 0.82, 0.04), (x-ux*0.4, y-uy*0.4, 1.06), mat('blanket_med', C(120,190,200), 0.0, 0.9), 'medblanket', rot=(0,0,a), bevel=0.01))
+    objs.append(cube((0.06, 0.85, 0.35), (x+ux*1.0, y+uy*1.0, 1.15), M_PANEL(), 'headboard', rot=(0,0,a), bevel=0.02))
+    # wall monitor on an arm
+    x, y, a = radm(10.0, -34)
+    objs.append(cube((0.5, 0.1, 0.1), (x-math.cos(a)*0.2, y-math.sin(a)*0.2, 1.95), M_METAL(), 'monarm', rot=(0,0,a)))
+    objs.append(cube((0.08, 0.7, 0.48), (x-math.cos(a)*0.48, y-math.sin(a)*0.48, 1.95), M_DARK(), 'medbezel', rot=(0,0,a), bevel=0.015))
+    objs.append(cube((0.02, 0.62, 0.4), (x-math.cos(a)*0.53, y-math.sin(a)*0.53, 1.95), mat('vitals', C(10,30,20), 0.0, 0.3, emit=C(60,230,140), estr=0.7), 'medscreen', rot=(0,0,a)))
+    # IV stand
+    x, y, a = radm(9.0, -51)
+    objs.append(cyl(0.025, 1.9, (x, y, 1.27), M_METAL(), 'ivpole', verts=8))
+    objs.append(cyl(0.25, 0.04, (x, y, 0.33), M_DARK(), 'ivbase', verts=16))
+    objs.append(cube((0.35, 0.025, 0.025), (x, y, 2.2), M_METAL(), 'ivhook'))
+    objs.append(cube((0.16, 0.06, 0.26), (x+0.14, y, 2.03), M_GLASS(), 'ivbag', bevel=0.03))
+    objs.append(cyl(0.006, 0.9, (x+0.14, y, 1.45), M_GLASS(), 'ivline', verts=4))
+    # ultrasound cart
+    x, y, a = radm(7.7, -32)
+    objs.append(cube((0.5, 0.5, 0.75), (x, y, 0.72), M_WHITE(), 'cart', rot=(0,0,a), bevel=0.04))
+    for q in (-0.2, 0.2):
+        for w2 in (-0.2, 0.2): objs.append(sphere(0.05, (x+math.cos(a)*q-math.sin(a)*w2, y+math.sin(a)*q+math.cos(a)*w2, 0.33), M_DARK(), 'caster', seg=8, ring=6))
+    objs.append(cube((0.06, 0.5, 0.36), (x+math.cos(a)*0.1, y+math.sin(a)*0.1, 1.35), M_DARK(), 'usbezel', rot=(0.0,0.35,a)))
+    objs.append(cube((0.02, 0.44, 0.3), (x+math.cos(a)*0.06, y+math.sin(a)*0.06, 1.35), M_SCREEN(), 'usscreen', rot=(0.0,0.35,a)))
+    objs.append(cyl(0.03, 0.18, (x-math.cos(a)*0.2, y-math.sin(a)*0.2, 1.17), M_PANEL(), 'probe', verts=8))
+    # tall medicine cabinet with a red cross on its front
+    x, y, a = radm(10.0, -27)
+    objs.append(cube((0.5, 1.0, 2.3), (x, y, 1.45), M_WHITE(), 'medcab', rot=(0,0,a), bevel=0.04))
+    objs.append(cube((0.02, 0.02, 2.1), (x-math.cos(a)*0.26, y-math.sin(a)*0.26, 1.45), M_DARK(), 'cabseam', rot=(0,0,a)))
+    fx, fy = x-math.cos(a)*0.265, y-math.sin(a)*0.265
+    objs.append(cube((0.02, 0.12, 0.42), (fx, fy, 2.05), M_RED(), 'cross1', rot=(0,0,a)))
+    objs.append(cube((0.02, 0.42, 0.12), (fx, fy, 2.05), M_RED(), 'cross2', rot=(0,0,a)))
+    for q in (-0.08, 0.08): objs.append(cube((0.04, 0.03, 0.25), (fx - math.sin(a)*q, fy + math.cos(a)*q, 1.4), M_METAL(), 'cabhandle', rot=(0,0,a)))
+    # counter with sink, drawers and a first-aid kit
+    x, y, a = radm(9.6, -56)
+    objs.append(cube((0.65, 1.5, 0.9), (x, y, 0.75), M_PANEL(), 'medcounter', rot=(0,0,a), bevel=0.03))
+    objs.append(cube((0.7, 1.55, 0.05), (x, y, 1.225), M_WHITE(), 'medtop', rot=(0,0,a)))
+    objs.append(cube((0.4, 0.45, 0.06), (x, y+0.0, 1.23), M_METAL(), 'medsink', rot=(0,0,a)))
+    for k in range(3): objs.append(cube((0.03, 0.4, 0.03), (x-math.cos(a)*0.335 - math.sin(a)*0.45, y-math.sin(a)*0.335 + math.cos(a)*0.45, 0.55+k*0.25), M_METAL(), 'drawer', rot=(0,0,a)))
+    objs.append(cube((0.35, 0.25, 0.2), (x - math.sin(a)*(-0.5), y + math.cos(a)*(-0.5), 1.35), M_RED(), 'firstaid', rot=(0,0,a), bevel=0.03))
+    objs.append(cube((0.36, 0.06, 0.05), (x - math.sin(a)*(-0.5), y + math.cos(a)*(-0.5), 1.47), M_WHITE(), 'firstaidband', rot=(0,0,a)))
+    x, y, a = radm(7.4, -50)
+    objs.append(cyl(0.2, 0.06, (x, y, 0.82), M_BLUE(), 'medstool', verts=14))
+    objs.append(cyl(0.03, 0.5, (x, y, 0.55), M_METAL(), 'medstoolleg', verts=8))
     # gym (game angle ~170 deg = Blender -170 deg): treadmill, bike, weights rack
     def tang(r, deg): a = math.radians(deg); return math.cos(a)*r, math.sin(a)*r, a + math.pi/2
     def rad(r, gdeg): a = math.radians(-gdeg); return math.cos(a)*r, math.sin(a)*r, a
@@ -334,10 +408,6 @@ def build_hab():
     # galley extras: fridge and wall shelf
     x, y, rr = tang(9.3, -57); objs.append(cube((0.9, 0.75, 2.0), (x, y, 1.3), M_WHITE(), 'fridge', rot=(0,0,rr), bevel=0.05))
     objs.append(cube((0.05, 0.05, 0.9), (x+math.cos(rr)*0.3-math.cos(rr-math.pi/2)*0.4, y+math.sin(rr)*0.3-math.sin(rr-math.pi/2)*0.4, 1.4), M_METAL(), 'handle', rot=(0,0,rr)))
-    # comms chairs
-    for a in (2.2, 2.5, 2.8):
-        objs.append(cyl(0.3, 0.1, (math.cos(a)*7.5, math.sin(a)*7.5, 0.75), M_BLUE(), 'chair', verts=16))
-        objs.append(cyl(0.05, 0.45, (math.cos(a)*7.5, math.sin(a)*7.5, 0.5), M_METAL(), 'chairleg', verts=8))
     # coloured accent panel on the back wall of every room (Blender angle = -game angle)
     for gdeg, col in ((41,(255,211,90)),(103,(143,184,255)),(170,(141,220,106)),(-42,(255,143,163)),(-138,(127,211,255))):
         a = -math.radians(gdeg); r = 10.25
@@ -346,10 +416,6 @@ def build_hab():
     for k in range(5):
         a = math.pi + 0.45 + k*0.17
         objs.append(cube((0.7, 0.6, 2.2), (math.cos(a)*9.7, math.sin(a)*9.7, 1.1), M_PANEL() if k%2 else M_ORANGE(), 'locker', rot=(0,0,a), bevel=0.03))
-    # plant shelf
-    objs.append(cube((2.4, 0.5, 1.6), (-2.5, 4.5, 0.8), M_METAL(), 'shelf', rot=(0,0,0.2)))
-    for k in range(4):
-        objs.append(sphere(0.25, (-3.4+k*0.6, 4.3+k*0.12, 1.75), M_LEAF(), 'pot', seg=10, ring=6, scale=(1,1,0.7)))
     # partition walls: radial walls split the dome into rooms that open onto the central hall
     # (angles in game coordinates; Blender y = -game z, so Blender angle = -game angle)
     for ga in (20, 62, 145, -22, -62, -112, -165):
@@ -412,13 +478,41 @@ def build_lab():
         objs.append(torus(r+0.1, 0.08, (x,0,r), M_PANEL(), 'rib', rot=(0,math.pi/2,0), maj=40, mnr=6))
     objs.append(cube((L, 4.6, 0.2), (0,0,0.55), M_FLOOR(), 'floor'))
     objs.append(cube((L*0.9, 0.3, 0.06), (0,0,2*r-0.15), M_LIGHT(), 'strip'))
-    # benches along +Y wall (far side)
+    # benches along +Y wall (far side): worktop, monitor on a stand, glovebox, microscope, rock samples,
+    # upper cabinets and a shelf of sample jars
+    M_GREEN = mat('led_green', C(90,230,120), 0.0, 0.3, emit=C(80,255,120), estr=3.0)
     for k in range(4):
         x = -6 + k*4
         objs.append(cube((3.2, 0.9, 0.9), (x, 1.6, 1.1), M_PANEL(), 'bench', bevel=0.04))
-        objs.append(cube((1.1, 0.08, 0.7), (x-0.6, 2.05, 2.0), M_SCREEN(), 'labscreen', rot=(0.2,0,0)))
-        objs.append(cube((0.8, 0.5, 0.6), (x+0.8, 1.6, 1.85), M_GLASS(), 'glovebox', bevel=0.05))
-        objs.append(cyl(0.12, 0.4, (x+0.2, 1.4, 1.75), M_DARK(), 'scope', verts=10))
+        objs.append(cube((3.25, 0.95, 0.05), (x, 1.58, 1.575), M_DARK(), 'benchtop'))
+        for q in (-1.05, 0.0, 1.05): objs.append(cube((0.5, 0.02, 0.03), (x+q, 1.14, 1.3), M_METAL(), 'drawerhandle'))
+        objs.append(cube((0.25, 0.18, 0.03), (x-0.6, 1.85, 1.615), M_DARK(), 'monbase'))
+        objs.append(cube((0.05, 0.05, 0.35), (x-0.6, 1.88, 1.79), M_DARK(), 'monneck'))
+        objs.append(cube((1.0, 0.05, 0.6), (x-0.6, 1.84, 2.2), M_DARK(), 'labbezel', bevel=0.015))
+        objs.append(cube((0.92, 0.02, 0.52), (x-0.6, 1.81, 2.2), M_SCREEN(), 'labscreen'))
+        objs.append(cube((0.8, 0.5, 0.6), (x+0.8, 1.6, 1.9), M_GLASS(), 'glovebox', bevel=0.05))
+        for q in (-0.18, 0.18): objs.append(torus(0.09, 0.02, (x+0.8+q, 1.34, 1.85), M_DARK(), 'gloveport', rot=(math.pi/2,0,0), maj=14, mnr=4))
+        objs.append(sphere(0.11, (x+0.8, 1.65, 1.7), M_DARK() if k%2 else M_PANEL(), 'rock', seg=7, ring=5, scale=(1.2,1,0.8)))
+        objs.append(cube((0.6, 0.4, 0.04), (x, 1.85, 2.85), M_WHITE(), 'shelf'))
+        for j in range(5): objs.append(cyl(0.06, 0.16, (x-0.24+j*0.12, 1.85, 2.95), M_GLASS() if j%2 else M_ORANGE(), 'jar', verts=10))
+        objs.append(cube((1.4, 0.4, 0.6), (x+0.95, 1.9, 3.15), M_WHITE(), 'uppercab', bevel=0.03))
+        objs.append(cube((0.02, 0.02, 0.4), (x+0.95, 1.69, 3.15), M_METAL(), 'cabhandle'))
+        objs.append(cube((0.03, 0.03, 0.03), (x+1.55, 1.13, 1.45), M_GREEN, 'benchled'))
+    # pipes and cable trays along the ceiling
+    for y in (-1.3, 1.3):
+        objs.append(cyl(0.05, L-0.6, (0, y, 6.15), M_METAL(), 'ceilpipe', verts=10, rot=(0,math.pi/2,0)))
+    objs.append(cube((L-0.6, 0.35, 0.05), (0, 0, 6.5), M_DARK(), 'cabletray'))
+    # plant growth chamber (like the Advanced Plant Habitat on the ISS) on the near wall, east end
+    objs.append(cube((0.8, 0.7, 1.4), (7.3, -1.75, 1.4), M_WHITE(), 'apha', bevel=0.04))
+    objs.append(cube((0.65, 0.02, 1.0), (7.3, -1.39, 1.45), M_GLASS(), 'aphadoor'))
+    objs.append(cube((0.65, 0.5, 0.04), (7.3, -1.75, 1.95), M_GROW(), 'aphalight'))
+    for j in range(4): objs.append(sphere(0.08, (7.05+j*0.17, -1.7, 1.15), M_LEAF(), 'aphaplant', seg=8, ring=5, scale=(1,1,0.8)))
+    # moon rock under a glass dome on the island
+    objs.append(cyl(0.22, 0.05, (4.75, -0.5, 1.62), M_DARK(), 'rockbase', verts=20))
+    objs.append(sphere(0.12, (4.75, -0.5, 1.72), M_PANEL(), 'moonrock', seg=7, ring=5, scale=(1.3,1,0.8)))
+    dome = sphere(0.2, (4.75, -0.5, 1.64), M_GLASS(), 'rockdome', seg=16, ring=8)
+    bm = bmesh.new(); bm.from_mesh(dome.data); bmesh.ops.delete(bm, geom=[v for v in bm.verts if v.co.z < -0.01], context='VERTS'); bm.to_mesh(dome.data); bm.free()
+    objs.append(dome)
     # sample racks
     for k in range(6):
         objs.append(cyl(0.08, 0.35, (-7+k*0.35, -1.9, 1.3), M_GLASS(), 'tube', verts=10))
@@ -429,7 +523,7 @@ def build_lab():
     objs.append(cyl(0.12, 0.08, (3.3, -0.5, 1.64), M_DARK(), 'mscbase', verts=12))
     objs.append(cyl(0.04, 0.45, (3.3, -0.35, 1.85), M_METAL(), 'mscarm', verts=8))
     objs.append(cyl(0.06, 0.25, (3.3, -0.5, 2.0), M_DARK(), 'msctube', verts=10, rot=(0.4,0,0)))
-    for k in range(5): objs.append(cube((0.22, 0.32, 0.05), (3.8+k*0.26, -0.6, 1.62), M_GLASS(), 'tray', bevel=0.01))
+    for k in range(3): objs.append(cube((0.22, 0.32, 0.05), (3.65+k*0.26, -0.6, 1.62), M_GLASS(), 'tray', bevel=0.01))
     for x in (3.4, 4.6):
         objs.append(cyl(0.22, 0.08, (x, -1.35, 1.0), M_BLUE(), 'labstool', verts=14))
         objs.append(cyl(0.04, 0.4, (x, -1.35, 0.78), M_METAL(), 'labstoolleg', verts=8))
