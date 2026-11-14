@@ -7,6 +7,12 @@
 #include "OutpostCommon.h"
 #include "OutpostWorld.generated.h"
 
+namespace Outpost
+{
+	// greenhouse centre x and lab centre z in the web layout (metres)
+	constexpr double GH_X = -33.4, LAB_Z = -24.0;
+}
+
 class UProceduralMeshComponent;
 class UStaticMeshComponent;
 class UPrimitiveComponent;

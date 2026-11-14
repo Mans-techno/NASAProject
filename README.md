@@ -1,6 +1,6 @@
 # Юный астронавт: База (Junior Astronaut: Outpost)
 
-A browser game for kids aged 7–12, in **Russian and English** (RU/EN button on every screen). The player runs a 4-person outpost on the Moon (Shackleton crater rim) or Mars (Utopia Planitia) for 20 days. Nothing to install and no account needed: open `index.html` in any browser.
+A browser game for kids aged 7–12, in **Russian and English** (RU/EN button on every screen). The player runs a 4-person outpost on the Moon (Shackleton crater rim) or Mars (Utopia Planitia) for 20 days. Nothing to install and no account needed: open the GitHub Pages link, or serve the folder (for example `python -m http.server`) and open `index.html`.
 
 **For judges:** press **"▶ Judges' demo mission"** on the start screen, or open `index.html?demo&lang=en`. The demo starts with a 5-step tutorial. On day 3 it plays the real 28 Oct 2003 "Halloween" proton storm (X17, S4). On day 9 it plays the 24 Oct 2014 X3.1 flare, which was very bright but brought almost no protons.
 
@@ -18,7 +18,7 @@ When a mission starts, you are the commander standing inside the habitat dome.
 - **Terrain:** 900 × 900 m with craters, polar massifs on the Moon and mesas on Mars.
 
 ## Models
-All base models were built in **Blender 5.3** with a Python script (`bpy`) and exported as glTF (.glb). They are embedded in `index.html`, gzip-compressed (about 0.6 MB), and loaded with Three.js GLTFLoader, so the game still runs from a single offline file. Models: habitat dome with furnished interior, lab, geodesic greenhouse, grow beds, lettuce, tomato and wheat plants, three tunnels, solar panel, battery, fission reactor, radio dish, rover, cargo lander, drill rig, excavator, crates, path lights, an EVA astronaut and crew members with jointed arms and legs.
+All base models were built in **Blender 5.3** with a Python script (`bpy`) and exported as glTF (.glb). They are stored in `js/models.js`, gzip-compressed (about 0.6 MB), and loaded with Three.js GLTFLoader. Models: habitat dome with furnished interior, lab, geodesic greenhouse, grow beds, lettuce, tomato and wheat plants, three tunnels, solar panel, battery, fission reactor, radio dish, rover, cargo lander, drill rig, excavator, crates, path lights, an EVA astronaut and crew members with jointed arms and legs.
 
 ## The trade-off loop
 Each day the player:
@@ -59,5 +59,27 @@ The **Наука в игре / The science** screen shows all of this inside the
 | Mars / Engineer | 0 | 0 | 6 | 54 |
 
 ## Files
-- `index.html`: the standalone game (a single file with Three.js, GLTFLoader and the Blender models inlined; no network needed except optional fonts and live DONKI).
-- `README.md`: this explainer.
+The web game is split into one file per part. All scripts are plain `<script>` files loaded in order by `index.html`, so no build step is needed.
+
+| File | What it does |
+|---|---|
+| `index.html` | the page: markup and the list of scripts |
+| `css/style.css` | all styles (space theme, HUD, windows) |
+| `js/models.js` | Blender models (gzip + base64 GLB) |
+| `js/vendor/three-bundle.js` | Three.js r149 + GLTFLoader (MIT) |
+| `js/game/lang.js` | Russian / English switch |
+| `js/game/data.js` | real data: NASA BVAD crew needs, planets, archived solar storms (NOAA / DONKI) |
+| `js/game/actions.js` | the crew tasks, one per day |
+| `js/game/simulation.js` | one mission day: power, oxygen, water, food, radiation |
+| `js/game/input.js` | keyboard and touch joystick |
+| `js/data/live-donki.js` | live NASA DONKI space weather, shown only when it really loaded |
+| `js/ui/helpers.js` | number formatting |
+| `js/ui/dashboard.js` | main screen: meters, tasks, history |
+| `js/ui/tutorial.js` | first-mission tutorial |
+| `js/ui/modals.js` | start menu, day report, final screen, science page for judges |
+| `js/ui/walk.js` | walk mode: HUD, work sites, crew talk, suit air |
+| `js/scene/scene3d.js` | 3D world: terrain, base, crew, rover, walking and driving |
+| `js/scene/canvas2d.js`, `js/scene/base2d.js` | 2D fallback picture when WebGL is missing |
+| `js/main.js` | start-up: buttons, language, first screen |
+| `blender/` | Blender scripts that make the models and export them for Unreal |
+| `unreal/LunarOutpost/` | the Unreal Engine 5 C++ version (see its README) |
