@@ -4,6 +4,12 @@ A browser game for kids aged 7–12, in **Russian and English** (RU/EN button on
 
 **For judges:** press **"▶ Judges' demo mission"** on the start screen, or open `index.html?demo&lang=en`. The demo starts with a 5-step tutorial. On day 3 it plays the real 28 Oct 2003 "Halloween" proton storm (X17, S4). On day 9 it plays the 24 Oct 2014 X3.1 flare, which was very bright but brought almost no protons.
 
+## Walk the base (survival mode)
+When a mission starts, you are an astronaut standing outside the airlock. Move with WASD or the arrow keys (Shift to run), or with the on-screen joystick on a phone. Drag to turn the camera.
+- **Work sites** are glowing rings with icons: the airlock, power console, solar field, battery bank, regolith quarry, drill site, radio antenna, greenhouses and reactor pad. Press **E**, or tap the round button, to choose the day's task there or to split the power.
+- **Survival:** your suit holds about 2.5 minutes of oxygen and refills at the airlock. If it runs out, the crew drags you back and you lose 10% health. During a real proton storm, every second outside adds radiation dose, so get back inside. End each day at the airlock, then watch the crew carry out the task.
+- The base is built in code with no external model files. It includes the entrance tunnel through the berm, path lights, a landing pad, an excavator and regolith bags, pipes, supply crates, rover tracks and an invented mission flag.
+
 ## 3D view and step replay
 - The base is a real-time 3D scene (Three.js r149, bundled inside the file, so it works offline). It has procedural lunar and Martian terrain, low polar sunlight on the Moon, a dusty sky on Mars, and Earth in the lunar sky. Drag to rotate, scroll to zoom, or use the arrow keys.
 - Everything the player builds appears in 3D: solar panels, batteries, greenhouses, the reactor, and a regolith berm that grows with each shielding layer.
