@@ -286,7 +286,9 @@ const G3 = (()=>{
     pts.push(new T.Vector2(d.rc, d.H));
     for(let k=1;k<=10;k++){ const t=k/10; pts.push(new T.Vector2(d.rc + (d.rf-d.rc)*t, d.H*(1-t))); }
     const g = new T.LatheGeometry(pts.reverse(), 128);
-    const p = g.attributes.position; for(let i=0;i<p.count;i++){ const x=p.getX(i), z=p.getZ(i), y=p.getY(i); const n = (fbm(x/1.6,z/1.6,5,3)-0.5)*0.5*Math.min(1,y); p.setY(i, Math.max(-0.05, (y+n)*trench(x,z) - (1-trench(x,z))*0.3)); }
+    const p = g.attributes.position; for(let i=0;i<p.count;i++){ const x=p.getX(i), z=p.getZ(i), y=p.getY(i); const n = (fbm(x/1.6,z/1.6,5,3)-0.5)*0.5*Math.min(1,y); const ny = Math.max(-0.05, (y+n)*trench(x,z) - (1-trench(x,z))*0.3); p.setY(i, ny);
+      // a vertex lowered into a tunnel trench must also move out to the dome wall, or it pokes through the dome as a grey spike
+      if(ny < y - 0.01){ const r = Math.hypot(x,z), rMin = domeR(Math.max(0,ny)) + 0.15; if(r > 1e-3 && r < rMin){ p.setX(i, x*rMin/r); p.setZ(i, z*rMin/r); } } }
     g.computeVertexNormals();
     return mesh(g, M({color: built==='mars'?0xb06640:0x85878c, roughness:1, map:grainTex, side:T.DoubleSide}));
   }
@@ -865,7 +867,7 @@ const G3 = (()=>{
   }
 
   /* ---------- animation loop ---------- */
-  let raf = 0, last = 0, tNow = 0, cine = null; const perf = {n:0, sum:0, low:false};
+  let raf = 0, last = 0, tNow = 0, cine = null; const perf = {n:0, k:0, sum:0, low:false, tier:0};
   const reduce = reduceMotion;
   function kick(){ if(!raf) raf = requestAnimationFrame(loop); }
   function resize(){
@@ -881,7 +883,15 @@ const G3 = (()=>{
     raf = 0;
     if(!canvas.isConnected || document.hidden || !world) return;
     const dt = Math.min(0.25, (t - (last||t))/1000); last = t; tNow += dt;
-    perf.n++; perf.sum += dt; if(perf.n===40){ if(perf.sum/40 > 0.045 && !perf.low){ perf.low = true; renderer.shadowMap.enabled = false; renderer.setPixelRatio(1); scene.traverse(o=>{ if(o.material){ (Array.isArray(o.material)?o.material:[o.material]).forEach(m=>m.needsUpdate=true); } }); renderer.setSize(1,1,false); } }
+    perf.n++; if(perf.n > 30){ perf.sum += dt; perf.k++; }   // skip the first frames (shader compile, loading)
+    if(perf.k >= 90){ const avg = perf.sum/perf.k; perf.sum = 0; perf.k = 0;
+      // step quality down while the game runs slower than ~35 fps: cheaper shadows, then no shadows and a smaller canvas
+      if(avg > 0.028 && perf.tier < 3){ perf.tier++;
+        const dpr = window.devicePixelRatio||1;
+        if(perf.tier===1){ renderer.setPixelRatio(Math.min(1.25, dpr)); renderer.shadowMap.type = T.PCFShadowMap; sun.shadow.mapSize.set(1024,1024); if(sun.shadow.map){ sun.shadow.map.dispose(); sun.shadow.map = null; } }
+        if(perf.tier===2){ renderer.setPixelRatio(Math.min(1, dpr)); renderer.shadowMap.enabled = false; perf.low = true; }
+        if(perf.tier===3){ renderer.setPixelRatio(Math.min(0.75, dpr)); }
+        scene.traverse(o=>{ if(o.material){ (Array.isArray(o.material)?o.material:[o.material]).forEach(m=>m.needsUpdate=true); } }); renderer.setSize(1,1,false); } }
     if(!resize()) return;
     const w = world;
     const walking = mode==='walk' && !cine;
@@ -890,6 +900,7 @@ const G3 = (()=>{
     const k = 1 - Math.pow(walking ? 0.00002 : 0.0015, dt);
     for(const key of ['az','el','r','tx','ty','tz']) cam[key] += (camGoal[key]-cam[key])*k;
     if(walking) walkCamera();
+    if(w.berm){ const cp = camera.position; w.berm.visible = !(cp.x*cp.x + cp.y*cp.y + cp.z*cp.z < 118); }   // inside the dome the berm is behind the wall: skip it (no spikes, less to draw)
     else { camera.position.set(cam.tx + Math.cos(cam.az)*Math.cos(cam.el)*cam.r, cam.ty + Math.sin(cam.el)*cam.r, cam.tz + Math.sin(cam.az)*Math.cos(cam.el)*cam.r); camera.lookAt(cam.tx, cam.ty, cam.tz); }
     stepCrew(dt);
     const bl = (Math.sin(tNow*3)+1)/2;
