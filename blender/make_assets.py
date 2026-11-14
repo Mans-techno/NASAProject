@@ -33,7 +33,7 @@ def mat(name, color, metal=0.0, rough=0.6, emit=None, estr=1.0, alpha=1.0):
     return m
 
 def C(r,g,b): return (r/255.0, g/255.0, b/255.0)
-M_WHITE = lambda: mat('hull_white', C(232,235,240), 0.1, 0.45)
+M_WHITE = lambda: mat('hull_white', C(214,219,227), 0.1, 0.5)
 M_PANEL = lambda: mat('hull_panel', C(205,210,218), 0.3, 0.4)
 M_METAL = lambda: mat('metal', C(160,168,180), 0.8, 0.35)
 M_DARK  = lambda: mat('dark', C(44,50,64), 0.4, 0.55)
@@ -42,7 +42,7 @@ M_ORANGE= lambda: mat('orange', C(240,120,50), 0.1, 0.5)
 M_BLUE  = lambda: mat('fabric_blue', C(52,92,170), 0.0, 0.8)
 M_CELL  = lambda: mat('solar_cell', C(22,44,110), 0.6, 0.18)
 M_FLOOR = lambda: mat('floor', C(92,98,112), 0.2, 0.75)
-M_SCREEN= lambda: mat('screen', C(20,60,90), 0.0, 0.3, emit=C(90,200,255), estr=2.0)
+M_SCREEN= lambda: mat('screen', C(14,40,70), 0.0, 0.25, emit=C(40,130,220), estr=0.55)
 M_LIGHT = lambda: mat('led', C(255,240,210), 0.0, 0.3, emit=C(255,236,200), estr=4.0)
 M_GROW  = lambda: mat('grow_led', C(255,120,220), 0.0, 0.3, emit=C(255,90,210), estr=5.0)
 M_RED   = lambda: mat('red_light', C(255,70,70), 0.0, 0.3, emit=C(255,40,40), estr=4.0)
@@ -212,9 +212,11 @@ def build_hab():
         objs.append(t)
     # base ring
     ring = cyl(R+0.35, 0.9, (0,0,0.45), M_PANEL(), 'ring', verts=64)
-    bm = bmesh.new(); bm.from_mesh(ring.data)
-    inner = bmesh.ops.inset_region  # (keep simple solid ring; doors cut below)
-    bm.free()
+    # hollow it out: the old solid disc covered the whole floor 0.6 m above where people walk
+    hole = cyl(R-0.02, 2.0, (0,0,0.45), M_PANEL(), 'ringhole', verts=64)
+    md = ring.modifiers.new('hole','BOOLEAN'); md.object = hole; md.operation = 'DIFFERENCE'
+    bpy.context.view_layer.objects.active = ring; bpy.ops.object.modifier_apply(modifier=md.name)
+    bpy.data.objects.remove(hole)
     objs.append(ring)
     # windows ring (emissive squares) avoiding doors
     for k in range(18):
@@ -275,9 +277,35 @@ def build_hab():
     objs.append(cube((2.2, 0.9, 0.7), (6.5, 5.5, 0.55), M_WHITE(), 'medbed', rot=(0,0,0.75), bevel=0.06))
     objs.append(cube((0.5, 0.5, 1.6), (7.6, 4.0, 0.8), M_PANEL(), 'medcab', rot=(0,0,0.75), bevel=0.04))
     objs.append(cube((0.4, 0.05, 0.3), (7.45, 3.85, 1.4), M_RED(), 'medlight', rot=(0,0,0.75)))
-    # treadmill (exercise)
-    objs.append(cube((1.8, 0.8, 0.25), (-3.2, -2.2, 0.42), M_DARK(), 'tread', rot=(0,0,0.4), bevel=0.04))
-    objs.append(cube((0.1, 0.8, 1.1), (-4.0, -2.55, 0.95), M_METAL(), 'treadbar', rot=(0,0,0.4)))
+    # medical bay extras: mattress, pillow, monitor, IV pole, red-cross cabinet
+    objs.append(cube((2.0, 0.8, 0.14), (6.5, 5.5, 0.97), M_BED(), 'medmat', rot=(0,0,0.75), bevel=0.05))
+    objs.append(cube((0.5, 0.6, 0.14), (5.85, 4.85, 1.1), M_WHITE(), 'pillow', rot=(0,0,0.75), bevel=0.06))
+    objs.append(cyl(0.03, 1.9, (5.3, 6.3, 1.25), M_METAL(), 'ivpole', verts=8))
+    objs.append(cube((0.25, 0.08, 0.35), (5.3, 6.3, 2.05), M_GLASS(), 'ivbag', bevel=0.03))
+    objs.append(cyl(0.04, 1.2, (7.9, 6.6, 0.9), M_METAL(), 'monpole', verts=8))
+    objs.append(cube((0.7, 0.06, 0.45), (7.8, 6.5, 1.65), M_SCREEN(), 'medscreen', rot=(0,0,0.75+math.pi/2)))
+    objs.append(cube((0.12, 0.05, 0.42), (7.62, 3.92, 1.95), M_RED(), 'cross1', rot=(0,0,0.75)))
+    objs.append(cube((0.42, 0.05, 0.12), (7.62, 3.92, 1.95), M_RED(), 'cross2', rot=(0,0,0.75)))
+    # gym (game angle ~170 deg = Blender -170 deg): treadmill, bike, weights rack
+    def tang(r, deg): a = math.radians(deg); return math.cos(a)*r, math.sin(a)*r, a + math.pi/2
+    x, y, rr = tang(8.2, -150); objs.append(cube((1.8, 0.8, 0.25), (x, y, 0.42), M_DARK(), 'tread', rot=(0,0,rr), bevel=0.04))
+    objs.append(cube((0.1, 0.8, 1.1), (x+math.cos(rr)*0.85, y+math.sin(rr)*0.85, 0.95), M_METAL(), 'treadbar', rot=(0,0,rr)))
+    x, y, rr = tang(8.0, -164); objs.append(cube((1.1, 0.35, 0.5), (x, y, 0.55), M_DARK(), 'bikebase', rot=(0,0,rr), bevel=0.05))
+    objs.append(cyl(0.3, 0.12, (x, y, 0.75), M_ORANGE(), 'flywheel', verts=20, rot=(math.pi/2,0,rr)))
+    objs.append(cube((0.35, 0.3, 0.1), (x-math.cos(rr)*0.4, y-math.sin(rr)*0.4, 1.05), M_BLUE(), 'seat', rot=(0,0,rr), bevel=0.04))
+    x, y, rr = tang(9.5, -157); objs.append(cube((1.4, 0.4, 0.9), (x, y, 0.75), M_METAL(), 'rack', rot=(0,0,rr)))
+    for k in range(4): objs.append(cyl(0.12+k*0.02, 0.1, (x+math.cos(rr)*(-0.5+k*0.33), y+math.sin(rr)*(-0.5+k*0.33), 1.28), M_DARK(), 'plate', verts=16, rot=(math.pi/2,0,rr)))
+    # galley extras: fridge and wall shelf
+    x, y, rr = tang(9.3, -33); objs.append(cube((0.9, 0.75, 2.0), (x, y, 1.3), M_WHITE(), 'fridge', rot=(0,0,rr), bevel=0.05))
+    objs.append(cube((0.05, 0.05, 0.9), (x+math.cos(rr)*0.3-math.cos(rr-math.pi/2)*0.4, y+math.sin(rr)*0.3-math.sin(rr-math.pi/2)*0.4, 1.4), M_METAL(), 'handle', rot=(0,0,rr)))
+    # comms chairs
+    for a in (2.2, 2.5, 2.8):
+        objs.append(cyl(0.3, 0.1, (math.cos(a)*7.5, math.sin(a)*7.5, 0.75), M_BLUE(), 'chair', verts=16))
+        objs.append(cyl(0.05, 0.45, (math.cos(a)*7.5, math.sin(a)*7.5, 0.5), M_METAL(), 'chairleg', verts=8))
+    # coloured accent panel on the back wall of every room (Blender angle = -game angle)
+    for gdeg, col in ((41,(255,211,90)),(103,(143,184,255)),(170,(141,220,106)),(-42,(255,143,163)),(-138,(127,211,255))):
+        a = -math.radians(gdeg); r = 10.25
+        objs.append(cube((0.06, 2.6, 0.5), (math.cos(a)*r, math.sin(a)*r, 2.2), mat('accent%d' % gdeg, C(*col), 0.1, 0.5), 'accent', rot=(0,0,a)))
     # lockers along west wall
     for k in range(5):
         a = math.pi + 0.45 + k*0.17
@@ -373,7 +401,12 @@ def build_greenhouse():
     setmat(glass, M_GLASS())
     wf = ic.modifiers.new('wf','WIREFRAME'); wf.thickness = 0.12; setmat(ic, M_PANEL())
     objs = [ic, glass]
-    objs.append(cyl(R+0.2, 0.6, (0,0,0.3), M_PANEL(), 'ring', verts=60))
+    gring = cyl(R+0.2, 0.6, (0,0,0.3), M_PANEL(), 'ring', verts=60)
+    ghole = cyl(R-0.15, 2.0, (0,0,0.3), M_PANEL(), 'ringhole', verts=60)
+    md = gring.modifiers.new('hole','BOOLEAN'); md.object = ghole; md.operation = 'DIFFERENCE'
+    bpy.context.view_layer.objects.active = gring; bpy.ops.object.modifier_apply(modifier=md.name)
+    bpy.data.objects.remove(ghole)
+    objs.append(gring)
     objs.append(cyl(R-0.1, 0.25, (0,0,0.12), M_FLOOR(), 'floor', verts=60))
     # walkway
     objs.append(cube((R*2-1, 1.6, 0.05), (0,0,0.27), M_DARK(), 'walk'))
@@ -528,15 +561,33 @@ def build_lander():
     join(objs,'lander'); export('lander')
 
 def build_small():
-    # drill rig
+    # drill rig: skid, four-leg derrick with braces, top drive on a mast, drill string into the ground
     reset(); objs = []
-    for k in range(3):
-        a = k*2*math.pi/3
-        objs.append(cyl(0.07, 4.4, (math.cos(a)*0.9, math.sin(a)*0.9, 2.0), M_METAL(), 'tri', verts=8, rot=(-math.sin(a)*0.22, math.cos(a)*0.22, 0)))
-    objs.append(cube((0.8,0.8,0.7), (0,0,4.1), M_ORANGE(), 'motor', bevel=0.05))
-    objs.append(cyl(0.12, 3.6, (0,0,2.1), M_GOLD(), 'bit', verts=10))
-    objs.append(cube((1.2,0.8,0.6), (1.4,0,0.3), M_DARK(), 'sampler', bevel=0.04))
-    join(objs,'drill'); export('drill')
+    def strut(p0, p1, r, m, name='strut'):
+        a, b = Vector(p0), Vector(p1); d = b - a
+        o = cyl(r, d.length, tuple((a+b)/2), m, name, verts=8)
+        o.rotation_mode = 'QUATERNION'; o.rotation_quaternion = Vector((0,0,1)).rotation_difference(d.normalized()); return o
+    objs.append(cube((2.6,2.6,0.25), (0,0,0.125), M_DARK(), 'skid', bevel=0.03))
+    for k in range(8): objs.append(cube((0.32,0.06,0.02), (-1.1+k*0.32, -1.31, 0.2), M_YELLOW() if k%2 else M_DARK(), 'stripe', rot=(0,0,0.6)))
+    top = 4.4
+    for sx in (-1,1):
+        for sy in (-1,1):
+            objs.append(strut((sx*1.0, sy*1.0, 0.25), (sx*0.3, sy*0.3, top), 0.06, M_METAL(), 'leg'))
+    for h in (1.3, 2.4, 3.4):
+        f = 1.0 - (h-0.25)/(top-0.25)*0.7
+        for (x0,y0,x1,y1) in ((-f,-f,f,-f),(f,-f,f,f),(f,f,-f,f),(-f,f,-f,-f)): objs.append(strut((x0,y0,h),(x1,y1,h),0.035,M_YELLOW(),'brace'))
+    for (x0,y0,x1,y1) in ((-1,-1,0.62,-0.62),(1,-1,-0.62,-0.62)): objs.append(strut((x0,y0,0.25),(x1,y1,2.4),0.03,M_METAL(),'diag'))
+    objs.append(cube((0.9,0.9,0.25), (0,0,top+0.12), M_YELLOW(), 'crown', bevel=0.03))
+    objs.append(cyl(0.18, 0.5, (0,0,top+0.45), M_DARK(), 'sheave', verts=16, rot=(math.pi/2,0,0)))
+    objs.append(cube((0.55,0.55,0.6), (0,0,3.0), M_ORANGE(), 'topdrive', bevel=0.05))
+    objs.append(strut((0,0,3.3),(0,0,top),0.05,M_METAL(),'cable'))
+    objs.append(cube((1.0,0.7,0.9), (1.75,0,0.7), M_PANEL(), 'control', bevel=0.04))
+    objs.append(cube((0.5,0.02,0.3), (1.75,-0.36,0.95), M_SCREEN(), 'ctlscreen'))
+    objs.append(cube((0.8,0.6,0.5), (-1.7,0.4,0.5), M_WHITE(), 'samplebox', bevel=0.04))
+    objs.append(strut((1.3,0,0.9),(0.3,0,2.8),0.03,M_DARK(),'hose'))
+    join(objs,'drill')
+    bit = cyl(0.08, 3.6, (0,0,1.0), M_GOLD(), 'bit', verts=10)
+    export('drill')
     # excavator
     reset(); objs = []
     def beam(p0, p1, w, h, m, name):
