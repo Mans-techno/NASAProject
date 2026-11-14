@@ -4,6 +4,13 @@ A browser game for kids aged 7–12, in **Russian and English** (RU/EN button on
 
 **For judges:** press **"▶ Judges' demo mission"** on the start screen, or open `index.html?demo&lang=en`. The demo starts with a 5-step tutorial. On day 3 it plays the real 28 Oct 2003 "Halloween" proton storm (X17, S4). On day 9 it plays the 24 Oct 2014 X3.1 flare, which was very bright but brought almost no protons.
 
+## 3D view and step replay
+- The base is a real-time 3D scene (Three.js r149, bundled inside the file, so it works offline). It has procedural lunar and Martian terrain, low polar sunlight on the Moon, a dusty sky on Mars, and Earth in the lunar sky. Drag to rotate, scroll to zoom, or use the arrow keys.
+- Everything the player builds appears in 3D: solar panels, batteries, greenhouses, the reactor, and a regolith berm that grows with each shielding layer.
+- **Every step is shown.** After "End day", an astronaut walks out of the airlock and does the task while the camera follows. The radio dish beams data to Earth, cargo landers touch down, and proton storms rain particles. Click the scene to skip.
+- **Commander's steps** keeps a log of every day: the task, the power split and the outcome (dose, science, storms). Tap any day to replay it in 3D.
+- If WebGL is not available, the game falls back to the 2D picture. With "reduce motion" on, the animations are skipped.
+
 ## The trade-off loop
 Each day the player:
 1. **Splits limited power** between oxygen (water electrolysis), heating and the radio link to Earth. Engineer mode adds water recycling and greenhouses. Any surplus charges the battery. When there isn't enough power, every system browns out together.
@@ -43,5 +50,5 @@ The **Наука в игре / The science** screen shows all of this inside the
 | Mars / Engineer | 0 | 0 | 6 | 54 |
 
 ## Files
-- `index.html`: the standalone game (single file, no dependencies).
+- `index.html`: the standalone game (a single file with Three.js inlined, no network needed except optional fonts and live DONKI).
 - `README.md`: this explainer.
