@@ -379,12 +379,12 @@ def build_hab():
     objs.append(cube((0.9, 0.82, 0.04), (x-ux*0.4, y-uy*0.4, 1.06), mat('blanket_med', C(120,190,200), 0.0, 0.9), 'medblanket', rot=(0,0,a), bevel=0.01))
     objs.append(cube((0.06, 0.85, 0.35), (x+ux*1.0, y+uy*1.0, 1.15), M_PANEL(), 'headboard', rot=(0,0,a), bevel=0.02))
     # wall monitor on an arm
-    # vitals monitor mounted flat on the dome wall (tilted with the wall), on a short bracket
-    zc = 1.95; rw = math.sqrt(10.48**2 - zc*zc); tilt = math.asin(zc/10.48)
+    # vitals monitor: hangs straight (vertical) on a bracket that reaches back to the curved wall
+    zc = 1.75; rw = math.sqrt(10.48**2 - (zc+0.3)**2) - 0.08
     _, _, a = radm(rw, -34); ca, sa = math.cos(a), math.sin(a)
-    objs.append(cube((0.24, 0.3, 0.2), (ca*(rw+0.1), sa*(rw+0.1), zc), M_METAL(), 'monarm', rot=(0,-tilt,a)))
-    objs.append(cube((0.06, 0.8, 0.52), (ca*(rw-0.04), sa*(rw-0.04), zc), M_DARK(), 'medbezel', rot=(0,-tilt,a), bevel=0.015))
-    objs.append(cube((0.02, 0.72, 0.44), (ca*(rw-0.075), sa*(rw-0.075), zc), mat('vitals', C(10,30,20), 0.0, 0.3, emit=C(60,230,140), estr=0.7), 'medscreen', rot=(0,-tilt,a)))
+    objs.append(cube((0.3, 0.3, 0.2), (ca*(rw+0.16), sa*(rw+0.16), zc), M_METAL(), 'monarm', rot=(0,0,a)))
+    objs.append(cube((0.06, 0.8, 0.52), (ca*(rw-0.04), sa*(rw-0.04), zc), M_DARK(), 'medbezel', rot=(0,0,a), bevel=0.015))
+    objs.append(cube((0.02, 0.72, 0.44), (ca*(rw-0.075), sa*(rw-0.075), zc), mat('vitals', C(10,30,20), 0.0, 0.3, emit=C(60,230,140), estr=0.7), 'medscreen', rot=(0,0,a)))
     # IV stand
     x, y, a = radm(9.0, -51)
     objs.append(cyl(0.025, 1.9, (x, y, 1.27), M_METAL(), 'ivpole', verts=8))
@@ -487,13 +487,12 @@ def build_hab():
             for e in (-0.12, 0.12):
                 ex, ey = off(dx, dy, a, e, 0)
                 objs.append(cyl(0.055 + 0.01*k, 0.05, (ex, ey, h), M_RUBBER(), 'dbhead', verts=12, rot=(0,math.pi/2,a)))
-    # wall screen with the workout plan, above the rack
-    # sits flat on the dome wall, tilted back like the wall, with a bracket behind it
-    zc = 1.95; rw = math.sqrt(10.48**2 - zc*zc); tilt = math.asin(zc/10.48)
-    x, y, a = rad(rw - 0.06, 160)
-    objs.append(cube((0.2, 0.5, 0.3), (math.cos(a)*(rw+0.12), math.sin(a)*(rw+0.12), zc), M_METAL(), 'gymscreenmount', rot=(0,-tilt,a)))
-    objs.append(cube((0.05, 1.3, 0.72), (x, y, zc), M_DARK(), 'gymscreenframe', rot=(0,-tilt,a), bevel=0.02))
-    objs.append(cube((0.02, 1.2, 0.62), (x-math.cos(a)*0.03, y-math.sin(a)*0.03, zc), M_SCREEN(), 'gymscreen', rot=(0,-tilt,a)))
+    # wall screen with the workout plan: hangs straight (vertical), bracket reaches back to the curved wall
+    zc = 1.8; rw = math.sqrt(10.48**2 - (zc+0.4)**2) - 0.08
+    x, y, a = rad(rw - 0.03, 160); ca, sa = math.cos(a), math.sin(a)
+    objs.append(cube((0.3, 0.5, 0.3), (ca*(rw+0.2), sa*(rw+0.2), zc), M_METAL(), 'gymscreenmount', rot=(0,0,a)))
+    objs.append(cube((0.05, 1.3, 0.72), (x, y, zc), M_DARK(), 'gymscreenframe', rot=(0,0,a), bevel=0.02))
+    objs.append(cube((0.02, 1.2, 0.62), (x-ca*0.03, y-sa*0.03, zc), M_SCREEN(), 'gymscreen', rot=(0,0,a)))
     # galley extras: fridge and wall shelf
     x, y, rr = tang(9.3, -57); objs.append(cube((0.9, 0.75, 2.0), (x, y, 1.3), M_WHITE(), 'fridge', rot=(0,0,rr), bevel=0.05))
     objs.append(cube((0.05, 0.05, 0.9), (x+math.cos(rr)*0.3-math.cos(rr-math.pi/2)*0.4, y+math.sin(rr)*0.3-math.sin(rr-math.pi/2)*0.4, 1.4), M_METAL(), 'handle', rot=(0,0,rr)))

@@ -251,7 +251,7 @@ const G3 = (()=>{
     for(let i=0;i<pos.count;i++){ const x=pos.getX(i), y=pos.getY(i), z=pos.getZ(i); const k = 0.8+0.35*hash(Math.round(x*97)+Math.round(z*53)*131, Math.round(y*89), 9); pos.setXYZ(i,x*k,y*k*0.7,z*k); } geo.computeVertexNormals();
     const m = M({color: mars?0x7a3a22:0x6d6f74, roughness:0.95, map:grainTex});
     const n = 520, inst = new T.InstancedMesh(geo, m, n); inst.castShadow = inst.receiveShadow = true;
-    const o = new T.Object3D(); const keep = [...FOOT.map(f=>[f[0],f[1],f[2]+4]), [24,24,5],[34,8,5],[40,30,6],[36,34,6],[28,-24,8],[54,-42,9],[-28,23,16]];
+    const o = new T.Object3D(); const keep = [...FOOT.map(f=>[f[0],f[1],f[2]+4]), [24,24,5],[34,8,5],[40,30,6],[36,34,6],[28,-24,8],[54,-42,9],[-28,23,16], [0,0,bermDims(4).rf+3]];   // no rocks where the regolith berm can grow (they would float on its slope)
     for(let k=0;k<n;k++){ let x,z,ok; do{ x=(r()-0.5)*760; z=(r()-0.5)*760; ok = !keep.some(([cx,cz,R])=>Math.hypot(x-cx,z-cz)<R); }while(!ok);
       const s=0.25+Math.pow(r(),3)*2.6*(Math.hypot(x,z)>120?1.8:1); o.position.set(x, heightFn(x,z)+s*0.2, z); o.rotation.set(r()*3,r()*3,r()*3); o.scale.setScalar(s); o.updateMatrix(); inst.setMatrixAt(k,o.matrix); }
     group.add(inst);
