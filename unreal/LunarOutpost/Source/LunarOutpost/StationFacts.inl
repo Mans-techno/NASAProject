@@ -1,0 +1,12 @@
+﻿// Generated from the web game (STATION_FACT): what each place is for, RU and EN.
+{TEXT("door"), TEXT("Шлюз выравнивает давление, чтобы воздух базы не уходил наружу. Внутри базы скафандр заправляется сам."), TEXT("The airlock equalises pressure so the base keeps its air. Inside the base your suit refills by itself.")},
+{TEXT("battery"), TEXT("Аккумуляторы запасают энергию на тень, бурю и ночь."), TEXT("Batteries store power for shadow, storms and night.")},
+{TEXT("panels"), TEXT("Солнечные панели дают энергию, пока светит Солнце. На Марсе их покрывает пыль."), TEXT("Solar panels make power while the Sun shines. On Mars, dust covers them.")},
+{TEXT("shield"), TEXT("Грунт поверх жилого купола — лучшая защита от протонных бурь. Его не надо везти с Земли."), TEXT("Soil piled over the dome is the best protection from proton storms. It does not have to come from Earth.")},
+{TEXT("drill"), TEXT("Здесь бурят лёд и берут пробы для науки."), TEXT("Here the crew drills for ice and samples for science.")},
+{TEXT("greenhouse"), TEXT("Растения дают еду и немного кислорода. Им нужен свет фитоламп. На МКС астронавты уже выращивали салат в установке Veggie."), TEXT("Plants give food and a little oxygen. They need grow lights. On the ISS, astronauts have already grown lettuce in the Veggie unit.")},
+{TEXT("reactor"), TEXT("Небольшой ядерный реактор работает в тени и в бурю. Его ставят подальше от жилого модуля."), TEXT("A small nuclear reactor works in shadow and storms. It is set up well away from the habitat.")},
+{TEXT("repair"), TEXT("Здесь лежат запчасти и инструменты для ремонта."), TEXT("Spare parts and repair tools are kept here.")},
+{TEXT("bunks"), TEXT("Сон — тоже работа: без отдыха экипаж ошибается. Ляг спать, чтобы закончить день."), TEXT("Sleep is part of the job: a tired crew makes mistakes. Go to sleep to end the day.")},
+{TEXT("med"), TEXT("Медотсек следит за здоровьем и дозой радиации каждого члена экипажа."), TEXT("The medical bay tracks every crew member’s health and radiation dose.")},
+{TEXT("lab"), TEXT("В лаборатории изучают пробы. Наука засчитывается, только когда данные дошли до Земли по радио."), TEXT("The lab studies the samples. Science only counts once the data reaches Earth by radio.")},
