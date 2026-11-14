@@ -173,9 +173,11 @@ def tunnel(length, width=3.2, height=3.0, ribs=True, name='tunnel', floor=True, 
         for k in range(n+1):
             x = k*length/n
             r = torus(width/2+0.12, 0.08, (x,0,wall_h), M_PANEL(), 'rib', rot=(0,math.pi/2,0), maj=24, mnr=6)
+            # keep only the upper arch: the lower half used to poke through the walls and floor
+            bpy.context.view_layer.update(); mw = r.matrix_world
             bm = bmesh.new(); bm.from_mesh(r.data)
-            rm = [v for v in bm.verts if v.co.x < -0.0 and False]
-            bm.free()
+            rm = [v for v in bm.verts if (mw @ v.co).z < wall_h - 0.02]
+            bmesh.ops.delete(bm, geom=rm, context='VERTS'); bm.to_mesh(r.data); bm.free()
             objs.append(r)
             for s in (-1,1): objs.append(cube((0.16,0.16,wall_h),(x, s*(width/2+0.1), wall_h/2), M_PANEL(), 'post'))
     if lights:
@@ -308,7 +310,6 @@ def build_corridors():
             objs = [t]
             for x in (0.6, L-0.2):
                 objs.append(cube((0.25, 3.6, 0.4), (x, 0, 3.0), M_YELLOW(), 'doorhead'))
-            objs.append(cube((0.2, 3.4, 3.2), (L+0.1, 0, 1.6), M_PANEL(), 'outerframe'))
             objs.append(cube((0.25, 0.3, 0.3), (L+0.2, 1.3, 3.0), M_RED(), 'beacon'))
             # suit rack
             for k in range(3):
@@ -537,11 +538,27 @@ def build_small():
     objs.append(cube((1.2,0.8,0.6), (1.4,0,0.3), M_DARK(), 'sampler', bevel=0.04))
     join(objs,'drill'); export('drill')
     # excavator
-    reset(); objs = [cube((2.8,1.9,1.1), (0,0,1.1), M_YELLOW(), 'body', bevel=0.08)]
-    for y in (-1.0,1.0): objs.append(cube((3.2,0.55,0.7), (0,y,0.35), M_RUBBER(), 'track', bevel=0.2))
-    objs.append(cube((3.2,0.25,0.3), (2.2,0,1.9), M_YELLOW(), 'arm', rot=(0,0.45,0)))
-    objs.append(cube((1.0,1.3,0.7), (3.6,0,1.0), M_METAL(), 'bucket', bevel=0.05))
-    objs.append(cube((0.9,1.2,0.8), (-0.6,0,2.05), M_DARK(), 'cab', bevel=0.06))
+    reset(); objs = []
+    def beam(p0, p1, w, h, m, name):
+        dx, dz = p1[0]-p0[0], p1[2]-p0[2]; Lb = math.hypot(dx, dz)
+        return cube((Lb+w*0.5, w, h), ((p0[0]+p1[0])/2, p0[1], (p0[2]+p1[2])/2), m, name, rot=(0, -math.atan2(dz, dx), 0))
+    for y in (-1.05,1.05):
+        objs.append(cube((3.4,0.62,0.72), (0,y,0.36), M_RUBBER(), 'track', bevel=0.2))
+        for x in (-1.2,-0.4,0.4,1.2): objs.append(cyl(0.24, 0.66, (x,y,0.36), M_METAL(), 'wheel', verts=14, rot=(math.pi/2,0,0)))
+    objs.append(cube((2.6,1.5,0.32), (0,0,0.86), M_DARK(), 'frame'))
+    objs.append(cyl(0.95, 0.18, (0,0,1.11), M_METAL(), 'turntable', verts=28))
+    objs.append(cube((2.6,2.0,0.9), (-0.35,0,1.65), M_YELLOW(), 'body', bevel=0.08))
+    objs.append(cube((0.6,1.9,0.5), (-1.55,0,1.45), M_DARK(), 'counterweight', bevel=0.05))
+    objs.append(cube((1.1,1.0,1.0), (0.45,0.5,2.6), M_YELLOW(), 'cab', bevel=0.06))
+    objs.append(cube((0.06,0.86,0.6), (1.01,0.5,2.7), M_GLASS(), 'window'))
+    objs.append(cube((0.9,0.06,0.5), (0.4,1.01,2.7), M_GLASS(), 'window2'))
+    pb, pe, pk = (0.75,-0.35,1.9), (3.0,-0.35,3.2), (3.9,-0.35,1.0)
+    objs.append(beam(pb, pe, 0.34, 0.42, M_YELLOW(), 'boom'))
+    objs.append(beam(pe, pk, 0.28, 0.32, M_YELLOW(), 'stick'))
+    objs.append(beam((0.9,-0.35,1.55), (2.3,-0.35,2.85), 0.12, 0.12, M_METAL(), 'ram'))
+    for p in (pb, pe): objs.append(cyl(0.16, 0.5, p, M_DARK(), 'pin', verts=12, rot=(math.pi/2,0,0)))
+    objs.append(cube((0.85,1.1,0.7), (4.05,-0.35,0.42), M_METAL(), 'bucket', bevel=0.06))
+    for k in range(4): objs.append(cube((0.14,0.14,0.18), (4.42,-0.75+k*0.27,0.05), M_DARK(), 'tooth'))
     join(objs,'excavator'); export('excavator')
     # crate
     reset(); objs = [cube((1.0,1.0,0.9), (0,0,0.45), M_WHITE(), 'crate', bevel=0.04)]
