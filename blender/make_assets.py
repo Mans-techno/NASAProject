@@ -249,24 +249,42 @@ def build_hab():
     objs.append(cyl(1.3, 0.15, (0,0,7.0), M_PANEL(), 'lampdisk', verts=32))
     # --- interior furniture (north half = Blender -Y = glTF +Z)
     # bunks: 4 bunk beds along north wall
-    for k, a in enumerate([-2.35, -1.95, -1.55, -1.15]):
-        cx, cy = math.cos(a)*8.0, math.sin(a)*8.0
+    for k, a in enumerate([math.radians(-d) for d in (76, 94, 112, 130)]):
+        cx, cy = math.cos(a)*8.1, math.sin(a)*8.1
         rot = a + math.pi/2
-        for lvl in (0.6, 1.8):
-            objs.append(cube((2.2, 0.95, 0.12), (cx, cy, lvl), M_PANEL(), 'bunkframe', rot=(0,0,rot), bevel=0.03))
-            objs.append(cube((2.0, 0.85, 0.16), (cx, cy, lvl+0.13), M_BED(), 'mattress', rot=(0,0,rot), bevel=0.05))
-        for s in (-1,1):
-            px, py = cx + math.cos(rot)*1.1*s, cy + math.sin(rot)*1.1*s
-            objs.append(cube((0.08, 0.95, 2.4), (px, py, 1.2), M_METAL(), 'bunkpost', rot=(0,0,rot)))
+        tx, ty = math.cos(rot), math.sin(rot)
+        for lvl in (0.6, 1.75):
+            objs.append(cube((2.1, 0.95, 0.1), (cx, cy, lvl), M_PANEL(), 'bunkframe', rot=(0,0,rot), bevel=0.03))
+            objs.append(cube((1.95, 0.85, 0.16), (cx, cy, lvl+0.13), M_BED(), 'mattress', rot=(0,0,rot), bevel=0.05))
+            objs.append(cube((1.2, 0.88, 0.05), (cx-tx*0.35, cy-ty*0.35, lvl+0.23), mat('blanket%d' % k, C(*[(230,120,90),(110,180,120),(240,200,90),(160,120,210)][k]), 0.0, 0.9), 'blanket', rot=(0,0,rot), bevel=0.02))
+            objs.append(cube((0.35, 0.6, 0.12), (cx+tx*0.75, cy+ty*0.75, lvl+0.26), M_WHITE(), 'pillow', rot=(0,0,rot), bevel=0.05))
+        for sgn in (-1,1):
+            px, py = cx + tx*1.07*sgn, cy + ty*1.07*sgn
+            objs.append(cube((0.06, 0.95, 2.3), (px, py, 1.15+0.3), M_DARK(), 'bunkend', rot=(0,0,rot), bevel=0.02))
+        lx, ly = cx - math.cos(a)*0.5 + tx*0.6, cy - math.sin(a)*0.5 + ty*0.6
+        for h in (0.95, 1.3): objs.append(cube((0.04, 0.4, 0.04), (lx, ly, h), M_METAL(), 'ladder', rot=(0,0,rot)))
     # galley: counter + table + 4 stools (east-north)
-    objs.append(cube((3.2, 0.8, 1.0), (5.2, -5.6, 0.5), M_PANEL(), 'counter', rot=(0,0,-0.7), bevel=0.04))
-    objs.append(cube((0.9, 0.6, 0.6), (4.6, -6.3, 1.3), M_DARK(), 'oven', rot=(0,0,-0.7), bevel=0.03))
-    objs.append(cyl(1.1, 0.08, (3.0, -1.8, 0.95), M_WOOD(), 'table', verts=32))
-    objs.append(cyl(0.12, 0.8, (3.0, -1.8, 0.5), M_METAL(), 'tleg', verts=10))
-    for k in range(4):
-        a = k*math.pi/2 + 0.4
-        objs.append(cyl(0.28, 0.08, (3.0+math.cos(a)*1.55, -1.8+math.sin(a)*1.55, 0.62), M_BLUE(), 'stool', verts=16))
-        objs.append(cyl(0.05, 0.5, (3.0+math.cos(a)*1.55, -1.8+math.sin(a)*1.55, 0.35), M_METAL(), 'sleg', verts=8))
+    for k, gd in enumerate((27, 38, 49)):
+        a = math.radians(-gd); x, y = math.cos(a)*9.35, math.sin(a)*9.35; rr = a + math.pi/2
+        objs.append(cube((1.75, 0.7, 0.92), (x, y, 0.76), M_PANEL(), 'counter', rot=(0,0,rr), bevel=0.03))
+        objs.append(cube((1.8, 0.75, 0.05), (x, y, 1.245), M_WOOD(), 'worktop', rot=(0,0,rr)))
+        objs.append(cube((1.7, 0.4, 0.6), (math.cos(a)*9.75, math.sin(a)*9.75, 2.15), M_WHITE(), 'upper', rot=(0,0,rr), bevel=0.03))
+        if k == 0:
+            objs.append(cube((0.6, 0.45, 0.06), (x, y, 1.25), M_METAL(), 'sink', rot=(0,0,rr)))
+            objs.append(cyl(0.025, 0.35, (math.cos(a)*9.6, math.sin(a)*9.6, 1.42), M_METAL(), 'tap', verts=8))
+        if k == 1:
+            for q in (-0.35, 0.35): objs.append(cyl(0.15, 0.02, (x+math.cos(rr)*q, y+math.sin(rr)*q, 1.28), M_DARK(), 'hob', verts=16))
+        if k == 2:
+            objs.append(cube((0.55, 0.4, 0.35), (math.cos(a)*9.5, math.sin(a)*9.5, 1.45), M_DARK(), 'oven', rot=(0,0,rr), bevel=0.03))
+            objs.append(cube((0.3, 0.02, 0.2), (math.cos(a)*9.29, math.sin(a)*9.29, 1.45), M_SCREEN(), 'ovenwin', rot=(0,0,rr)))
+    a = math.radians(-41); tx, ty = math.cos(a)*7.2, math.sin(a)*7.2
+    objs.append(cyl(0.75, 0.06, (tx, ty, 1.05), M_WOOD(), 'table', verts=32))
+    objs.append(cyl(0.08, 0.75, (tx, ty, 0.67), M_METAL(), 'tleg', verts=10))
+    for k in range(3):
+        b = a + math.pi + (k-1)*1.1
+        sx, sy = tx + math.cos(b)*1.05, ty + math.sin(b)*1.05
+        objs.append(cyl(0.24, 0.07, (sx, sy, 0.78), M_BLUE(), 'stool', verts=16))
+        objs.append(cyl(0.04, 0.45, (sx, sy, 0.53), M_METAL(), 'sleg', verts=8))
     # command / comms desk with screens (south-west, Blender +Y side, x<0)
     for k, a in enumerate([2.2, 2.5, 2.8]):
         cx, cy = math.cos(a)*8.6, math.sin(a)*8.6
@@ -288,15 +306,33 @@ def build_hab():
     objs.append(cube((0.42, 0.05, 0.12), (7.62, 3.92, 1.95), M_RED(), 'cross2', rot=(0,0,0.75)))
     # gym (game angle ~170 deg = Blender -170 deg): treadmill, bike, weights rack
     def tang(r, deg): a = math.radians(deg); return math.cos(a)*r, math.sin(a)*r, a + math.pi/2
-    x, y, rr = tang(8.2, -150); objs.append(cube((1.8, 0.8, 0.25), (x, y, 0.42), M_DARK(), 'tread', rot=(0,0,rr), bevel=0.04))
-    objs.append(cube((0.1, 0.8, 1.1), (x+math.cos(rr)*0.85, y+math.sin(rr)*0.85, 0.95), M_METAL(), 'treadbar', rot=(0,0,rr)))
-    x, y, rr = tang(8.0, -164); objs.append(cube((1.1, 0.35, 0.5), (x, y, 0.55), M_DARK(), 'bikebase', rot=(0,0,rr), bevel=0.05))
-    objs.append(cyl(0.3, 0.12, (x, y, 0.75), M_ORANGE(), 'flywheel', verts=20, rot=(math.pi/2,0,rr)))
-    objs.append(cube((0.35, 0.3, 0.1), (x-math.cos(rr)*0.4, y-math.sin(rr)*0.4, 1.05), M_BLUE(), 'seat', rot=(0,0,rr), bevel=0.04))
-    x, y, rr = tang(9.5, -157); objs.append(cube((1.4, 0.4, 0.9), (x, y, 0.75), M_METAL(), 'rack', rot=(0,0,rr)))
-    for k in range(4): objs.append(cyl(0.12+k*0.02, 0.1, (x+math.cos(rr)*(-0.5+k*0.33), y+math.sin(rr)*(-0.5+k*0.33), 1.28), M_DARK(), 'plate', verts=16, rot=(math.pi/2,0,rr)))
+    def rad(r, gdeg): a = math.radians(-gdeg); return math.cos(a)*r, math.sin(a)*r, a
+    x, y, a = rad(8.5, 151)
+    objs.append(cube((1.9, 0.85, 0.22), (x, y, 0.42), M_DARK(), 'treadbase', rot=(0,0,a), bevel=0.04))
+    objs.append(cube((1.7, 0.6, 0.03), (x, y, 0.545), M_RUBBER(), 'belt', rot=(0,0,a)))
+    ix, iy = math.cos(a)*7.55, math.sin(a)*7.55
+    for q in (-0.4, 0.4):
+        px, py = ix - math.sin(a)*q, iy + math.cos(a)*q
+        objs.append(cyl(0.035, 1.0, (px, py, 0.95), M_METAL(), 'upright', verts=8))
+        objs.append(cube((0.9, 0.05, 0.05), (px+math.cos(a)*0.45, py+math.sin(a)*0.45, 1.35), M_METAL(), 'rail', rot=(0,0,a)))
+    objs.append(cube((0.25, 0.75, 0.35), (ix, iy, 1.5), M_DARK(), 'console', rot=(0,0,a), bevel=0.03))
+    objs.append(cube((0.02, 0.5, 0.22), (ix-math.cos(a)*0.13, iy-math.sin(a)*0.13, 1.52), M_SCREEN(), 'tscreen', rot=(0,0,a)))
+    x, y, a = rad(8.4, 161)
+    objs.append(cube((1.2, 0.3, 0.12), (x, y, 0.36), M_DARK(), 'bikefoot', rot=(0,0,a), bevel=0.03))
+    objs.append(cyl(0.32, 0.1, (x-math.cos(a)*0.35, y-math.sin(a)*0.35, 0.7), M_ORANGE(), 'flywheel', verts=20, rot=(math.pi/2,0,a)))
+    objs.append(cyl(0.04, 0.75, (x+math.cos(a)*0.3, y+math.sin(a)*0.3, 0.75), M_METAL(), 'seatpost', verts=8))
+    objs.append(cube((0.35, 0.28, 0.08), (x+math.cos(a)*0.3, y+math.sin(a)*0.3, 1.15), M_BLUE(), 'bikeseat', rot=(0,0,a), bevel=0.03))
+    objs.append(cyl(0.04, 0.85, (x-math.cos(a)*0.45, y-math.sin(a)*0.45, 0.8), M_METAL(), 'stem', verts=8))
+    objs.append(cube((0.06, 0.5, 0.05), (x-math.cos(a)*0.45, y-math.sin(a)*0.45, 1.22), M_DARK(), 'bars', rot=(0,0,a)))
+    x, y, a = rad(10.05, 156)
+    objs.append(cube((0.35, 1.2, 0.9), (x, y, 0.75), M_DARK(), 'dbrack', rot=(0,0,a), bevel=0.03))
+    for k in range(4):
+        q = -0.42 + k*0.28; px, py = x - math.sin(a)*q - math.cos(a)*0.05, y + math.cos(a)*q - math.sin(a)*0.05
+        for h in (0.85, 1.25): objs.append(cyl(0.07+0.01*k, 0.3, (px, py, h), M_METAL(), 'dumbbell', verts=10, rot=(0,math.pi/2,a)))
+    x, y, a = rad(7.0, 157)
+    objs.append(cube((1.6, 0.7, 0.02), (x, y, 0.31), mat('mat_green', C(90,170,120), 0.0, 0.9), 'yogamat', rot=(0,0,a)))
     # galley extras: fridge and wall shelf
-    x, y, rr = tang(9.3, -33); objs.append(cube((0.9, 0.75, 2.0), (x, y, 1.3), M_WHITE(), 'fridge', rot=(0,0,rr), bevel=0.05))
+    x, y, rr = tang(9.3, -57); objs.append(cube((0.9, 0.75, 2.0), (x, y, 1.3), M_WHITE(), 'fridge', rot=(0,0,rr), bevel=0.05))
     objs.append(cube((0.05, 0.05, 0.9), (x+math.cos(rr)*0.3-math.cos(rr-math.pi/2)*0.4, y+math.sin(rr)*0.3-math.sin(rr-math.pi/2)*0.4, 1.4), M_METAL(), 'handle', rot=(0,0,rr)))
     # comms chairs
     for a in (2.2, 2.5, 2.8):
@@ -343,7 +379,8 @@ def build_corridors():
             for k in range(3):
                 objs.append(cube((0.6, 0.15, 1.6), (4+k*1.0, -1.45, 1.4), M_WHITE(), 'suit', bevel=0.08))
                 objs.append(sphere(0.25, (4+k*1.0, -1.45, 2.4), M_WHITE(), 'helm', seg=12, ring=8))
-            objs.append(cube((1.0, 0.5, 1.8), (9.5, 1.3, 0.9), M_ORANGE(), 'repairlocker', bevel=0.04))
+            objs.append(cube((1.2, 0.28, 1.5), (9.5, 1.42, 1.15), M_ORANGE(), 'repairlocker', bevel=0.03))
+            objs.append(cube((0.04, 0.02, 0.5), (9.5, 1.27, 1.2), M_METAL(), 'lockerhandle'))
             t = join(objs, name)
         export(name)
 
@@ -360,10 +397,15 @@ def build_lab():
     sh.modifiers.new('sol','SOLIDIFY').thickness = 0.2
     setmat(sh, M_WHITE()); smooth(sh); objs.append(sh)
     for s in (-1,1):
-        cap = sphere(r, (s*L/2,0,r), M_WHITE(), 'cap', seg=40, ring=20)
-        bm = bmesh.new(); bm.from_mesh(cap.data)
-        rm = [v for v in bm.verts if v.co.x*s < 0]
-        bmesh.ops.delete(bm, geom=rm, context='VERTS'); bm.to_mesh(cap.data); bm.free(); objs.append(cap)
+        # flat bulkhead closes each end (a dome here read as a giant ball from inside)
+        objs.append(cyl(r+0.06, 0.25, (s*L/2,0,r), M_PANEL(), 'bulkhead', verts=40, rot=(0,math.pi/2,0)))
+        objs.append(torus(r-0.15, 0.09, (s*(L/2-0.14),0,r), M_DARK(), 'bulkring', rot=(0,math.pi/2,0), maj=40, mnr=6))
+        objs.append(cyl(0.55, 0.06, (s*(L/2-0.14),0,4.6), M_DARK(), 'porthole_rim', verts=24, rot=(0,math.pi/2,0)))
+        objs.append(cyl(0.45, 0.07, (s*(L/2-0.15),0,4.6), M_SCREEN(), 'porthole', verts=24, rot=(0,math.pi/2,0)))
+        objs.append(cube((0.1, 2.4, 1.3), (s*(L/2-0.17), 0, 2.35), M_DARK(), 'endpanel', bevel=0.03))
+        objs.append(cube((0.06, 2.0, 1.0), (s*(L/2-0.22), 0, 2.35), M_SCREEN(), 'endscreen'))
+        for y in (-1.9, 1.9): objs.append(cube((0.12, 0.5, 2.2), (s*(L/2-0.2), y, 1.75), M_WHITE(), 'endcab', bevel=0.03))
+        for z in (1.0, 5.6): objs.append(cyl(0.06, 4.0, (s*(L/2-0.22), 0, z), M_METAL(), 'pipe', verts=8, rot=(math.pi/2,0,0)))
     for k in range(9):
         x = -L/2 + k*L/8
         if abs(x) < 2.0: continue   # no rib across the doorway
@@ -381,6 +423,20 @@ def build_lab():
     for k in range(6):
         objs.append(cyl(0.08, 0.35, (-7+k*0.35, -1.9, 1.3), M_GLASS(), 'tube', verts=10))
     objs.append(cube((2.5, 0.5, 1.2), (-6.0, -1.9, 0.9), M_METAL(), 'rack'))
+    # central island with microscope, sample trays and stools
+    objs.append(cube((2.2, 0.9, 0.9), (4.0, -0.5, 1.1), M_PANEL(), 'island', bevel=0.04))
+    objs.append(cube((2.3, 1.0, 0.05), (4.0, -0.5, 1.57), M_DARK(), 'islandtop'))
+    objs.append(cyl(0.12, 0.08, (3.3, -0.5, 1.64), M_DARK(), 'mscbase', verts=12))
+    objs.append(cyl(0.04, 0.45, (3.3, -0.35, 1.85), M_METAL(), 'mscarm', verts=8))
+    objs.append(cyl(0.06, 0.25, (3.3, -0.5, 2.0), M_DARK(), 'msctube', verts=10, rot=(0.4,0,0)))
+    for k in range(5): objs.append(cube((0.22, 0.32, 0.05), (3.8+k*0.26, -0.6, 1.62), M_GLASS(), 'tray', bevel=0.01))
+    for x in (3.4, 4.6):
+        objs.append(cyl(0.22, 0.08, (x, -1.35, 1.0), M_BLUE(), 'labstool', verts=14))
+        objs.append(cyl(0.04, 0.4, (x, -1.35, 0.78), M_METAL(), 'labstoolleg', verts=8))
+    # sample freezer and core-sample rack (west end)
+    objs.append(cube((1.0, 0.8, 1.6), (-3.2, -1.8, 1.45), M_WHITE(), 'freezer', bevel=0.04))
+    objs.append(cube((0.6, 0.04, 0.25), (-3.2, -2.22, 1.9), M_SCREEN(), 'freezerscreen'))
+    for k in range(6): objs.append(cyl(0.06, 0.9, (5.2+k*0.22, -1.95, 1.2), M_ORANGE() if k%2 else M_DARK(), 'core', verts=8, rot=(0,math.pi/2,0)))
     lab = join(objs, 'lab')
     export('lab')
 
@@ -521,31 +577,49 @@ def build_dish():
     join([mast, base, box], 'mount')
     export('dish')
 
-def wheel(loc):
-    w = cyl(0.45, 0.32, loc, M_RUBBER(), 'tyre', verts=24, rot=(math.pi/2,0,0))
-    hub = cyl(0.22, 0.36, loc, M_METAL(), 'hub', verts=12, rot=(math.pi/2,0,0))
-    objs = [w, hub]
-    for k in range(6):
-        a = k*math.pi/3
-        objs.append(cube((0.08,0.34,0.6), (loc[0]+math.cos(a)*0.0, loc[1], loc[2]), M_METAL(), 'spoke', rot=(0,a,0)))
-    return objs
-
 def build_rover():
+    # Two-seat open rover in the spirit of the Apollo LRV: low frame, four mesh wheels with fenders,
+    # side-by-side seats, a console between them, a dish antenna and a camera mast.
+    # Wheels are separate nodes (wFL, wFR, wRL, wRR) with the origin at the hub so the game can spin and steer them.
     reset(); objs = []
-    objs.append(cube((3.6,2.0,0.4), (0,0,0.9), M_PANEL(), 'chassis', bevel=0.06))
-    objs.append(cube((1.2,1.6,0.7), (-0.6,0,1.45), M_BLUE(), 'seat', bevel=0.1))
-    objs.append(cube((0.1,1.6,0.9), (-1.15,0,1.75), M_BLUE(), 'seatback', bevel=0.04))
-    objs.append(cube((0.6,1.0,0.5), (1.3,0,1.35), M_DARK(), 'console', bevel=0.05))
-    objs.append(cube((0.4,0.02,0.25), (1.3,-0.51,1.45), M_SCREEN(), 'cscreen'))
-    objs.append(cube((1.8,1.8,0.04), (0.2,0,2.4), M_CELL(), 'roofpanel'))
-    for x in (-0.6,1.0):
-        for y in (-0.85,0.85): objs.append(cyl(0.03, 1.3, (x,y,1.75), M_METAL(), 'rollbar', verts=6))
-    objs.append(cyl(0.02, 1.4, (1.6,0.8,2.4), M_METAL(), 'ant', verts=6))
-    objs.append(sphere(0.12, (1.6,0.8,3.1), M_WHITE(), 'antball', seg=8, ring=6))
-    for x in (-1.3,0,1.3):
-        for y in (-1.15,1.15): objs += wheel((x,y,0.45))
-    for y in (-0.5,0.5): objs.append(cube((0.05,0.25,0.12), (1.82,y,0.95), M_LIGHT(), 'headlight'))
-    join(objs,'rover'); export('rover')
+    objs.append(cube((3.0,1.5,0.16), (0,0,0.62), M_METAL(), 'frame', bevel=0.03))
+    objs.append(cube((2.7,1.3,0.2), (0,0,0.78), M_PANEL(), 'deck', bevel=0.04))
+    objs.append(cube((0.7,1.5,0.35), (1.25,0,0.95), M_GOLD(), 'nosebox', bevel=0.05))
+    objs.append(cube((0.8,1.5,0.4), (-1.2,0,0.98), M_WHITE(), 'cargo', bevel=0.05))
+    for y in (-0.42,0.42):
+        objs.append(cube((0.55,0.55,0.08), (-0.1,y,1.08), M_BLUE(), 'seat', bevel=0.03))
+        objs.append(cube((0.08,0.55,0.55), (-0.38,y,1.36), M_BLUE(), 'seatback', bevel=0.03))
+        for x in (-0.3,0.12): objs.append(cyl(0.02, 0.3, (x,y,0.95), M_METAL(), 'seatleg', verts=6))
+        objs.append(cyl(0.02, 0.5, (0.05,y+(0.27 if y>0 else -0.27),1.18), M_METAL(), 'armrest', verts=6, rot=(0,math.pi/2,0)))
+    objs.append(cube((0.3,0.22,0.55), (0.55,0,1.15), M_DARK(), 'console', bevel=0.04))
+    objs.append(cube((0.03,0.18,0.14), (0.4,0,1.38), M_SCREEN(), 'cscreen'))
+    objs.append(cyl(0.03, 0.4, (0.35,-0.15,1.05), M_DARK(), 'stick', verts=8, rot=(0,-0.35,0)))
+    objs.append(sphere(0.05, (0.28,-0.15,1.24), M_RED(), 'knob', seg=8, ring=6))
+    objs.append(cyl(0.025, 1.1, (-1.35,-0.5,1.6), M_METAL(), 'mast', verts=6))
+    objs.append(cyl(0.38, 0.06, (-1.35,-0.5,2.2), M_WHITE(), 'dish', verts=20, r2=0.05, rot=(0,-0.5,0)))
+    objs.append(cyl(0.02, 0.7, (1.25,-0.45,1.45), M_METAL(), 'cammast', verts=6))
+    objs.append(cube((0.2,0.14,0.14), (1.3,-0.45,1.82), M_DARK(), 'camera', bevel=0.02))
+    objs.append(cyl(0.012, 0.9, (-1.4,0.6,1.6), M_METAL(), 'whip', verts=4))
+    for y in (-0.45,0.45): objs.append(cube((0.04,0.22,0.1), (1.61,y,0.95), M_LIGHT(), 'headlight'))
+    for x in (-1.05,1.05):
+        for y in (-0.88,0.88):
+            objs.append(cube((0.95,0.32,0.04), (x,y,1.12), M_ORANGE(), 'fender', bevel=0.02))
+            objs.append(cube((0.1,0.1,0.42), (x, y*0.85, 0.75), M_METAL(), 'strut'))
+    join(objs,'body')
+    for nm, x, y in (('wFL',1.05,0.88),('wFR',1.05,-0.88),('wRL',-1.05,0.88),('wRR',-1.05,-0.88)):
+        t = cyl(0.41, 0.24, (x,y,0.41), M_RUBBER(), nm, verts=28, rot=(math.pi/2,0,0))
+        parts = [t]
+        parts.append(cyl(0.18, 0.28, (x,y,0.41), M_METAL(), 'hub', verts=12, rot=(math.pi/2,0,0)))
+        for k in range(6):
+            a = k*math.pi/3
+            parts.append(cube((0.05,0.26,0.36), (x+math.cos(a)*0.2, y, 0.41+math.sin(a)*0.2), M_METAL(), 'spoke', rot=(0,-a,0)))
+        for k in range(14):
+            a = k*2*math.pi/14
+            parts.append(cube((0.07,0.25,0.03), (x+math.cos(a)*0.41, y, 0.41+math.sin(a)*0.41), M_GOLD(), 'chevron', rot=(0,-a+math.pi/2,0)))
+        w = join(parts, nm); w.name = nm
+        bpy.ops.object.select_all(action='DESELECT'); w.select_set(True); bpy.context.view_layer.objects.active = w
+        bpy.ops.object.transform_apply(location=False, rotation=True, scale=True)
+    export('rover')
 
 def build_lander():
     reset(); objs = []
@@ -619,55 +693,90 @@ def build_small():
     reset(); join([cyl(0.05,0.7,(0,0,0.35),M_METAL(),'p',verts=8), sphere(0.1,(0,0,0.75),M_LIGHT(),'l',seg=8,ring=6)],'pathlight'); export('pathlight')
 
 def build_people():
-    # Astronaut in an EVA suit and crew member in a blue flight suit. Each limb is its own node
-    # with its origin at the joint so the game can swing arms and legs.
+    # Astronaut in an EVA suit and crew member in a flight suit, with human proportions (about 1.8 m).
+    # Each limb is its own node with its origin at the joint (shoulders, hips) so the game can swing it.
+    def sc(o): return smooth(o)
+    def seg(p0, p1, r, m, name, r2=None):
+        a, b = Vector(p0), Vector(p1); d = b - a
+        o = cyl(r, d.length, tuple((a+b)/2), m, name, verts=14, r2=r2)
+        o.rotation_mode = 'QUATERNION'; o.rotation_quaternion = Vector((0,0,1)).rotation_difference(d.normalized())
+        bpy.ops.object.transform_apply(rotation=True); return sc(o)
+    def pivot(o, loc):
+        bpy.context.scene.cursor.location = loc
+        bpy.ops.object.select_all(action='DESELECT'); o.select_set(True); bpy.context.view_layer.objects.active = o
+        bpy.ops.object.origin_set(type='ORIGIN_CURSOR')
     def person(eva, name):
         reset()
+        k = 1.3 if eva else 1.0
         suit = M_WHITE() if eva else M_BLUE()
+        trim = M_PANEL() if eva else M_DARK()
         parts = {}
-        torso = sphere(0.36, (0,0,1.25), suit, 'torso', seg=16, ring=10, scale=(1,0.75,1.25))
+        SH, HIP = 0.27*(1.12 if eva else 1.0), 0.105
+        # torso: hips, tapered chest, shoulders, neck
+        t = [seg((0,0,0.98), (0,0,1.5), 0.17*k, suit, 'chest', r2=0.205*k)]
+        t[0].scale = (1, 0.68, 1); bpy.ops.object.transform_apply(scale=True)
+        t.append(sc(sphere(0.18*k, (0,0,0.98), suit, 'hips', seg=16, ring=10, scale=(1,0.7,0.55))))
+        t.append(sc(sphere(0.2*k, (0,0,1.5), suit, 'shoulders', seg=16, ring=10, scale=(1.25,0.62,0.4))))
+        for sx in (-1,1): t.append(sc(sphere(0.08*k, (sx*SH,0,1.48), suit, 'deltoid', seg=12, ring=8)))
         if eva:
-            pack = cube((0.6,0.3,0.75), (0,0.35,1.3), M_PANEL(), 'pack', bevel=0.06)
-            ring = cyl(0.2, 0.08, (0,0,1.72), M_METAL(), 'neck', verts=16)
-            torso = join([torso, pack, ring], 'torso')
-            badge = None
+            t.append(cube((0.5,0.26,0.62), (0,0.27,1.28), M_PANEL(), 'pack', bevel=0.06))
+            t.append(cube((0.3,0.06,0.18), (0,-0.17,1.3), M_DARK(), 'dcm', bevel=0.02))
+            t.append(cyl(0.16, 0.07, (0,0,1.62), M_METAL(), 'neckring', verts=20))
+            for sx in (-1,1): t.append(cube((0.08,0.02,0.05), (sx*0.1,-0.205,1.31), M_RED() if sx<0 else M_LIGHT(), 'led'))
         else:
-            belt = cyl(0.33, 0.08, (0,0,0.95), M_DARK(), 'belt', verts=16)
-            torso = join([torso, belt], 'torso')
-        parts['torso'] = torso
+            t.append(sc(cyl(0.05, 0.12, (0,0,1.6), M_SKIN(), 'neck', verts=12)))
+            t.append(torus(0.075, 0.022, (0,0,1.58), suit, 'collar', maj=16, mnr=6))
+            t.append(cyl(0.165, 0.06, (0,0,1.02), M_DARK(), 'belt', verts=20))
+            t.append(cube((0.07,0.02,0.05), (0,-0.12,1.02), M_METAL(), 'buckle'))
+            t[-2].scale = (1,0.72,1); 
+            t.append(cube((0.012,0.01,0.42), (0,-0.142,1.28), M_DARK(), 'zip'))
+            t.append(cube((0.09,0.012,0.09), (-0.09,-0.152,1.4), M_ORANGE(), 'patch', bevel=0.01))
+            t.append(cube((0.1,0.012,0.03), (0.09,-0.152,1.42), M_WHITE(), 'nametag'))
+            for sx in (-1,1): t.append(cube((0.09,0.02,0.11), (sx*0.17,-0.06,0.86), suit, 'pocket', rot=(0,0,sx*0.4)))
+        parts['torso'] = join(t, 'torso')
+        # head
         if eva:
-            helm = sphere(0.3, (0,0,1.95), M_WHITE(), 'helm', seg=20, ring=12)
-            visor = sphere(0.255, (0,-0.08,1.95), M_VISOR(), 'visor', seg=20, ring=12, scale=(1,0.9,0.85))
+            h = [sc(sphere(0.21, (0,0,1.83), M_WHITE(), 'helm', seg=24, ring=14, scale=(1,1,1.05)))]
+            visor = sc(sphere(0.19, (0,-0.035,1.83), M_VISOR(), 'visor', seg=24, ring=14, scale=(1,1,0.95)))
             bm = bmesh.new(); bm.from_mesh(visor.data)
-            rm = [v for v in bm.verts if v.co.y > -0.05 or v.co.z < -0.18]
+            rm = [v for v in bm.verts if v.co.y > -0.06 or v.co.z < -0.15 or v.co.z > 0.14]
             bmesh.ops.delete(bm, geom=rm, context='VERTS'); bm.to_mesh(visor.data); bm.free()
-            head = join([helm, visor], 'head')
+            h.append(visor)
+            h.append(cube((0.06,0.06,0.05), (0.19,-0.05,1.95), M_LIGHT(), 'helmlamp', bevel=0.01))
+            head = join(h, 'head')
         else:
-            face = sphere(0.18, (0,0,1.88), M_SKIN(), 'face', seg=16, ring=10, scale=(1,1,1.15))
-            hair = sphere(0.19, (0,0.03,1.95), M_HAIR(), 'hair', seg=16, ring=10, scale=(1,1,0.9))
+            h = [sc(sphere(0.115, (0,0,1.76), M_SKIN(), 'face', seg=20, ring=14, scale=(0.92,1.0,1.18)))]
+            h.append(sc(sphere(0.05, (0,-0.035,1.665), M_SKIN(), 'chin', seg=12, ring=8, scale=(1.2,1,0.8))))
+            for sx in (-1,1):
+                h.append(sphere(0.017, (sx*0.042,-0.1,1.785), M_RUBBER(), 'eye', seg=10, ring=6))
+                h.append(cube((0.04,0.012,0.009), (sx*0.044,-0.104,1.815), M_HAIR(), 'brow', rot=(0,sx*0.12,0)))
+                h.append(sc(sphere(0.026, (sx*0.108,0.0,1.765), M_SKIN(), 'ear', seg=10, ring=6, scale=(0.5,1,1.3))))
+            h.append(sc(sphere(0.02, (0,-0.118,1.75), M_SKIN(), 'nose', seg=10, ring=6, scale=(0.8,1,1.3))))
+            h.append(cube((0.04,0.01,0.008), (0,-0.106,1.705), mat('lips', C(170,90,80), 0.0, 0.6), 'mouth'))
+            hair = sc(sphere(0.124, (0,0.012,1.79), M_HAIR(), 'hair', seg=20, ring=14, scale=(0.97,1.02,1.12)))
             bm = bmesh.new(); bm.from_mesh(hair.data)
-            rm = [v for v in bm.verts if v.co.z < -0.02 and v.co.y < 0.05]
+            rm = [v for v in bm.verts if (v.co.y < -0.02 and v.co.z < 0.07) or (v.co.z < -0.04 and v.co.y < 0.06)]
             bmesh.ops.delete(bm, geom=rm, context='VERTS'); bm.to_mesh(hair.data); bm.free()
-            head = join([face, hair], 'head')
-        head.name = 'head'; parts['head'] = head
+            h.append(hair)
+            head = join(h, 'head')
+        pivot(head, (0,0,1.62)); head.name = 'head'; parts['head'] = head
         for side, sx in (('L',-1),('R',1)):
-            arm = sphere(0.1, (sx*0.42, 0, 1.2), suit, 'arm'+side, seg=10, ring=8, scale=(1,1,3.3))
-            glove = sphere(0.09, (sx*0.42, 0, 0.86), M_PANEL() if eva else M_SKIN(), 'glove', seg=10, ring=8)
-            a = join([arm, glove], 'arm'+side)
-            bpy.context.scene.cursor.location = (sx*0.42, 0, 1.52)
-            bpy.ops.object.select_all(action='DESELECT'); a.select_set(True); bpy.context.view_layer.objects.active = a
-            bpy.ops.object.origin_set(type='ORIGIN_CURSOR')
-            parts['arm'+side] = a
-            leg = sphere(0.13, (sx*0.15, 0, 0.5), suit, 'leg'+side, seg=10, ring=8, scale=(1,1,3.6))
-            boot = cube((0.24,0.36,0.16), (sx*0.15,-0.06,0.08), M_PANEL() if eva else M_DARK(), 'boot', bevel=0.05)
-            l = join([leg, boot], 'leg'+side)
-            bpy.context.scene.cursor.location = (sx*0.15, 0, 0.95)
-            bpy.ops.object.select_all(action='DESELECT'); l.select_set(True); bpy.context.view_layer.objects.active = l
-            bpy.ops.object.origin_set(type='ORIGIN_CURSOR')
-            parts['leg'+side] = l
+            x = sx*(SH+0.03)
+            a = [seg((x,0,1.48), (x+sx*0.02,0,1.17), 0.06*k, suit, 'upper', r2=0.055*k),
+                 sc(sphere(0.055*k, (x+sx*0.02,0,1.17), suit, 'elbow', seg=10, ring=8)),
+                 seg((x+sx*0.02,0,1.17), (x+sx*0.02,-0.02,0.9), 0.052*k, suit, 'fore', r2=0.045*k),
+                 cyl(0.05*k, 0.04, (x+sx*0.02,-0.02,0.89), trim, 'cuff', verts=14),
+                 sc(sphere(0.05*k, (x+sx*0.02,-0.025,0.83), M_PANEL() if eva else M_SKIN(), 'hand', seg=10, ring=8, scale=(0.8,0.7,1.3)))]
+            arm = join(a, 'arm'+side); pivot(arm, (x,0,1.48)); arm.name = 'arm'+side; parts['arm'+side] = arm
+            lx = sx*HIP*(1.15 if eva else 1.0)
+            l = [seg((lx,0,0.97), (lx,0,0.53), 0.085*k, suit, 'thigh', r2=0.07*k),
+                 sc(sphere(0.07*k, (lx,0,0.53), suit, 'knee', seg=10, ring=8)),
+                 seg((lx,0,0.53), (lx,0.01,0.12), 0.066*k, suit, 'shin', r2=0.055*k),
+                 cube((0.12*k,0.27,0.11*k), (lx,-0.045,0.055*k), trim, 'shoe', bevel=0.035)]
+            if eva: l.append(cyl(0.08*k, 0.05, (lx,0,0.2), M_METAL(), 'bootring', verts=14))
+            leg = join(l, 'leg'+side); pivot(leg, (lx,0,0.97)); leg.name = 'leg'+side; parts['leg'+side] = leg
         bpy.context.scene.cursor.location = (0,0,0)
-        # face forward along glTF +Z  (Blender -Y): visor already on -Y
-        root = empty_parent(name, list(parts.values()))
+        empty_parent(name, list(parts.values()))
         export(name)
     person(True, 'astronaut')
     person(False, 'crew')
