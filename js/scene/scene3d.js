@@ -470,11 +470,13 @@ const G3 = (()=>{
     { const shelfM = M({color:0xdfe3ea, roughness:0.5, metalness:0.3}), soilM = M({color:0x4a3324, roughness:1}), ledM = M({color:0xff9ae6, emissive:0xff5ad2, emissiveIntensity:2.2});
       for(const deg of [50, 90, 130, 180, 230, 270, 310]){ const an = deg*Math.PI/180, r = 7.25, rg = new T.Group();
         rg.position.set(GH.x + Math.cos(an)*r, 0.27, GH.z + Math.sin(an)*r); rg.rotation.y = -an - Math.PI/2;
-        for(const sx of [-0.85, 0.85]){ const post = mesh(new T.BoxGeometry(0.06,2.3,0.06), shelfM); post.position.set(sx,1.15,0); rg.add(post); }
+        for(const sx of [-0.88, 0.88]) for(const sz of [-0.22, 0.22]){ const post = mesh(new T.BoxGeometry(0.06,2.6,0.06), shelfM); post.position.set(sx,1.3,sz); rg.add(post); }   // four corner posts the trays and lights hang on
+        const cap = mesh(new T.BoxGeometry(1.82,0.05,0.5), shelfM); cap.position.set(0,2.6,0); rg.add(cap);
         for(let lv=0; lv<3; lv++){ const y = 0.45 + lv*0.7;
           const tray = mesh(new T.BoxGeometry(1.8,0.12,0.5), shelfM); tray.position.set(0,y,0); rg.add(tray);
           const soil = mesh(new T.BoxGeometry(1.7,0.04,0.42), soilM, false); soil.position.set(0,y+0.07,0); rg.add(soil);
-          const led = mesh(new T.BoxGeometry(1.6,0.03,0.08), ledM, false, false); led.position.set(0,y+0.6,0); rg.add(led);
+          const lf = mesh(new T.BoxGeometry(1.76,0.04,0.44), shelfM, false); lf.position.set(0,y+0.62,0); rg.add(lf);   // light panel spans the posts
+          const led = mesh(new T.BoxGeometry(1.6,0.015,0.3), ledM, false, false); led.position.set(0,y+0.595,0); rg.add(led);
           for(let i=0;i<5;i++){ const pl2 = inst(lv===1 ? 'tomato' : 'lettuce'); pl2.position.set(-0.68+i*0.34, y+0.08, 0); pl2.scale.setScalar(lv===1 ? 0.55 : 0.85); pl2.rotation.y = i*1.3+lv; rg.add(pl2); } }
         group.add(rg); w.ghRacks.push(rg); } }
     w.ghLamp = lamp(GH.x,5.5,GH.z,0xff8fe0,1.0,20); w.ghLamp2 = lamp(GH.x,3,GH.z,0xfff4e0,0.5,14);
