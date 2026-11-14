@@ -531,3 +531,19 @@ body:has(.modal.start) #app,body:has(.modal.start) .hud,body:has(.modal.start) #
 .wx-real{margin-top:14px;padding:12px 14px;border-radius:12px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08)}
 .wx-real p{margin:6px 0}.wx-real small{color:var(--muted,#9aa6c0)}
 @media (max-height:500px){.hud-wx{padding:3px 6px}.hud-wx i{min-width:24px;height:24px}.hud-wx span{display:none}}
+
+/* ---------- fixed one-screen menu (v17): no page scroll, nothing slides when switching sections ---------- */
+.modal.start .st3 *, .modal.start .st3{animation:none!important}
+.modal.start .st3 .pcard:hover,.modal.start .st3 .pcard:focus-visible{transform:none}
+@media (min-width:881px) and (min-height:540px){
+  .modal.start{overflow:hidden}
+  .modal.start .dlg{height:100dvh;min-height:0;overflow:hidden;display:flex;flex-direction:column;padding:clamp(14px,2.6vh,34px) clamp(16px,4.5vw,64px)}
+  .modal.start .st3{flex:1;min-height:0;display:flex;flex-direction:column;justify-content:flex-start;gap:clamp(10px,3vh,40px);min-height:0}
+  .modal.start .st3 .st-main{flex:1;min-height:0;align-items:center}
+  .modal.start .st3 .st-hero{gap:clamp(10px,2.2vh,22px);min-height:0}
+  .modal.start .st3 .st-hero h1{font-size:min(4.4vw,8vh,60px)}
+  .modal.start .st3 .nav{margin-top:clamp(4px,1vh,10px);gap:clamp(2px,0.6vh,6px)}
+  .modal.start .st3 .nv{padding:clamp(8px,1.6vh,14px) 18px;font-size:clamp(15px,2.2vh,18px)}
+  .modal.start .st3 .st-panel{height:min(640px,calc(100dvh - 2*clamp(14px,2.6vh,34px) - 110px));min-height:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin}
+  .modal.start .st3 .st-panel .pcard img{height:clamp(120px,calc(100dvh - 520px),280px)}
+}
