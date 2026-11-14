@@ -391,38 +391,81 @@ def build_hab():
         objs.append(cube((0.9, 0.05, 0.05), (px+math.cos(a)*0.45, py+math.sin(a)*0.45, 1.35), M_METAL(), 'rail', rot=(0,0,a)))
     objs.append(cube((0.25, 0.75, 0.35), (ix, iy, 1.5), M_DARK(), 'console', rot=(0,0,a), bevel=0.03))
     objs.append(cube((0.02, 0.5, 0.22), (ix-math.cos(a)*0.13, iy-math.sin(a)*0.13, 1.52), M_SCREEN(), 'tscreen', rot=(0,0,a)))
-    x, y, a = rad(8.4, 161)
-    objs.append(cube((1.2, 0.3, 0.12), (x, y, 0.36), M_DARK(), 'bikefoot', rot=(0,0,a), bevel=0.03))
-    objs.append(cyl(0.32, 0.1, (x-math.cos(a)*0.35, y-math.sin(a)*0.35, 0.7), M_ORANGE(), 'flywheel', verts=20, rot=(math.pi/2,0,a)))
-    objs.append(cyl(0.04, 0.75, (x+math.cos(a)*0.3, y+math.sin(a)*0.3, 0.75), M_METAL(), 'seatpost', verts=8))
-    objs.append(cube((0.35, 0.28, 0.08), (x+math.cos(a)*0.3, y+math.sin(a)*0.3, 1.15), M_BLUE(), 'bikeseat', rot=(0,0,a), bevel=0.03))
-    objs.append(cyl(0.04, 0.85, (x-math.cos(a)*0.45, y-math.sin(a)*0.45, 0.8), M_METAL(), 'stem', verts=8))
-    objs.append(cube((0.06, 0.5, 0.05), (x-math.cos(a)*0.45, y-math.sin(a)*0.45, 1.22), M_DARK(), 'bars', rot=(0,0,a)))
-    x, y, a = rad(10.05, 156)
-    objs.append(cube((0.35, 1.2, 0.9), (x, y, 0.75), M_DARK(), 'dbrack', rot=(0,0,a), bevel=0.03))
-    for k in range(4):
-        q = -0.42 + k*0.28; px, py = x - math.sin(a)*q - math.cos(a)*0.05, y + math.cos(a)*q - math.sin(a)*0.05
-        for h in (0.85, 1.25): objs.append(cyl(0.07+0.01*k, 0.3, (px, py, h), M_METAL(), 'dumbbell', verts=10, rot=(0,math.pi/2,a)))
-    x, y, a = rad(7.0, 157)
-    objs.append(cube((1.6, 0.7, 0.02), (x, y, 0.31), mat('mat_green', C(90,170,120), 0.0, 0.9), 'yogamat', rot=(0,0,a)))
+    # local helper: point at (along, across) from (x, y) facing angle a
+    def off(x, y, a, f, s): return x + math.cos(a)*f - math.sin(a)*s, y + math.sin(a)*f + math.cos(a)*s
+    M_MAT = mat('gym_floor', C(46,50,58), 0.0, 0.95)
+    # dark rubber floor for the whole gym corner (no more green mat)
+    x, y, a = rad(8.3, 160)
+    objs.append(cube((3.4, 3.6, 0.02), (x, y, 0.31), M_MAT, 'gymfloor', rot=(0,0,a)))
+    # exercise bike (like CEVIS on the ISS): frame, shrouded flywheel, cranks, seat, bars, small screen
+    x, y, a = rad(8.4, 160)
+    objs.append(cube((1.1, 0.5, 0.08), (x, y, 0.36), M_DARK(), 'bikefoot', rot=(0,0,a), bevel=0.02))
+    fx, fy = off(x, y, a, -0.32, 0)
+    objs.append(cyl(0.24, 0.16, (fx, fy, 0.62), M_DARK(), 'flyshroud', verts=24, rot=(math.pi/2,0,a)))
+    objs.append(cyl(0.12, 0.17, (fx, fy, 0.62), M_METAL(), 'flyhub', verts=16, rot=(math.pi/2,0,a)))
+    for side in (-1, 1):
+        cx, cy = off(x, y, a, -0.05, side*0.14)
+        objs.append(cube((0.05, 0.03, 0.34), (cx, cy, 0.62), M_METAL(), 'crank', rot=(0,0.6*side,a)))
+        px, py = off(x, y, a, -0.05 + 0.09*side, side*0.2)
+        objs.append(cube((0.16, 0.1, 0.03), (px, py, 0.62 + 0.15*side), M_RUBBER(), 'pedal', rot=(0,0,a)))
+    sx, sy = off(x, y, a, 0.28, 0)
+    objs.append(cyl(0.035, 0.6, (sx, sy, 0.68), M_METAL(), 'seatpost', verts=8, rot=(0,-0.25,a)))
+    objs.append(cube((0.3, 0.22, 0.07), (sx+math.cos(a)*0.06, sy+math.sin(a)*0.06, 1.0), M_RUBBER(), 'bikeseat', rot=(0,0,a), bevel=0.03))
+    hx, hy = off(x, y, a, -0.42, 0)
+    objs.append(cyl(0.035, 0.7, (hx, hy, 0.8), M_METAL(), 'stem', verts=8, rot=(0,0.2,a)))
+    objs.append(cube((0.05, 0.55, 0.04), (hx-math.cos(a)*0.06, hy-math.sin(a)*0.06, 1.15), M_RUBBER(), 'bars', rot=(0,0,a)))
+    objs.append(cube((0.03, 0.22, 0.15), (hx-math.cos(a)*0.02, hy-math.sin(a)*0.02, 1.25), M_SCREEN(), 'bikescreen', rot=(0,0.35,a)))
+    # resistance machine (like ARED on the ISS): platform, two vacuum cylinders, lifting bar on arms
+    x, y, a = rad(9.15, 168)
+    objs.append(cube((0.8, 1.05, 0.1), (x, y, 0.36), M_DARK(), 'aredbase', rot=(0,0,a), bevel=0.02))
+    for side in (-1, 1):
+        cx, cy = off(x, y, a, 0.32, side*0.42)
+        objs.append(cyl(0.11, 1.2, (cx, cy, 0.95), M_WHITE(), 'canister', verts=16))
+        objs.append(cyl(0.12, 0.06, (cx, cy, 1.56), M_METAL(), 'canistercap', verts=16))
+        ax, ay = off(x, y, a, 0.05, side*0.42)
+        objs.append(cube((0.6, 0.06, 0.06), (ax, ay, 1.45), M_METAL(), 'aredarm', rot=(0,0.35,a)))
+    bx, by = off(x, y, a, -0.22, 0)
+    objs.append(cyl(0.025, 1.15, (bx, by, 1.36), M_METAL(), 'aredbar', verts=8, rot=(math.pi/2,0,a)))
+    for side in (-1, 1):
+        gx, gy = off(x, y, a, -0.22, side*0.36)
+        objs.append(cyl(0.035, 0.16, (gx, gy, 1.36), M_RUBBER(), 'aredgrip', verts=10, rot=(math.pi/2,0,a)))
+    # dumbbell rack: two shelves with dumbbells that have heads
+    x, y, a = rad(10.0, 156)
+    objs.append(cube((0.4, 1.1, 0.06), (x, y, 0.75), M_DARK(), 'rackshelf', rot=(0,0,a)))
+    objs.append(cube((0.4, 1.1, 0.06), (x, y, 1.15), M_DARK(), 'rackshelf', rot=(0,0,a)))
+    for q in (-0.52, 0.52):
+        lx, ly = off(x, y, a, 0, q)
+        objs.append(cube((0.4, 0.05, 1.0), (lx, ly, 0.82), M_METAL(), 'rackside', rot=(0,0,a)))
+    for h in (0.86, 1.26):
+        for k in range(3):
+            q = -0.32 + k*0.32; dx, dy = off(x, y, a, -0.02, q)
+            objs.append(cyl(0.02, 0.24, (dx, dy, h), M_METAL(), 'dbhandle', verts=8, rot=(0,math.pi/2,a)))
+            for e in (-0.12, 0.12):
+                ex, ey = off(dx, dy, a, e, 0)
+                objs.append(cyl(0.055 + 0.01*k, 0.05, (ex, ey, h), M_RUBBER(), 'dbhead', verts=12, rot=(0,math.pi/2,a)))
+    # wall screen with the workout plan, above the rack
+    x, y, a = rad(10.28, 160)
+    objs.append(cube((0.04, 1.3, 0.7), (x, y, 2.05), M_DARK(), 'gymscreenframe', rot=(0,0,a)))
+    objs.append(cube((0.02, 1.2, 0.6), (x-math.cos(a)*0.025, y-math.sin(a)*0.025, 2.05), M_SCREEN(), 'gymscreen', rot=(0,0,a)))
     # galley extras: fridge and wall shelf
     x, y, rr = tang(9.3, -57); objs.append(cube((0.9, 0.75, 2.0), (x, y, 1.3), M_WHITE(), 'fridge', rot=(0,0,rr), bevel=0.05))
     objs.append(cube((0.05, 0.05, 0.9), (x+math.cos(rr)*0.3-math.cos(rr-math.pi/2)*0.4, y+math.sin(rr)*0.3-math.sin(rr-math.pi/2)*0.4, 1.4), M_METAL(), 'handle', rot=(0,0,rr)))
     # coloured accent panel on the back wall of every room (Blender angle = -game angle)
-    for gdeg, col in ((41,(255,211,90)),(103,(143,184,255)),(170,(141,220,106)),(-42,(255,143,163)),(-138,(127,211,255))):
+    for gdeg, col in ((41,(255,211,90)),(103,(143,184,255)),(-42,(255,143,163)),(-138,(127,211,255))):  # no green strip in the gym
         a = -math.radians(gdeg); r = 10.25
         objs.append(cube((0.06, 2.6, 0.5), (math.cos(a)*r, math.sin(a)*r, 2.2), mat('accent%d' % gdeg, C(*col), 0.1, 0.5), 'accent', rot=(0,0,a)))
-    # lockers along west wall
-    for k in range(5):
-        a = math.pi + 0.45 + k*0.17
-        objs.append(cube((0.7, 0.6, 2.2), (math.cos(a)*9.7, math.sin(a)*9.7, 1.1), M_PANEL() if k%2 else M_ORANGE(), 'locker', rot=(0,0,a), bevel=0.03))
-    # partition walls: radial walls split the dome into rooms that open onto the central hall
-    # (angles in game coordinates; Blender y = -game z, so Blender angle = -game angle)
-    for ga in (20, 62, 145, -22, -62, -112, -165):
-        a = -math.radians(ga); r0, r1 = 6.0, 10.5; rm = (r0+r1)/2
-        objs.append(cube((r1-r0, 0.16, 2.7), (math.cos(a)*rm, math.sin(a)*rm, 1.35+0.3), M_PANEL(), 'partition', rot=(0,0,a), bevel=0.03))
-        objs.append(cube((0.3, 0.3, 2.9), (math.cos(a)*r0, math.sin(a)*r0, 1.45+0.3), M_DARK(), 'pillar', rot=(0,0,a)))
-        objs.append(cube((r1-r0, 0.2, 0.08), (math.cos(a)*rm, math.sin(a)*rm, 3.0+0.3), M_LIGHT(), 'walllight', rot=(0,0,a)))
+    # wardrobes: a row of tall cabinets on the wall behind the bunks, one pair per bunk, door colour = blanket colour
+    for k, gd in enumerate((76, 94, 112, 130)):
+        col = [(230,120,90),(110,180,120),(240,200,90),(160,120,210)][k]
+        for q in (-0.5, 0.5):
+            a = math.radians(-(gd + q*7.0)); rr = a + math.pi/2; r = 9.55
+            x, y = math.cos(a)*r, math.sin(a)*r
+            objs.append(cube((0.95, 0.6, 2.75), (x, y, 0.3+1.375), M_WHITE(), 'wardrobe', rot=(0,0,rr), bevel=0.03))
+            fx, fy = math.cos(a)*(r-0.31), math.sin(a)*(r-0.31)
+            objs.append(cube((0.86, 0.03, 0.9), (fx, fy, 2.45), mat('wdoor%d' % k, C(*col), 0.1, 0.5), 'wdoor', rot=(0,0,rr), bevel=0.01))
+            objs.append(cube((0.04, 0.04, 0.5), (fx+math.cos(rr)*0.32, fy+math.sin(rr)*0.32, 1.5), M_METAL(), 'whandle', rot=(0,0,rr)))
+            objs.append(cube((0.88, 0.02, 0.02), (fx, fy, 1.9), M_DARK(), 'wseam', rot=(0,0,rr)))
+    # (the radial partition walls by the doorways were removed: they read as stray lines beside every passage)
     # hall ring marked on the floor and a ring of ceiling lights
     objs.append(torus(6.0, 0.05, (0,0,0.31), M_YELLOW(), 'floorring', maj=96, mnr=4))
     for k in range(16):
@@ -556,8 +599,13 @@ def build_greenhouse():
     md = gring.modifiers.new('hole','BOOLEAN'); md.object = ghole; md.operation = 'DIFFERENCE'
     bpy.context.view_layer.objects.active = gring; bpy.ops.object.modifier_apply(modifier=md.name)
     bpy.data.objects.remove(ghole)
+    # open the base ring at the door so nothing blocks the passage
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(R, 0, 0.3)); cutter = active(); cutter.scale = (2.0, 3.4, 2.0); bpy.ops.object.transform_apply(scale=True)
+    md = gring.modifiers.new('cut','BOOLEAN'); md.object = cutter; md.operation = 'DIFFERENCE'
+    bpy.context.view_layer.objects.active = gring; bpy.ops.object.modifier_apply(modifier=md.name); bpy.data.objects.remove(cutter)
     objs.append(gring)
     objs.append(cyl(R-0.1, 0.25, (0,0,0.12), M_FLOOR(), 'floor', verts=60))
+    objs.append(cube((1.4, 3.2, 0.25), (R-0.2, 0, 0.12), M_FLOOR(), 'doorfloor'))
     # walkway
     objs.append(cube((R*2-1, 1.6, 0.05), (0,0,0.27), M_DARK(), 'walk'))
     gh = join(objs, 'greenhouse')
@@ -645,30 +693,63 @@ def build_reactor():
     join(objs,'reactor'); export('reactor')
 
 def build_dish():
+    # A small deep-space style antenna: pad, tapered pedestal with ladder, azimuth bearing and yoke,
+    # a ribbed parabolic reflector with a quadripod, subreflector and feed horn, a counterweight and an equipment shelter.
     reset()
-    # parabolic reflector: spin a profile
-    bm = bmesh.new()
-    prof = []
-    for i in range(10):
-        r = 2.4*i/9; prof.append(bm.verts.new((r, 0, 0.18*r*r)))
-    for i in range(9): bm.edges.new((prof[i], prof[i+1]))
-    bmesh.ops.spin(bm, geom=bm.verts[:]+bm.edges[:], cent=(0,0,0), axis=(0,0,1), steps=32, angle=math.pi*2)
+    bm = bmesh.new(); prof = []
+    for i in range(14):
+        r = 2.9*i/13; prof.append(bm.verts.new((r, 0, 0.13*r*r)))
+    for i in range(13): bm.edges.new((prof[i], prof[i+1]))
+    bmesh.ops.spin(bm, geom=bm.verts[:]+bm.edges[:], cent=(0,0,0), axis=(0,0,1), steps=48, angle=math.pi*2)
     bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=0.001)
     me = bpy.data.meshes.new('refl'); bm.to_mesh(me); bm.free()
     refl = bpy.data.objects.new('refl', me); bpy.context.collection.objects.link(refl)
     refl.modifiers.new('sol','SOLIDIFY').thickness = 0.05
     setmat(refl, M_WHITE()); smooth(refl)
     objs = [refl]
-    for k in range(3):
-        a = k*2*math.pi/3
-        objs.append(cyl(0.025, 1.9, (math.cos(a)*0.9, math.sin(a)*0.9, 1.4), M_METAL(), 'strut', verts=6, rot=(math.sin(a)*0.45, -math.cos(a)*0.45, 0)))
-    objs.append(cyl(0.12, 0.4, (0,0,2.2), M_DARK(), 'feed', verts=12))
+    zr = 0.13*2.9*2.9
+    objs.append(torus(2.9, 0.05, (0,0,zr), M_METAL(), 'rim', maj=48, mnr=6))
+    # back structure: radial ribs and a hub
+    for k in range(12):
+        a = k/12*math.pi*2
+        objs.append(cube((2.7, 0.05, 0.16), (math.cos(a)*1.45, math.sin(a)*1.45, 0.13*1.45*1.45-0.12), M_METAL(), 'rib', rot=(0, -math.atan(0.26*1.45), a)))
+    objs.append(cyl(0.55, 0.5, (0,0,-0.2), M_PANEL(), 'hub', verts=16))
+    # quadripod to the subreflector, feed horn in the middle
+    fz = 2.6
+    for k in range(4):
+        a = k*math.pi/2 + math.pi/4; bx, by = math.cos(a)*2.3, math.sin(a)*2.3; bz = 0.13*2.3*2.3
+        L = math.sqrt(bx*bx + by*by + (fz-bz)**2)
+        mx, my, mz = bx/2, by/2, (bz+fz)/2
+        tilt = math.acos((fz-bz)/L)
+        objs.append(cyl(0.035, L, (mx, my, mz), M_METAL(), 'strut', verts=6, rot=(0, -tilt, a)))
+    objs.append(cyl(0.38, 0.12, (0,0,fz), M_WHITE(), 'subrefl', verts=24, r2=0.15))
+    objs.append(cyl(0.18, 0.7, (0,0,0.45), M_PANEL(), 'feedhorn', verts=16, r2=0.32))
+    objs.append(sphere(0.07, (0,0,fz+0.12), M_RED(), 'beacon', seg=10, ring=6))
+    # counterweight behind the dish
+    objs.append(cube((1.1, 0.7, 0.6), (0, 0, -0.9), M_DARK(), 'counterweight', bevel=0.04))
     head = join(objs, 'head')
-    head.location = (0,0,5.8); head.rotation_euler = (0.6, 0, 0)
-    mast = cyl(0.18, 5.6, (0,0,2.8), M_METAL(), 'mast', verts=12)
-    base = cube((1.6,1.6,0.4), (0,0,0.2), M_DARK(), 'base', bevel=0.05)
-    box = cube((0.7,0.5,0.9), (0.6,0,0.85), M_PANEL(), 'electronics', bevel=0.04)
-    join([mast, base, box], 'mount')
+    head.location = (0,0,5.6); head.rotation_euler = (0.6, 0, 0)
+    # static mount
+    m = []
+    m.append(cube((3.0,3.0,0.3), (0,0,0.15), M_DARK(), 'pad', bevel=0.05))
+    for sx in (-1,1):
+        for sy in (-1,1): m.append(cyl(0.07, 0.12, (sx*1.25, sy*1.25, 0.36), M_METAL(), 'bolt', verts=6))
+    m.append(cyl(0.6, 4.4, (0,0,2.5), M_PANEL(), 'pedestal', verts=8, r2=0.38))
+    m.append(cube((0.5, 0.05, 0.05), (0, 0, 0.9), M_YELLOW(), 'stripe'))
+    for q in (-0.2, 0.2): m.append(cyl(0.02, 4.0, (q, -0.62, 2.3), M_METAL(), 'ladder', verts=6))
+    for h in range(10): m.append(cyl(0.015, 0.42, (0, -0.62, 0.6+h*0.4), M_METAL(), 'rung', verts=6, rot=(0, math.pi/2, 0)))
+    m.append(cyl(0.08, 4.2, (0.5, 0.25, 2.3), M_DARK(), 'conduit', verts=8))
+    m.append(cyl(0.7, 0.3, (0,0,4.8), M_METAL(), 'azbearing', verts=24))
+    for sx in (-1,1): m.append(cube((0.2, 0.5, 1.0), (sx*0.9, 0, 5.3), M_PANEL(), 'yoke', bevel=0.03))
+    m.append(cube((2.0, 0.6, 0.2), (0, 0, 4.95), M_PANEL(), 'yokebase', bevel=0.03))
+    m.append(cyl(0.12, 2.0, (0,0,5.6), M_METAL(), 'elaxle', verts=12, rot=(0, math.pi/2, 0)))
+    # equipment shelter
+    m.append(cube((1.6, 1.1, 1.3), (2.3, 0.4, 0.95), M_WHITE(), 'shelter', bevel=0.05))
+    m.append(cube((0.6, 0.03, 1.0), (2.1, -0.16, 0.85), M_PANEL(), 'shdoor'))
+    m.append(cube((0.3, 0.03, 0.15), (2.7, -0.16, 1.3), M_SCREEN(), 'shscreen'))
+    for k in range(3): m.append(sphere(0.04, (2.6+k*0.1, -0.17, 1.1), M_RED() if k==0 else mat('green_light', C(90,255,140),0,0.3,emit=C(60,255,120),estr=4), 'shled', seg=8, ring=4))
+    m.append(cube((0.04, 1.0, 0.9), (3.12, 0.4, 0.95), M_DARK(), 'radiator'))
+    join(m, 'mount')
     export('dish')
 
 def build_rover():

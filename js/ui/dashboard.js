@@ -60,17 +60,34 @@ function engineerTip(s, pv){
 }
 
 function histHTML(s){
-  const H = [{day:0, o2:PLANETS[s.pid].o2, battery:60, batCap:BAT_START_CAP, dose:0}, ...s.history];
-  const P = PLANETS[s.pid], W = 400, Ht = 100, x = d => 8 + d/P.days*(W-16), y = v => Ht-6 - Math.max(0,Math.min(1,v))*(Ht-12);
-  const line = (fn, col) => `<polyline fill="none" stroke="${col}" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke" points="${H.map(h=>`${x(h.day).toFixed(1)},${y(fn(h)).toFixed(1)}`).join(' ')}"/>`;
-  const last = H[H.length-1];
-  const marks = s.sched.flares.filter(d=>d<s.day).map(d=>`<line x1="${x(d)}" x2="${x(d)}" y1="4" y2="${Ht-4}" stroke="var(--rad)" stroke-dasharray="3 3" opacity=".7" vector-effect="non-scaling-stroke"/>`).join('');
-  const darks = s.sched.dark.map((st,i)=>{ const e = Math.min(st+darkLenAt(s,i)-1, s.day-1); return e>=st ? `<rect x="${x(st-0.5)}" y="4" width="${x(e+0.5)-x(st-0.5)}" height="${Ht-8}" fill="var(--muted)" opacity=".12"/>` : ''; }).join('');
-  const grid = [0.25,0.5,0.75].map(v=>`<line x1="8" x2="${W-8}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)" stroke-width="1" vector-effect="non-scaling-stroke"/>`).join('');
-  const series = [[h=>h.o2/O2_CAP,'var(--o2)'],[h=>h.battery/(h.batCap||s.batCap),'var(--power)'],[h=>h.dose/DOSE_LIMIT,'var(--rad)']];
-  return `<div class="card hist" id="c-hist"><h2>${L('Журнал миссии','Mission log')} <span class="hint">${L('в % от максимума','% of maximum')}</span></h2>
-    <svg viewBox="0 0 ${W} ${Ht}" preserveAspectRatio="none" role="img" aria-label="${L('График запасов по дням','Supplies by day')}">${grid}${darks}${marks}${series.map(([f,c])=>line(f,c)).join('')}${series.map(([f,c])=>`<circle cx="${x(last.day)}" cy="${y(f(last))}" r="3.5" fill="${c}"/>`).join('')}</svg>
-    <div class="lg"><span><i style="background:var(--o2)"></i>${L('Кислород','Oxygen')}</span><span><i style="background:var(--power)"></i>${L('Батарея','Battery')}</span><span><i style="background:var(--rad)"></i>${L('Доза от лимита','Dose vs limit')}</span><span><i style="background:var(--rad);opacity:.6"></i>${L('пунктир: вспышка','dashed: flare')}</span><span><i style="background:var(--muted);opacity:.5"></i>${L('серый','grey')}: ${tr(P.darkName).toLowerCase()}</span></div></div>`;
+  const P = PLANETS[s.pid];
+  const H = [{day:0, o2:P.o2, battery:60, batCap:BAT_START_CAP, dose:0}, ...s.history];
+  const W = 600, Ht = 210, L0 = 40, R0 = 14, T0 = 14, B0 = 26;
+  const x = d => L0 + d/P.days*(W-L0-R0), y = v => T0 + (1-Math.max(0,Math.min(1,v)))*(Ht-T0-B0);
+  const last = H[H.length-1], prev = H.length>1 ? H[H.length-2] : last, now = x(last.day);
+  const series = [
+    {k:'o2', f:h=>h.o2/O2_CAP, c:'var(--o2)', name:L('Кислород','Oxygen'), val:h=>`${fmt(h.o2,0)} ${L('кг','kg')}`, d:h=>h.o2, unit:L('кг','kg'), good:1},
+    {k:'bat', f:h=>h.battery/(h.batCap||s.batCap), c:'var(--power)', name:L('Батарея','Battery'), val:h=>`${fmt(h.battery,0)} ${L('кВт·ч','kWh')}`, d:h=>h.battery, unit:L('кВт·ч','kWh'), good:1},
+    {k:'dose', f:h=>h.dose/DOSE_LIMIT, c:'var(--rad)', name:L('Доза','Dose'), val:h=>`${fmt(h.dose,0)} ${L('мЗв','mSv')}`, d:h=>h.dose, unit:L('мЗв','mSv'), good:-1},
+  ];
+  const pts = f => H.map(h=>`${x(h.day).toFixed(1)},${y(f(h)).toFixed(1)}`).join(' ');
+  const defs = series.map(se=>`<linearGradient id="hg-${se.k}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${se.c}" stop-opacity=".28"/><stop offset="1" stop-color="${se.c}" stop-opacity="0"/></linearGradient>`).join('');
+  const areas = H.length > 1 ? series.map(se=>`<polygon fill="url(#hg-${se.k})" points="${x(0)},${y(0)} ${pts(se.f)} ${now},${y(0)}"/>`).join('') : '';
+  const lines = series.map(se=>`<polyline fill="none" stroke="${se.c}" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" points="${pts(se.f)}"/>`).join('');
+  const dots = series.map(se=>H.map((h,i)=>`<circle cx="${x(h.day)}" cy="${y(se.f(h))}" r="${i===H.length-1?4.5:2.2}" fill="${i===H.length-1?'var(--bg,#0b1020)':se.c}" stroke="${se.c}" stroke-width="${i===H.length-1?2.4:0}"><title>${L('День','Day')} ${h.day}: ${se.name} ${se.val(h)}</title></circle>`).join('')).join('');
+  const grid = [0,0.25,0.5,0.75,1].map(v=>`<line x1="${L0}" x2="${W-R0}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)" stroke-width="1" ${v%0.5?'stroke-dasharray="2 4"':''}/>${v%0.5?'':`<text x="${L0-6}" y="${y(v)+4}" text-anchor="end" class="ax">${v*100}%</text>`}`).join('');
+  const ticks = [1,5,10,15,20].filter(d=>d<=P.days).map(d=>`<text x="${x(d)}" y="${Ht-8}" text-anchor="middle" class="ax">${d}</text>`).join('') + `<text x="${L0}" y="${Ht-8}" text-anchor="start" class="ax">${tr(P.dayName).toLowerCase()}</text>`;
+  const future = last.day < P.days ? `<rect x="${now}" y="${T0}" width="${x(P.days)-now}" height="${Ht-T0-B0}" fill="url(#hg-fut)"/><text x="${(now+x(P.days))/2}" y="${T0+16}" text-anchor="middle" class="ax fut">${L('впереди','ahead')} · ${P.days-last.day} ${L('дн.','days')}</text>` : '';
+  const darks = s.sched.dark.map((st,i)=>{ const e = Math.min(st+darkLenAt(s,i)-1, s.day-1); return e>=st ? `<rect x="${x(st-0.5)}" y="${T0}" width="${x(e+0.5)-x(st-0.5)}" height="${Ht-T0-B0}" fill="var(--muted)" opacity=".14"><title>${tr(P.darkName)}</title></rect>` : ''; }).join('');
+  const marks = s.sched.flares.filter(d=>d<s.day).map(d=>`<line x1="${x(d)}" x2="${x(d)}" y1="${T0}" y2="${Ht-B0}" stroke="var(--rad)" stroke-dasharray="3 3" opacity=".75"/><g transform="translate(${x(d)},${T0})"><circle r="8" fill="var(--rad)"/><path d="M1.5-5 -3 1h3l-1.5 4.5L4-1H1z" fill="#0b1020"/><title>${L('Вспышка, день','Flare, day')} ${d}</title></g>`).join('');
+  const limit = `<text x="${W-R0-2}" y="${y(1)-4}" text-anchor="end" class="ax lim">${L('лимит дозы','dose limit')} ${DOSE_LIMIT} ${L('мЗв','mSv')}</text>`;
+  const tiles = series.map(se=>{ const dv = se.d(last) - se.d(prev), up = dv > 0.05, dn = dv < -0.05, ok = (up && se.good>0) || (dn && se.good<0);
+    return `<div class="ht" style="--c:${se.c}"><span class="hn"><i></i>${se.name}</span><b>${se.val(last)}</b><span class="hd ${up||dn ? (ok?'ok':'bad') : ''}">${up?'▲':dn?'▼':'■'} ${up||dn ? (dv>0?'+':'')+fmt(dv,1)+' '+se.unit : L('без изменений','no change')}</span></div>`; }).join('');
+  return `<div class="card hist" id="c-hist"><h2>${L('Журнал миссии','Mission log')} <span class="hint">${L('день','day')} ${last.day} / ${P.days}</span></h2>
+    <div class="htiles">${tiles}</div>
+    <svg viewBox="0 0 ${W} ${Ht}" role="img" aria-label="${L('График запасов по дням','Supplies by day')}"><defs>${defs}<linearGradient id="hg-fut" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#8fb8ff" stop-opacity=".07"/><stop offset="1" stop-color="#8fb8ff" stop-opacity="0"/></linearGradient></defs>
+      ${grid}${future}${darks}${areas}${marks}${lines}${dots}${limit}${ticks}</svg>
+    <div class="lg"><span><i style="background:var(--o2)"></i>${L('Кислород, % от бака','Oxygen, % of tank')}</span><span><i style="background:var(--power)"></i>${L('Батарея, % заряда','Battery, % charge')}</span><span><i style="background:var(--rad)"></i>${L('Доза, % от лимита','Dose, % of limit')}</span><span><i class="fl"></i>${L('вспышка на Солнце','solar flare')}</span><span><i style="background:var(--muted);opacity:.5"></i>${tr(P.darkName)}</span></div></div>`;
 }
 
 const ACT_ICON = { rest:'bed', science:'flask', ice:'ice', shield:'mound', panel:'sun', battery:'battery', greenhouse:'leaf', reactor:'atom', repair:'wrench', clean:'broom' };

@@ -294,7 +294,7 @@ const G3 = (()=>{
   /* ---------- collision, floors and ceilings ---------- */
   const PR = 0.35; let SOLID = [], BOXES = [];
   const drv = { on:false, v:0, h:0, steer:0 };   // rover driving state
-  const PARTS_DEG = [20, 62, 145, -22, -62, -112, -165];   // radial room walls inside the dome (same angles as in the Blender model)
+  const PARTS_DEG = [];   // radial room walls inside the dome (same angles as in the Blender model)
   function labD(x,z){ const cx = Math.max(LAB.x0, Math.min(LAB.x1, x)); return Math.hypot(x-cx, z-LAB.z); }
   function inDoorGap(x,z){ for(const [dx,dz] of DOORS){ if(x*dx+z*dz > 0 && Math.abs(x*dz - z*dx) < 1.25) return true; } return false; }
   function region(x,z){
@@ -307,7 +307,6 @@ const G3 = (()=>{
     return null;
   }
   function floorY(x,z){ const rg = region(x,z);
-    if(Math.abs(z - GH.z) < 1.75 && x - GH.x > 8.75 && x - GH.x < 9.45) return 0.62;   // greenhouse door sill (the base ring)
     if(rg==='hab') return 0.3; if(rg==='gh') return 0.27; if(rg==='lab') return 0.65;
     if(rg==='cS') return 0.2 + 0.45*Math.max(0, Math.min(1, (-20.4 - z)/1.5));   // ramp up into the lab
     if(rg) return 0.2;
@@ -333,6 +332,7 @@ const G3 = (()=>{
     { const a = x - GH.x, lt = Math.abs(z - GH.z); if(a > 7.6-PR && a < 9.3+PR && lt > 1.25 && lt < 2.4+PR) return true; }
     if(z < -20.55+PR && z > -22.55-PR && Math.abs(x) > 1.25 && Math.abs(x) < 2.4+PR) return true;
     if(world && world.door && world.door.open < 0.6 && Math.abs(x - 23.61) < 0.1+PR && Math.abs(z) < 1.6) return true;
+    if(world && world.door2 && world.door2.open < 0.6 && Math.abs(x - 10.6) < 0.1+PR && Math.abs(z) < 1.6) return true;
     for(const c of SOLID) if((x-c[0])*(x-c[0])+(z-c[1])*(z-c[1]) < (c[2]+PR)*(c[2]+PR)) return true;
     for(const b of BOXES) if(x>b[0]-PR && x<b[2]+PR && z>b[1]-PR && z<b[3]+PR) return true;
     if(r > 6.0-PR && r < 10.7){ for(const ga of PARTS_DEG){ const a = ga*Math.PI/180, ux = Math.cos(a), uz = Math.sin(a); const along = x*ux + z*uz, lat = Math.abs(-x*uz + z*ux); if(along > 5.85 && lat < 0.12+PR) return true; } }
@@ -378,7 +378,7 @@ const G3 = (()=>{
   const PLANT = ['lettuce','tomato','wheat'];
   function bedWithPlants(k){
     const g = inst('bed'); const plants = [];
-    for(let i=0;i<6;i++) for(const dz of [-0.3,0.3]){ const p = inst(PLANT[k%3]); p.position.set(-2.0+i*0.8, 0.73, dz); p.rotation.y = (i*1.7+dz*5); g.add(p); plants.push(p); }
+    for(let i=0;i<8;i++) for(const dz of [-0.4,0,0.4]){ const p = inst(PLANT[k%3]); p.position.set(-2.1+i*0.6, 0.73, dz + (i%2)*0.06); p.rotation.y = (i*1.7+dz*5); p.userData.big = 1.2 + 0.15*((i*3+dz*10)%2); g.add(p); plants.push(p); }
     let led = null; g.traverse(o=>{ if(o.isMesh && o.material && o.material.name==='grow_led'){ o.material = o.material.clone(); led = o; } });
     g.userData.plants = plants; g.userData.led = led; return g;
   }
@@ -418,9 +418,15 @@ const G3 = (()=>{
     { const shapeOf = hw => { const sh = new T.Shape(); sh.moveTo(-hw,-0.1); sh.lineTo(-1.6,-0.1); sh.lineTo(-1.6,1.4); sh.absarc(0,1.4,1.6,Math.PI,0,true); sh.lineTo(1.6,-0.1); sh.lineTo(hw,-0.1); sh.lineTo(hw,3.7); sh.quadraticCurveTo(hw,4.05,hw-0.35,4.05); sh.lineTo(-hw+0.35,4.05); sh.quadraticCurveTo(-hw,4.05,-hw,3.7); sh.lineTo(-hw,-0.1); return sh; };
       const sh = shapeOf(2.4);
       const pm = M({color:0xaab1bd, roughness:0.55, metalness:0.25, side:T.DoubleSide}), stripe = M({color:0xf2b233, roughness:0.6});
-      const collar = (depth, x, z, ry, shp)=>{ const g = new T.ExtrudeGeometry(shp || sh, {depth, bevelEnabled:false, curveSegments:24}); const m = mesh(g, pm, true, true); m.position.set(x,0,z); m.rotation.y = ry; group.add(m);
+      const collar = (depth, x, z, ry, shp)=>{ const g = new T.ExtrudeGeometry(shp || sh, {depth, bevelEnabled:false, curveSegments:24}); const m = mesh(g, pm, true, true); m.name = "collar"; m.position.set(x,0,z); m.rotation.y = ry; group.add(m);
         const st = mesh(new T.TorusGeometry(1.62, 0.05, 6, 32, Math.PI), stripe, false, false); st.position.set(0,1.4,-0.02); m.add(st); return m; };
-      collar(1.4, 9.9, 0, Math.PI/2); collar(1.4, -9.9, 0, -Math.PI/2); collar(1.4, 0, -9.9, Math.PI);
+      const innerC = collar(1.4, 9.9, 0, Math.PI/2); collar(1.4, -9.9, 0, -Math.PI/2); collar(1.4, 0, -9.9, Math.PI);
+      // flat bulkhead that fills the dome wall around each habitat doorway, so the cut edges of the dome don't show as slanted stripes
+      { const Rin = 10.72, d = 9.84, hmax = Math.sqrt(Rin*Rin - d*d), lat = h => Math.sqrt(Math.max(0, Rin*Rin - h*h - d*d));
+        const bs = new T.Shape(); bs.moveTo(-lat(0), 0); for(let i=1;i<=24;i++){ const h = hmax*i/24; bs.lineTo(-lat(h), h); } for(let i=23;i>=0;i--){ const h = hmax*i/24; bs.lineTo(lat(h), h); } bs.lineTo(1.6, 0); bs.lineTo(1.6, 1.4); bs.absarc(0, 1.4, 1.6, 0, Math.PI, false); bs.lineTo(-1.6, 0); bs.lineTo(-lat(0), 0);
+        const bg = new T.ExtrudeGeometry(bs, {depth:0.08, bevelEnabled:false, curveSegments:24});
+        for(const [x,z,ry] of [[9.9-0.06,0,Math.PI/2],[-9.9+0.06,0,-Math.PI/2],[0,-9.9+0.06,Math.PI]]){ const b = mesh(bg, pm, false, true); b.position.set(x,0,z); b.rotation.y = ry; group.add(b);
+          const st = mesh(new T.TorusGeometry(1.62, 0.05, 6, 32, Math.PI), stripe, false, false); st.position.set(0,1.4,-0.02); b.add(st); } }
       collar(1.7, GH.x+9.3, GH.z, -Math.PI/2); collar(2.0, 0, -20.55, Math.PI);
       const fm = M({color:0x5c626e, roughness:0.85, map:grainTex});
       const ramp = mesh(new T.BoxGeometry(3.2, 0.12, 1.57), fm, false, true); ramp.position.set(0, 0.36, -21.15); ramp.rotation.x = Math.atan2(0.45, 1.5); group.add(ramp);
@@ -428,14 +434,17 @@ const G3 = (()=>{
       // outer airlock hatch: a real door that slides open when you walk up to it
       const outer = collar(0.45, 23.75, 0, Math.PI/2, shapeOf(3.3));
       const leafMat = M({color:0xdfe3ea, roughness:0.5, metalness:0.2}), edgeMat = M({color:0x2a2f3a, roughness:0.6}), winMat = M({color:0x8fc4ff, emissive:0x24476e, emissiveIntensity:0.6, roughness:0.1, metalness:0.3});
-      const leaf = s => { const q = new T.Shape(); q.moveTo(0,0.2); q.lineTo(s*1.6,0.2); q.lineTo(s*1.6,1.4); q.absarc(0,1.4,1.6, s>0?0:Math.PI, Math.PI/2, s<0); q.lineTo(0,0.2);
-        const m = mesh(new T.ExtrudeGeometry(q, {depth:0.08, bevelEnabled:false, curveSegments:16}), leafMat, true, true); m.position.z = -0.14;
+      const leaf = (s, par=outer, lz=-0.14) => { const q = new T.Shape(); q.moveTo(0,0.2); q.lineTo(s*1.6,0.2); q.lineTo(s*1.6,1.4); q.absarc(0,1.4,1.6, s>0?0:Math.PI, Math.PI/2, s<0); q.lineTo(0,0.2);
+        const m = mesh(new T.ExtrudeGeometry(q, {depth:0.08, bevelEnabled:false, curveSegments:16}), leafMat, true, true); m.position.z = lz;
         const edge = mesh(new T.BoxGeometry(0.06, 2.8, 0.1), edgeMat, false, false); edge.position.set(0, 1.6, 0.04); m.add(edge);
         const win = mesh(new T.CircleGeometry(0.26, 24), winMat, false, false); win.position.set(s*0.75, 1.75, 0.09); m.add(win);
         const win2 = win.clone(); win2.position.z = -0.01; win2.rotation.y = Math.PI; m.add(win2);
         for(let k=0;k<4;k++){ const st = mesh(new T.BoxGeometry(0.34, 0.1, 0.02), M({color: k%2 ? 0x1b1d22 : 0xf2b233}), false, false); st.position.set(s*(0.35+k*0.36), 0.42, 0.09); st.rotation.z = 0.6*s; m.add(st); }
-        outer.add(m); return m; };
-      w.door = { L: leaf(-1), R: leaf(1), open: 0 };
+        par.add(m); return m; };
+      w.door = { L: leaf(-1), R: leaf(1), open: 0, x: 23.7 };
+      // inner hatch at the habitat end of the airlock tunnel: a real airlock has two doors
+      w.door2 = { L: leaf(-1, innerC, 0.66), R: leaf(1, innerC, 0.66), open: 0, x: 10.6 };
+      const lampI = mesh(new T.BoxGeometry(0.5,0.16,0.16), M({color:0xff4040, emissive:0xff2020, emissiveIntensity:1.2}), false, false); lampI.position.set(0, 3.35, 0.0); innerC.add(lampI); w.door2.lamp = lampI;
       const lampD = mesh(new T.BoxGeometry(0.5,0.16,0.16), M({color:0xff4040, emissive:0xff2020, emissiveIntensity:1.2}), false, false); lampD.position.set(0, 3.35, 0.47); outer.add(lampD); w.door.lamp = lampD;
       // floor plating so the rooms do not look like bare plastic
       const plate = canvasTex(256,256,(c,W,H)=>{ c.fillStyle='#8b919c'; c.fillRect(0,0,W,H); for(let i=0;i<2;i++) for(let j=0;j<2;j++){ const x=i*W/2, y=j*H/2; const g=c.createLinearGradient(x,y,x+W/2,y+H/2); g.addColorStop(0,'#959ba6'); g.addColorStop(1,'#80868f'); c.fillStyle=g; c.fillRect(x+3,y+3,W/2-6,H/2-6); c.fillStyle='#5d636d'; for(const [bx,by] of [[12,12],[W/2-12,12],[12,H/2-12],[W/2-12,H/2-12]]){ c.beginPath(); c.arc(x+bx,y+by,3,0,7); c.fill(); } } c.strokeStyle='rgba(60,66,76,.55)'; c.lineWidth=1; for(let k=0;k<6;k++){ c.beginPath(); c.moveTo(40+k*30,40); c.lineTo(40+k*30,88); c.stroke(); } });
@@ -585,7 +594,7 @@ const G3 = (()=>{
     const grow = Math.min(1, 0.3 + 0.25*Math.max(0, day - (s.harvestDay ?? -9)));
     w.beds.forEach((g,k)=>{ const broken = eng && k >= s.gh - s.ghBroken, on = (!eng || s.lv.farm>0) && !broken;
       if(g.userData.led){ g.userData.led.material.emissiveIntensity = on ? 0.6 + 4*(eng ? s.lv.farm/100 : 1) : 0; g.userData.led.material.emissive.set(broken ? 0xff3030 : 0xff5ad2); }
-      g.userData.plants.forEach((p,i)=>{ const sc = broken ? 0.5 : grow*(0.85+0.15*Math.sin(i*2.3)); p.scale.setScalar(Math.max(0.2, sc)); }); });
+      g.userData.plants.forEach((p,i)=>{ const sc = broken ? 0.5 : grow*(0.85+0.15*Math.sin(i*2.3)); p.scale.setScalar(Math.max(0.2, sc)*(p.userData.big||1)); }); });
     w.ghLamp.intensity = w.beds.some(b=>b.userData.led && b.userData.led.material.emissiveIntensity>0) ? 1.1 : 0.15;
     if(w.bermLayers !== s.shield){ if(w.berm) w.group.remove(w.berm); w.berm = s.shield>0 ? berm(s.shield) : null; if(w.berm){ w.group.add(w.berm); if(opt.animate && s.shield>w.bermLayers && w.bermLayers>=0) added.push(w.berm); } w.bermLayers = s.shield; }
     if(s.reactor && !w.reactor.visible){ w.reactor.visible = true; if(opt.animate) added.push(w.reactor); } else if(!s.reactor) w.reactor.visible = false;
@@ -898,7 +907,7 @@ const G3 = (()=>{
     if(w.dust.visible){ const p = w.dust.geometry.attributes.position; const ox = mode==='walk'?pl.x:0, oz = mode==='walk'?pl.z:0; w.dust.position.set(ox, pl.y, oz); for(let i=0;i<p.count;i++){ let x = p.getX(i)+dt*(18+ (i%7)*3); if(x>100) x-=200; p.setX(i,x); p.setY(i, (p.getY(i)+dt*((i%5)-2)*0.6+30)%30); } p.needsUpdate = true; }
     if(w.protons.visible){ if(mode==='walk') w.protons.position.set(pl.x, pl.y, pl.z); const p = w.protons.geometry.attributes.position; for(let i=0;i<p.count;i++){ let y = p.getY(i)-dt*(35+(i%9)*4); if(y<0) y+=30; p.setY(i,y); } p.needsUpdate = true; }
     if(w.lander.visible) w.lander.userData.flame.material.opacity *= 0.96;
-    if(w.door){ const d = w.door, want = (cine || (mode==='walk' && Math.hypot(pl.x-23.7, pl.z) < 4.8)) ? 1 : 0;
+    for(const d of [w.door, w.door2]){ if(!d) continue; const want = (cine || (mode==='walk' && Math.hypot(pl.x-d.x, pl.z) < (d===w.door2 ? 3.6 : 4.8)) || (w.crew && w.crew.some(n=>Math.hypot(n.x-d.x, n.z) < 2.6))) ? 1 : 0;
       if(d.open !== want){ d.open = want > d.open ? Math.min(1, d.open + dt*2.6) : Math.max(0, d.open - dt*1.6); d.L.position.x = -1.62*d.open; d.R.position.x = 1.62*d.open; d.lamp.material.emissive.setHex(d.open > 0.05 ? 0x20ff60 : 0xff2020); } }
     for(let i=tweens.length-1;i>=0;i--){ const tw = tweens[i]; tw.t += dt; const q = Math.min(1, tw.t/tw.d); tw.f(q); if(q>=1){ tweens.splice(i,1); tw.done && tw.done(); } }
     if(cine) cine.step(dt);
