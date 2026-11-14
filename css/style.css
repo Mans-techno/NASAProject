@@ -325,7 +325,7 @@ body.busy .hud-task,body.busy .hud-help,body.busy .hud-prompt,body.busy .hud-act
 body.fpv .hud .crosshair{display:block}
 body.busy .hud .crosshair{display:none}
 /* ---- start screen: full-bleed, no boxed dialog ---- */
-.modal.start{background:linear-gradient(100deg,rgba(3,5,12,.94) 0%,rgba(3,5,12,.82) 46%,rgba(3,5,12,.55) 100%);padding:0;display:block}
+.modal.start{background:radial-gradient(120% 90% at 18% 30%,rgba(3,5,12,.82) 0%,rgba(3,5,12,.55) 55%,rgba(3,5,12,.18) 100%);padding:0;display:block;backdrop-filter:none}
 .modal.start .dlg{background:none;border:0;box-shadow:none;border-radius:0;max-width:none;width:100%;min-height:100dvh;max-height:none;overflow:visible;padding:clamp(16px,3.2vw,44px) clamp(16px,4.5vw,64px);gap:0}
 .st{max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:clamp(18px,3vw,34px)}
 .st-top{display:flex;justify-content:space-between;align-items:center;gap:12px}
@@ -346,7 +346,6 @@ body.busy .hud .crosshair{display:none}
 .modal.start .modes{grid-template-columns:1fr 1fr}
 .modal.start .mode{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:14px}
 .modal.start .mode[aria-pressed="true"]{background:rgba(111,141,255,.16);border-color:#8fa8ff;box-shadow:0 0 0 1px #8fa8ff inset}
-.modal.start .demo-btn{align-self:flex-start;padding:12px 20px;font-size:15px;border-radius:999px}
 .st-go{display:flex;flex-direction:column;gap:12px}
 .modal.start .planets{grid-template-columns:1fr 1fr;gap:14px}
 .modal.start .pcard{background:rgba(10,14,26,.72);border:1px solid rgba(255,255,255,.1);border-radius:18px;transition:transform .2s,box-shadow .2s,border-color .2s}
@@ -376,3 +375,36 @@ body.busy .hud .crosshair{display:none}
 /* HUD gauges: soft fade behind the text so it reads on bright rooms too */
 .hud-tl{background:linear-gradient(90deg,rgba(4,7,16,.66),rgba(4,7,16,.42) 70%,rgba(4,7,16,0));border-radius:14px 0 0 14px;padding:10px 26px 10px 12px;width:min(272px,calc(100vw - 24px))}
 .hud-tl::before{display:none}
+
+/* ==== START MENU v2: 3D stars behind, staggered entrance, livelier cards ==== */
+.modal.start .st-top,.modal.start .st-hero>*,.modal.start .st-go>*,.modal.start .st-extra{animation:stIn .7s cubic-bezier(.2,.8,.2,1) both}
+.modal.start .st-hero>*:nth-child(1){animation-delay:.05s}.modal.start .st-hero>*:nth-child(2){animation-delay:.15s}
+.modal.start .st-hero>*:nth-child(3){animation-delay:.25s}.modal.start .st-hero>*:nth-child(4){animation-delay:.32s}
+.modal.start .st-hero>*:nth-child(n+5){animation-delay:.4s}
+.modal.start .st-go>*:nth-child(1){animation-delay:.3s}.modal.start .st-go>*:nth-child(2){animation-delay:.42s}
+.modal.start .st-extra{animation-delay:.6s}
+@keyframes stIn{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
+.st-hero h1{text-shadow:0 0 40px rgba(120,150,255,.35)}
+.st-hero h1 em{background:linear-gradient(90deg,#ffd35a,#ff8a5c,#ff5fa2,#ffd35a);background-size:300% 100%;-webkit-background-clip:text;background-clip:text;animation:stShine 6s linear infinite}
+@keyframes stShine{to{background-position:300% 0}}
+.st-logo{position:relative}
+.st-logo::after{content:"";position:absolute;inset:-6px;border-radius:50%;border:1.5px solid rgba(143,184,255,.55);border-top-color:transparent;border-left-color:transparent;animation:stOrbit 4s linear infinite}
+@keyframes stOrbit{to{transform:rotate(360deg)}}
+.st-facts{display:flex;flex-wrap:wrap;gap:10px}
+.st-facts span{display:flex;align-items:baseline;gap:7px;padding:9px 14px;border-radius:14px;background:linear-gradient(180deg,rgba(255,255,255,.07),rgba(255,255,255,.02));border:1px solid rgba(255,255,255,.1);color:#c9d2e6;font-size:13.5px}
+.st-facts b{font:700 18px var(--f-display);color:#fff}
+.modal.start .pcard{position:relative;overflow:hidden;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+.modal.start .pcard::before{content:"";position:absolute;inset:-1px;border-radius:inherit;padding:1px;background:linear-gradient(140deg,var(--pc),transparent 40%,transparent 60%,var(--pc));-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;opacity:.35;transition:opacity .25s;pointer-events:none}
+.modal.start .pcard:hover::before,.modal.start .pcard:focus-visible::before{opacity:1}
+.modal.start .pcard img{transition:transform .6s cubic-bezier(.2,.8,.2,1)}
+.modal.start .pcard:hover img,.modal.start .pcard:focus-visible img{transform:scale(1.05)}
+.modal.start .pcard .go{display:inline-flex;align-items:center;gap:8px;align-self:flex-start;margin-top:8px;padding:10px 18px;border-radius:999px;background:color-mix(in srgb,var(--pc) 22%,transparent);border:1px solid color-mix(in srgb,var(--pc) 60%,transparent);color:#fff}
+.modal.start .pcard .go i{font-style:normal;transition:transform .25s}
+.modal.start .pcard:hover .go,.modal.start .pcard:focus-visible .go{background:var(--pc);color:#0b1020}
+.modal.start .pcard:hover .go i,.modal.start .pcard:focus-visible .go i{transform:translateX(4px)}
+.modal.start .mode{transition:background .2s,border-color .2s,transform .2s}
+.modal.start .mode:hover{transform:translateY(-2px);border-color:rgba(143,168,255,.6)}
+.modal.start .st-card{background:rgba(8,12,24,.55);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:16px;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+.modal.start .st-extra{border-top:0}
+@media (prefers-reduced-motion:reduce){.modal.start *,.modal.start *::after,.st-logo::after{animation:none!important}.modal.start .pcard img{transition:none}}
+body:has(.modal.start) #app,body:has(.modal.start) .hud,body:has(.modal.start) #joy,body:has(.modal.start) .coachbox,body:has(.modal.start) .toast{visibility:hidden}

@@ -160,7 +160,7 @@ function render(){
 
   app.innerHTML = `
   <header class="top">
-    <div class="brand"><h1>${tr(P.base)}${s.demo?` <span class="demo">${L('демо','demo')}</span>`:''}</h1><span class="sub">${tr(P.where)} · ${L('экипаж','crew')} ${CREW} · ${s.mode==='cadet'?L('режим «Кадет»','Cadet mode'):L('режим «Инженер»','Engineer mode')}</span></div>
+    <div class="brand"><h1>${tr(P.base)}</h1><span class="sub">${tr(P.where)} · ${L('экипаж','crew')} ${CREW} · ${s.mode==='cadet'?L('режим «Кадет»','Cadet mode'):L('режим «Инженер»','Engineer mode')}</span></div>
     <div class="daybox">
       <div class="daycount"><span class="lbl">${dn}</span><span class="big">${s.day}</span><span class="of">/ ${P.days}</span></div>
       ${trackHTML(s)}

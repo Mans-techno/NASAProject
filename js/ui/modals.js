@@ -46,12 +46,12 @@ function showStart(){
         <h1>${L('Построй базу и продержись <em>20 дней</em>','Build a base and survive <em>20 days</em>')}</h1>
         <p class="lead">${L('Ты командир базы, где живут четыре астронавта. Энергии на всё не хватает: каждый день решай, что важнее — воздух, тепло, связь с Землёй или защита от радиации. Солнечные бури настоящие, из архивов NASA и NOAA.','You command a base where four astronauts live. There is never enough power: each day decide what matters most — air, heat, the link to Earth or radiation shielding. The solar storms are real, from NASA and NOAA records.')}</p>
         <ol class="st-steps"><li><b>1</b>${L('Раздай энергию','Share the power')}</li><li><b>2</b>${L('Дай задание','Give a task')}</li><li><b>3</b>${L('Заверши день','End the day')}</li></ol>
+        <div class="st-facts"><span><b>4</b>${L('астронавта','astronauts')}</span><span><b>20</b>${L('дней миссии','mission days')}</span><span><b>NASA</b>${L('настоящие данные','real data')}</span></div>
         <div class="st-label">${L('Уровень','Level')}</div>
     <div class="modes" role="group" aria-label="${L('Уровень сложности','Difficulty')}">
       <button type="button" class="mode" data-mode="cadet" aria-pressed="${chosenMode==='cadet'}"><b>${L('Кадет · 7–9 лет','Cadet · ages 7–9')}</b><span>${L('Энергия, кислород и радиация. Три главных ресурса.','Power, oxygen and radiation. Three core resources.')}</span></button>
       <button type="button" class="mode" data-mode="engineer" aria-pressed="${chosenMode==='engineer'}"><b>${L('Инженер · 10–12 лет и старше','Engineer · ages 10–12+')}</b><span>${L('Плюс вода, еда, теплицы и поломки. Как у настоящих планировщиков миссий.','Plus water, food, greenhouses and breakdowns, like real mission planners.')}</span></button>
     </div>
-        <button class="btn primary demo-btn" type="button" data-cmd="demo">${ic('play')} ${L('Демо-миссия для жюри · 3 минуты','Judges’ demo mission · 3 minutes')}</button>
       </section>
       <section class="st-go">
         <div class="st-label">${L('Выбери, где строить базу','Choose where to build')}</div>
@@ -59,11 +59,11 @@ function showStart(){
       <button class="pcard" type="button" data-start="moon" style="--pc:${PLANETS.moon.accent}" data-focus>${planetPreview('moon')}<div class="pb">
         <span class="pn">${L('Луна · кратер Шеклтон','Moon · Shackleton crater')}</span>
         <ul><li>${L('Связь с Землёй почти мгновенная: 1,3 секунды','Talking to Earth is almost instant: 1.3 seconds')}</li><li>${L('Радиация в 2 раза сильнее, чем на Марсе','Radiation is twice as strong as on Mars')}</li><li>${L('Бывают дни в тени гор','Some days are in mountain shadow')}</li></ul>
-        <span class="go">${L('Лететь на Луну →','Fly to the Moon →')}</span></div></button>
+        <span class="go">${L('Лететь на Луну','Fly to the Moon')} <i aria-hidden="true">→</i></span></div></button>
       <button class="pcard" type="button" data-start="mars" style="--pc:${PLANETS.mars.accent}">${planetPreview('mars')}<div class="pb">
         <span class="pn">${L('Марс · равнина Утопия','Mars · Utopia Planitia')}</span>
         <ul><li>${L(`Сигнал до Земли идёт ${delayText('mars')} (сегодняшнее расстояние), помощь не успеет`,`A signal to Earth takes ${delayText('mars')} (today’s distance), so help can’t arrive in time`)}</li><li>${L('Пылевые бури и пыль на панелях','Dust storms and dusty panels')}</li><li>${L('Тонкая атмосфера немного защищает от радиации','Thin air gives a little radiation protection')}</li></ul>
-        <span class="go">${L('Лететь на Марс →','Fly to Mars →')}</span></div></button>
+        <span class="go">${L('Лететь на Марс','Fly to Mars')} <i aria-hidden="true">→</i></span></div></button>
     </div>
       </section>
     </div>
@@ -86,7 +86,7 @@ function showStart(){
       </dl></details>
     <div class="row-btns"><button class="btn" type="button" data-cmd="science">${L('Какие данные NASA использованы','Which NASA data is used')}</button></div>      </div>
     </div></div>`, L('Начало миссии','Mission start'), showStart, 'start');
-  requestAnimationFrame(paintPreviews);
+  requestAnimationFrame(paintPreviews); SKY.wake && SKY.wake();
 }
 
 function realFlareHTML(f){
@@ -166,8 +166,7 @@ function showFinal(){
     </div>
     <h3>${L('Чему научилась команда','What the team learned')}</h3>
     <ul class="lessons">${lessons.map(l=>`<li>${esc(l)}</li>`).join('')}</ul>
-    ${s.demo ? `<p class="seed">${L('Это была демо-миссия с заранее выбранными событиями. В обычной игре события и их порядок случайные.','This was the demo mission with preset events. In a normal game the events and their order are random.')}</p>`
-             : `<p class="seed">${L(`Код миссии: ${code}. Введи его на стартовом экране, и события повторятся. Так весь класс может сыграть одну миссию и сравнить решения.`,`Mission code: ${code}. Enter it on the start screen to replay the same events, so a whole class can play one mission and compare decisions.`)}</p>`}
+    ${`<p class="seed">${L(`Код миссии: ${code}. Введи его на стартовом экране, и события повторятся. Так весь класс может сыграть одну миссию и сравнить решения.`,`Mission code: ${code}. Enter it on the start screen to replay the same events, so a whole class can play one mission and compare decisions.`)}</p>`}
     <div class="row-btns">
       <button class="btn primary" type="button" data-cmd="replay" data-focus>${L('Повторить эту миссию','Replay this mission')}</button>
       <button class="btn" type="button" data-start="${s.pid}" data-mode="${s.mode}">${L(`Новая миссия: ${tr(P.name)}`,`New mission: ${tr(P.name)}`)}</button>

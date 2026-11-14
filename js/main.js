@@ -44,7 +44,6 @@ document.addEventListener('click', e=>{
     case 'replay': startMission(S.pid, S.seed, S.mode, {demo:S.demo}); break;
     case 'menu': case 'start': showStart(); break;
     case 'science': showScience(); break;
-    case 'demo': chosenMode = 'cadet'; startMission('moon', DEMO_SEED, 'cadet', {demo:true}); break;
     case 'live-check': loadLive(); break;
     case 'tut-next': TUT++; if(TUT>=tutSteps().length) tutDone(); else renderTutorial(); break;
     case 'tut-skip': tutDone(); break;
@@ -73,19 +72,80 @@ let rz; window.addEventListener('resize', ()=>{ clearTimeout(rz); rz = setTimeou
 
 /* ---------- boot (with hot-reload support in the artifact viewer) ---------- */
 setLang(LANG);
-function paintStars(){
+/* ---------- 3D starfield behind the menus: stars fly past, the Milky Way band turns slowly ----------
+   Runs only while the start menu (or another full-screen window without the 3D base) is open, so it never
+   competes with the game scene. Falls back to a still 2D sky without WebGL or with reduced motion. */
+const SKY = (()=>{
   let cv = document.getElementById('bgstars');
   if(!cv){ cv = document.createElement('canvas'); cv.id='bgstars'; cv.setAttribute('aria-hidden','true'); document.body.prepend(cv); }
-  const dpr = Math.min(2, devicePixelRatio||1), w = innerWidth, h = innerHeight; cv.width = w*dpr; cv.height = h*dpr;
-  const c = cv.getContext('2d'); c.scale(dpr,dpr); const r = mulberry32(2024);
-  for(let k=0;k<Math.round(w*h/2600);k++){ const x=r()*w, y=r()*h, s=r(); c.fillStyle=`rgba(${200+s*55|0},${215+s*40|0},255,${0.15+0.7*s*s})`; c.beginPath(); c.arc(x,y,s<0.96?0.5+s*0.7:1.5,0,Math.PI*2); c.fill(); }
-}
-paintStars(); window.addEventListener('resize', ()=>{ clearTimeout(paintStars.t); paintStars.t = setTimeout(paintStars, 150); });
+  const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const T = window.THREE;
+  function flat(){
+    const dpr = Math.min(2, devicePixelRatio||1), w = innerWidth, h = innerHeight; cv.width = w*dpr; cv.height = h*dpr;
+    const c = cv.getContext('2d'); if(!c) return; c.scale(dpr,dpr); const r = mulberry32(2024);
+    for(let k=0;k<Math.round(w*h/2600);k++){ const x=r()*w, y=r()*h, s=r(); c.fillStyle=`rgba(${200+s*55|0},${215+s*40|0},255,${0.15+0.7*s*s})`; c.beginPath(); c.arc(x,y,s<0.96?0.5+s*0.7:1.5,0,Math.PI*2); c.fill(); }
+  }
+  let ren = null;
+  try{ if(T && !still) ren = new T.WebGLRenderer({ canvas:cv, antialias:false, alpha:false, powerPreference:'low-power' }); }catch(e){ ren = null; }
+  if(!ren){ flat(); window.addEventListener('resize', ()=>{ clearTimeout(flat.t); flat.t = setTimeout(flat, 150); }); return { wake(){} }; }
+
+  ren.setPixelRatio(Math.min(1.5, devicePixelRatio||1)); ren.setClearColor(0x03050c, 1);
+  const scene = new T.Scene(), cam = new T.PerspectiveCamera(60, 1, 0.1, 2000);
+  const rnd = mulberry32(4242);
+  // a soft round dot, drawn once, used by every star
+  const dot = document.createElement('canvas'); dot.width = dot.height = 64;
+  { const g = dot.getContext('2d'), gr = g.createRadialGradient(32,32,0,32,32,32); gr.addColorStop(0,'rgba(255,255,255,1)'); gr.addColorStop(0.25,'rgba(255,255,255,.85)'); gr.addColorStop(1,'rgba(255,255,255,0)'); g.fillStyle = gr; g.fillRect(0,0,64,64); }
+  const tex = new T.CanvasTexture(dot);
+  const tints = [[0.75,0.82,1],[1,1,1],[1,0.92,0.8],[1,0.8,0.65],[0.7,0.8,1]];
+  function layer(n, spread, depth, size, band){
+    const pos = new Float32Array(n*3), col = new Float32Array(n*3);
+    for(let k=0;k<n;k++){
+      let x = (rnd()-0.5)*spread, y = (rnd()-0.5)*spread*0.7;
+      if(band && rnd()<0.6){ const a = (rnd()-0.5)*spread; x = a; y = a*0.35 + (rnd()-0.5)*spread*0.08; } // a Milky Way strip
+      pos[k*3] = x; pos[k*3+1] = y; pos[k*3+2] = -rnd()*depth;
+      const t = tints[(rnd()*tints.length)|0], b = 0.55 + rnd()*0.45; col[k*3] = t[0]*b; col[k*3+1] = t[1]*b; col[k*3+2] = t[2]*b;
+    }
+    const g = new T.BufferGeometry(); g.setAttribute('position', new T.BufferAttribute(pos,3)); g.setAttribute('color', new T.BufferAttribute(col,3));
+    const m = new T.PointsMaterial({ size, map:tex, vertexColors:true, transparent:true, depthWrite:false, blending:T.AdditiveBlending, sizeAttenuation:true });
+    const p = new T.Points(g, m); scene.add(p); return { p, pos, depth };
+  }
+  const far = layer(5000, 1600, 900, 2.6, true);     // distant sky, slowly turning
+  const near = layer(1400, 260, 700, 1.7, false);    // stars that fly past the camera
+  // faint coloured nebula clouds
+  const neb = [];
+  [[0x5a6cff,-260,120,-700,520],[0xff6a8a,300,-90,-760,460],[0x3fd0c0,60,220,-820,420]].forEach(([c,x,y,z,sz])=>{
+    const m = new T.SpriteMaterial({ map:tex, color:c, transparent:true, opacity:0.11, depthWrite:false, blending:T.AdditiveBlending });
+    const sp = new T.Sprite(m); sp.position.set(x,y,z); sp.scale.set(sz,sz,1); scene.add(sp); neb.push(sp);
+  });
+  let mx = 0, my = 0, tx = 0, ty = 0, running = false, last = 0, t0 = performance.now();
+  addEventListener('pointermove', e=>{ tx = (e.clientX/innerWidth-0.5); ty = (e.clientY/innerHeight-0.5); }, {passive:true});
+  function size(){ const w = innerWidth, h = innerHeight; ren.setSize(w, h, false); cam.aspect = w/h; cam.updateProjectionMatrix(); }
+  size(); addEventListener('resize', size);
+  // animate only while a full-screen menu covers the page and the 3D base is not on screen
+  const wanted = ()=> !document.hidden && !!document.querySelector('.modal.start');
+  function frame(now){
+    if(!wanted()){ running = false; return; }
+    const dt = Math.min(0.05, (now - last)/1000 || 0.016); last = now; const t = (now - t0)/1000;
+    const a = near.pos;
+    for(let k=2;k<a.length;k+=3){ a[k] += dt*38; if(a[k] > 5){ a[k] -= near.depth; } }
+    near.p.geometry.attributes.position.needsUpdate = true;
+    far.p.rotation.z = t*0.006; far.p.rotation.y = Math.sin(t*0.05)*0.04;
+    neb.forEach((n,i)=>{ n.material.opacity = 0.09 + 0.03*Math.sin(t*0.3 + i*2); });
+    mx += (tx - mx)*0.04; my += (ty - my)*0.04;
+    cam.rotation.set(-my*0.12, -mx*0.18, 0);
+    ren.render(scene, cam);
+    requestAnimationFrame(frame);
+  }
+  function wake(){ if(running || !wanted()) return; running = true; last = performance.now(); requestAnimationFrame(frame); }
+  new MutationObserver(wake).observe(document.getElementById('modalRoot'), { childList:true });
+  document.addEventListener('visibilitychange', wake);
+  ren.render(scene, cam);
+  return { wake };
+})();
 function start(data){
   if(data && data.S){ S = data.S; render(); if(S.over) showFinal(); }
   else {
-    let demo = false; try{ demo = new URLSearchParams(location.search).has('demo'); }catch(e){}
-    if(demo) startMission('moon', DEMO_SEED, 'cadet', {demo:true}); else { render(); showStart(); }
+    render(); showStart();
   }
 }
 window.claude?.hot?.snapshot?.(()=>({ S }));

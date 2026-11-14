@@ -2,7 +2,7 @@
 
 A browser game for kids aged 7–12, in **Russian and English** (RU/EN button on every screen). The player runs a 4-person outpost on the Moon (Shackleton crater rim) or Mars (Utopia Planitia) for 20 days. Nothing to install and no account needed: open the GitHub Pages link, or serve the folder (for example `python -m http.server`) and open `index.html`.
 
-**For judges:** press **"▶ Judges' demo mission"** on the start screen, or open `index.html?demo&lang=en`. The demo starts with a 5-step tutorial. On day 3 it plays the real 28 Oct 2003 "Halloween" proton storm (X17, S4). On day 9 it plays the 24 Oct 2014 X3.1 flare, which was very bright but brought almost no protons.
+**How to play:** pick a level (Cadet or Engineer) and a planet on the start screen. The first mission opens with a 5-step tutorial. Add `?lang=en` to the link for English. Solar storms come from real archived events (for example the 28 Oct 2003 "Halloween" storm), on random days.
 
 ## Walk the base (survival mode)
 When a mission starts, you are the commander standing inside the habitat dome.
