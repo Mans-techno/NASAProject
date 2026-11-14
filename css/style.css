@@ -545,5 +545,5 @@ body:has(.modal.start) #app,body:has(.modal.start) .hud,body:has(.modal.start) #
   .modal.start .st3 .nav{margin-top:clamp(4px,1vh,10px);gap:clamp(2px,0.6vh,6px)}
   .modal.start .st3 .nv{padding:clamp(8px,1.6vh,14px) 18px;font-size:clamp(15px,2.2vh,18px)}
   .modal.start .st3 .st-panel{height:min(640px,calc(100dvh - 2*clamp(14px,2.6vh,34px) - 110px));min-height:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin}
-  .modal.start .st3 .st-panel .pcard img{height:clamp(120px,calc(100dvh - 520px),280px)}
+  .modal.start .st3 .st-panel .pcard img{height:clamp(160px,calc(100dvh - 470px),310px)}
 }
