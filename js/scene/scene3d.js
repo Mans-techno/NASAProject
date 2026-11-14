@@ -497,7 +497,7 @@ const G3 = (()=>{
     place(pile, qp, -0.15); group.add(pile);
     { const rg = new T.DodecahedronGeometry(0.35, 0); const rm = M({color: mars?0x6e3a24:0x5f6166, roughness:1, map:grainTex}); const r = mulberry32(44);
       for(let k=0;k<16;k++){ const a = r()*Math.PI*2, d = 1.5 + r()*3.6, x = qp.x + Math.cos(a)*d, z = qp.z + Math.sin(a)*d, sc = 0.4 + r()*0.9;
-        const hy = d < 4.3 ? 2.4*Math.sqrt(Math.max(0, 1 - (d/4.4)*(d/4.4))) - 0.15 : 0; const rk = mesh(rg, rm); rk.scale.set(sc, sc*0.7, sc); rk.rotation.set(r()*3, r()*3, r()*3); rk.position.set(x, ground(x,z) + hy + 0.1, z); group.add(rk); } }
+        const rr = Math.min(1, d/(4.6*0.91)), hy = rr < 1 ? 2.6*Math.pow(1-rr, 0.85)*0.86 - 0.15 - 0.12*sc : 0; /* same cone profile as the pile (low side), so rocks sit in it, not above it */ const rk = mesh(rg, rm); rk.scale.set(sc, sc*0.7, sc); rk.rotation.set(r()*3, r()*3, r()*3); rk.position.set(x, ground(x,z) + hy + (rr<1?0:0.1), z); group.add(rk); } }
     put(inst('excavator'), 33.4, ground(33.4,-18.6), -18.6, 2.36);   // parked clear of the regolith pile, bucket reaching its edge
     // regolith bagging line: the excavator fills a hopper, a belt carries regolith to the bagger, filled bags wait on pallets
     { const steel = M({color:0x9aa2ae, roughness:0.45, metalness:0.7}), dark = M({color:0x2c323e, roughness:0.6, metalness:0.3}), yel = M({color:0xf2b233, roughness:0.5, metalness:0.2});
