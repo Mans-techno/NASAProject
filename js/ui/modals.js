@@ -8,7 +8,7 @@ function openModal(html, label, again, cls){
   reopen = again || null; if(G3 && G3.unlock) G3.unlock();
   modalRoot.innerHTML = `<div class="modal${cls?' '+cls:''}" role="dialog" aria-modal="true" aria-label="${esc(label)}"><div class="dlg">${html}</div></div>`;
   const first = modalRoot.querySelector('[data-focus]') || modalRoot.querySelector('button');
-  if(first) setTimeout(()=>first.focus(), 30);
+  if(first) setTimeout(()=>first.focus({preventScroll:true}), 30);
 }
 function closeModal(){ modalRoot.innerHTML=''; reopen = null; const b = app.querySelector('[data-cmd="end"]'); if(b) b.focus({preventScroll:true}); renderTutorial(); }
 
@@ -38,32 +38,24 @@ function liveBoxHTML(){
   if(!f) return `${sum}<span>${L('Сильных вспышек за 30 дней не было: Солнце спокойно. Миссия возьмёт события из архива.','No strong flares in the last 30 days: the Sun is calm. The mission will use archived events.')}</span>`;
   return `${sum}<label class="chk"><input type="checkbox" id="useLive" ${useLive?'checked':''}> ${L(`Добавить в миссию настоящую вспышку ${esc(f.cls)} от ${solarDate(f.date)}`,`Add the real ${esc(f.cls)} flare from ${solarDate(f.date)} to the mission`)}</label>`;
 }
-function showStart(){
-  openModal(`<div class="st st2">
-    <header class="st-top"><div class="st-brand"><i class="st-dot" aria-hidden="true"></i><b>${L('Юный астронавт','Junior Astronaut')}</b><span>${L('База','Outpost')}</span></div>${langBtn()}</header>
-    <div class="st-main">
-      <section class="st-hero">
-        <span class="eyebrow">NASA Space Apps · ${L('для детей 7–12 лет','for kids aged 7–12')}</span>
-        <h1>${L('Построй базу и продержись <em>20&nbsp;дней</em>','Build a base and survive <em>20&nbsp;days</em>')}</h1>
-        <p class="lead">${L('Четыре астронавта, мало энергии и настоящие солнечные бури из архивов NASA. Каждый день решай, что важнее: воздух, тепло, связь или защита.','Four astronauts, too little power and real solar storms from NASA archives. Every day, decide what matters most: air, heat, radio or shielding.')}</p>
-        <div class="seg" role="group" aria-label="${L('Уровень сложности','Difficulty')}">
-          <button type="button" class="mode" data-mode="cadet" aria-pressed="${chosenMode==='cadet'}"><b>${L('Кадет','Cadet')}</b><span>${L('7–9 лет · энергия, O₂, радиация','ages 7–9 · power, O₂, radiation')}</span></button>
-          <button type="button" class="mode" data-mode="engineer" aria-pressed="${chosenMode==='engineer'}"><b>${L('Инженер','Engineer')}</b><span>${L('10–12 лет · + вода, еда, теплицы','ages 10–12 · + water, food, farms')}</span></button>
-        </div>
-      </section>
-      <section class="st-go" aria-label="${L('Выбери, где строить базу','Choose where to build')}">
-        <button class="pcard" type="button" data-start="moon" style="--pc:${PLANETS.moon.accent}" data-focus>${planetPreview('moon')}<div class="pb">
-          <span class="pn">${L('Луна','Moon')}</span><span class="pf">${L('Кратер Шеклтон · сигнал 1,3 с','Shackleton crater · 1.3 s signal')}</span><span class="go" aria-hidden="true">→</span></div></button>
-        <button class="pcard" type="button" data-start="mars" style="--pc:${PLANETS.mars.accent}">${planetPreview('mars')}<div class="pb">
-          <span class="pn">${L('Марс','Mars')}</span><span class="pf">${L(`Равнина Утопия · сигнал ${delayText('mars')}`,`Utopia Planitia · ${delayText('mars')} signal`)}</span><span class="go" aria-hidden="true">→</span></div></button>
-      </section>
-    </div>
-    <footer class="st-foot">
-      <div class="live" id="liveStart">${liveBoxHTML()}</div>
-      <form class="codebox" id="codeForm"><label for="mcode">${L('Код миссии','Mission code')}</label><input id="mcode" name="mcode" placeholder="M-1234" autocomplete="off" maxlength="7"><button class="btn" type="submit">${L('Начать','Start')}</button><span id="codeErr" role="alert"></span></form>
-      <button class="lnk" type="button" data-cmd="science">${L('Данные NASA в игре','NASA data in the game')}</button>
-    <details class="gloss"><summary>${L('Словарик','Glossary')}</summary>
-      <dl>
+let ST_VIEW = 'new';
+function showStart(view){
+  if(view) ST_VIEW = view;
+  const canGo = !!(S && !S.over);
+  const nav = [
+    ['new', L('Новая миссия','New mission'), 'rocket'],
+    ...(canGo ? [['continue', L('Продолжить','Continue'), 'play']] : []),
+    ['code', L('Код миссии','Mission code'), 'key'],
+    ['weather', L('Космическая погода','Space weather'), 'sun'],
+    ['gloss', L('Словарик','Glossary'), 'book'],
+    ['science', L('Данные NASA','NASA data'), 'flask'],
+  ];
+  const item = ([id, label]) => `<li><button type="button" class="nv${ST_VIEW===id?' on':''}" ${id==='continue'?'data-cmd="close"':id==='science'?'data-cmd="science"':`data-stview="${id}"`} ${ST_VIEW===id?'aria-current="true"':''}>${label}<i aria-hidden="true">→</i></button></li>`;
+  let panel = '';
+  if(ST_VIEW==='code') panel = `<h2>${L('Код миссии','Mission code')}</h2><p class="pd">${L('Учитель может дать код, чтобы весь класс играл одну и ту же миссию.','A teacher can share a code so the whole class plays the same mission.')}</p>
+      <form class="codebox" id="codeForm"><label for="mcode" class="sr">${L('Код миссии','Mission code')}</label><input id="mcode" name="mcode" placeholder="M-1234" autocomplete="off" maxlength="7" data-focus><button class="btn primary" type="submit">${L('Начать','Start')}</button><span id="codeErr" role="alert"></span></form>`;
+  else if(ST_VIEW==='weather') panel = `<h2>${L('Космическая погода','Space weather')}</h2><p class="pd">${L('Вспышки и протонные бури за последние 30 дней из базы NASA DONKI. Если связи нет, игра честно использует архив.','Flares and proton storms from the last 30 days, from NASA DONKI. Without a connection the game honestly uses the archive.')}</p><div class="live" id="liveStart">${liveBoxHTML()}</div>`;
+  else if(ST_VIEW==='gloss') panel = `<h2>${L('Словарик','Glossary')}</h2><dl class="gl">
         <dt>${L('Сол','Sol')}</dt><dd>${L('Марсианские сутки. Они длиннее земных на 40 минут.','A Martian day. It is 40 minutes longer than an Earth day.')}</dd>
         <dt>${L('кВт·ч (киловатт-час)','kWh (kilowatt-hour)')}</dt><dd>${L('Количество энергии. Чайник тратит примерно 0,1 кВт·ч, чтобы вскипятить воду.','An amount of energy. A kettle uses about 0.1 kWh to boil water.')}</dd>
         <dt>${L('Электролиз','Electrolysis')}</dt><dd>${L('Электрический ток разделяет воду на водород и кислород. Так получают воздух для дыхания.','Electric current splits water into hydrogen and oxygen. That is how breathing air is made.')}</dd>
@@ -72,8 +64,29 @@ function showStart(){
         <dt>${L('Солнечная вспышка','Solar flare')}</dt><dd>${L('Яркий взрыв на Солнце. Класс X самый сильный по свету и рентгену.','A bright explosion on the Sun. Class X is the brightest in light and X-rays.')}</dd>
         <dt>${L('Протонная буря (шкала S1–S5)','Proton storm (S1–S5 scale)')}</dt><dd>${L('Поток быстрых протонов после выброса с Солнца. Именно он опасен для астронавтов. NOAA оценивает бури от S1 (слабая) до S5 (экстремальная).','A flood of fast protons after a solar eruption. This is what is dangerous to astronauts. NOAA rates storms from S1 (minor) to S5 (extreme).')}</dd>
         <dt>${L('Задержка связи','Signal delay')}</dt><dd>${L('Радиосигнал летит со скоростью света. До Луны чуть больше секунды, до Марса от 3 до 22 минут.','Radio travels at the speed of light: just over a second to the Moon, 3 to 22 minutes to Mars.')}</dd>
-      </dl></details>
-    </footer></div>`, L('Начало миссии','Mission start'), showStart, 'start');
+      </dl>`;
+  else panel = `<h2>${L('Новая миссия','New mission')}</h2>
+      <div class="seg" role="group" aria-label="${L('Уровень сложности','Difficulty')}">
+        <button type="button" class="mode" data-mode="cadet" aria-pressed="${chosenMode==='cadet'}"><b>${L('Кадет','Cadet')}</b><span>${L('7–9 лет · энергия, O₂, радиация','ages 7–9 · power, O₂, radiation')}</span></button>
+        <button type="button" class="mode" data-mode="engineer" aria-pressed="${chosenMode==='engineer'}"><b>${L('Инженер','Engineer')}</b><span>${L('10–12 лет · + вода, еда, теплицы','ages 10–12 · + water, food, farms')}</span></button>
+      </div>
+      <div class="st-go">
+        <button class="pcard" type="button" data-start="moon" style="--pc:${PLANETS.moon.accent}" data-focus>${planetPreview('moon')}<div class="pb">
+          <span class="pn">${L('Луна','Moon')}</span><span class="pf">${L('Кратер Шеклтон · сигнал 1,3 с','Shackleton crater · 1.3 s signal')}</span><span class="go" aria-hidden="true">→</span></div></button>
+        <button class="pcard" type="button" data-start="mars" style="--pc:${PLANETS.mars.accent}">${planetPreview('mars')}<div class="pb">
+          <span class="pn">${L('Марс','Mars')}</span><span class="pf">${L(`Равнина Утопия · сигнал ${delayText('mars')}`,`Utopia Planitia · ${delayText('mars')} signal`)}</span><span class="go" aria-hidden="true">→</span></div></button>
+      </div>`;
+  openModal(`<div class="st st2 st3">
+    <header class="st-top"><div class="st-brand"><i class="st-dot" aria-hidden="true"></i><b>${L('Юный астронавт','Junior Astronaut')}</b><span>${L('База','Outpost')}</span></div>${langBtn()}</header>
+    <div class="st-main">
+      <section class="st-hero">
+        <span class="eyebrow">NASA Space Apps · ${L('для детей 7–12 лет','for kids aged 7–12')}</span>
+        <h1>${L('Построй базу и продержись <em>20&nbsp;дней</em>','Build a base and survive <em>20&nbsp;days</em>')}</h1>
+        <nav aria-label="${L('Главное меню','Main menu')}"><ul class="nav">${nav.map(item).join('')}</ul></nav>
+      </section>
+      <section class="st-panel" aria-live="polite">${panel}</section>
+    </div>
+  </div>`, L('Главное меню','Main menu'), showStart, 'start');
   requestAnimationFrame(paintPreviews); SKY.wake && SKY.wake();
 }
 

@@ -485,3 +485,32 @@ body:has(.modal.start) #app,body:has(.modal.start) .hud,body:has(.modal.start) #
 .modal.start .st2 .mode span{font-family:var(--f-body,inherit);letter-spacing:0}
 .st2 .gloss summary{background:none!important;border:0!important;padding:6px 0!important;font:500 13px var(--f-body,inherit);box-shadow:none!important}
 .st2 .gloss summary:hover{color:#fff;text-decoration:underline;text-underline-offset:4px}
+/* ==== game-style menu (v15): fixed nav on the left, one panel on the right ==== */
+.st3 .st-main{grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr);align-items:stretch}
+.st3 .st-hero{gap:18px;justify-content:center}
+.st3 .st-hero h1{font-size:clamp(34px,4.4vw,58px)}
+.st3 .nav{list-style:none;margin:10px 0 0;padding:0;display:flex;flex-direction:column;gap:6px;max-width:380px}
+.st3 .nv{width:100%;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 18px;border-radius:14px;border:1px solid transparent;background:transparent;color:#dfe5f3;font:700 18px var(--f-display);text-align:left;cursor:pointer;transition:background .15s,color .15s,border-color .15s}
+.st3 .nv i{font-style:normal;opacity:0;transform:translateX(-4px);transition:opacity .15s,transform .15s}
+.st3 .nv:hover,.st3 .nv:focus-visible{background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.08);outline:none}
+.st3 .nv:hover i,.st3 .nv:focus-visible i{opacity:.7;transform:none}
+.st3 .nv.on{background:#fff;color:#0b1020}
+.st3 .nv.on i{opacity:1;transform:none}
+.st3 .st-panel{background:rgba(8,12,24,.62);border:1px solid rgba(255,255,255,.08);border-radius:22px;padding:clamp(18px,2.4vw,28px);display:flex;flex-direction:column;gap:16px;min-height:min(560px,70dvh);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.st3 .st-panel h2{margin:0;font:600 12px var(--f-mono);letter-spacing:.14em;text-transform:uppercase;color:#8ea0c8}
+.st3 .st-panel .pd{margin:0;color:#aeb8cf;font-size:15px;line-height:1.55;max-width:52ch}
+.st3 .seg{max-width:none;display:grid}
+.st3 .st-panel .st-go{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.modal.start .st3 .pcard img{height:clamp(160px,18vw,250px)}
+.st3 .codebox{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.st3 .codebox input{width:160px;padding:12px 14px;border-radius:12px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.04);color:#fff;font:600 16px var(--f-mono)}
+.st3 .codebox .btn.primary{padding:12px 20px;border-radius:12px}
+.st3 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.st3 .st-panel .live{background:none;border:0;padding:0;margin:0}
+.st3 .st-panel .live .btn{padding:12px 18px;border-radius:12px}
+.st3 .gl{margin:0;columns:2 260px;column-gap:28px;overflow:auto;max-height:60dvh}
+.st3 .gl dt{color:#fff;font-weight:700}
+.st3 .gl dd{margin:2px 0 12px;color:#8a94ad;break-inside:avoid;font-size:14px;line-height:1.5}
+.modal.start .st3 .st-panel>*{animation:stIn .35s cubic-bezier(.2,.8,.2,1) both}
+@media (max-width:880px){.st3 .st-main{grid-template-columns:1fr}.st3 .nav{max-width:none}.st3 .st-panel{min-height:0}}
+@media (max-width:560px){.st3 .st-panel .st-go{grid-template-columns:1fr}.st3 .nv{font-size:16px;padding:12px 14px}}
