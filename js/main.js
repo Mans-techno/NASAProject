@@ -110,13 +110,14 @@ const SKY = (()=>{
     const p = new T.Points(g, m); scene.add(p); return { p, pos, depth };
   }
   const far = layer(5000, 1600, 900, 2.6, true);     // distant sky, slowly turning
-  const near = layer(1400, 260, 700, 1.7, false);    // stars that fly past the camera
+  const near = layer(1400, 260, 300, 1.7, false);    // close stars that slowly fall past the camera
   // faint coloured nebula clouds
   const neb = [];
   [[0x5a6cff,-260,120,-700,520],[0xff6a8a,300,-90,-760,460],[0x3fd0c0,60,220,-820,420]].forEach(([c,x,y,z,sz])=>{
     const m = new T.SpriteMaterial({ map:tex, color:c, transparent:true, opacity:0.11, depthWrite:false, blending:T.AdditiveBlending });
     const sp = new T.Sprite(m); sp.position.set(x,y,z); sp.scale.set(sz,sz,1); scene.add(sp); neb.push(sp);
   });
+  const shower = meteorShower(T, scene, { n:8, rate:1.4, w:0.01, len:2, dist:420, minEl:-0.15, maxEl:0.45, spreadAz:1.3 });
   let mx = 0, my = 0, tx = 0, ty = 0, running = false, last = 0, t0 = performance.now();
   addEventListener('pointermove', e=>{ tx = (e.clientX/innerWidth-0.5); ty = (e.clientY/innerHeight-0.5); }, {passive:true});
   function size(){ const w = innerWidth, h = innerHeight; ren.setSize(w, h, false); cam.aspect = w/h; cam.updateProjectionMatrix(); }
@@ -127,7 +128,9 @@ const SKY = (()=>{
     if(!wanted()){ running = false; return; }
     const dt = Math.min(0.05, (now - last)/1000 || 0.016); last = now; const t = (now - t0)/1000;
     const a = near.pos;
-    for(let k=2;k<a.length;k+=3){ a[k] += dt*38; if(a[k] > 5){ a[k] -= near.depth; } }
+    for(let k=0;k<a.length;k+=3){ a[k+1] -= dt*(10+(k%7)*2); a[k] += dt*3; a[k+2] += dt*6;
+      if(a[k+1] < -150 || a[k+2] > 5){ a[k+1] += 300; a[k] = (Math.random()-0.5)*260; a[k+2] = -20-Math.random()*near.depth; } }
+    shower.step(dt, cam, true);
     near.p.geometry.attributes.position.needsUpdate = true;
     far.p.rotation.z = t*0.006; far.p.rotation.y = Math.sin(t*0.05)*0.04;
     neb.forEach((n,i)=>{ n.material.opacity = 0.09 + 0.03*Math.sin(t*0.3 + i*2); });

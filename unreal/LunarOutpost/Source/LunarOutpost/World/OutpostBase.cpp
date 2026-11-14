@@ -67,24 +67,6 @@ void AOutpostWorld::BuildBase()
 	for (int32 S = -1; S <= 1; S += 2) AddShape(this, RootComponent, TEXT("Cube"), U(S * 1.7, -21.3, 1.6), FVector(0.2, 1.6, 3.2), FRotator::ZeroRotator, Panel, true);
 	AddShape(this, RootComponent, TEXT("Cube"), U(0, -21.3, 3.05), FVector(3.6, 1.6, 0.2), FRotator::ZeroRotator, Panel, true);
 
-	// room signs hang over each room entrance, doors get their own sign
-	struct FRoom { const TCHAR* Key; double A0, A1, Lerp; };
-	const FRoom Rooms[] = { {TEXT("galley"),20,62,0.5}, {TEXT("bunks"),62,145,0.5}, {TEXT("gym"),145,195,0.32}, {TEXT("med"),-62,-22,0.5}, {TEXT("comms"),-165,-112,0.5} };
-	for (const FRoom& R : Rooms)
-	{
-		const double A0 = FMath::DegreesToRadians(R.A0), A1 = FMath::DegreesToRadians(R.A1);
-		const FVector2D P0(FMath::Cos(A0) * 6, FMath::Sin(A0) * 6), P1(FMath::Cos(A1) * 6, FMath::Sin(A1) * 6);
-		const FVector2D M = (P0 + (P1 - P0) * R.Lerp) * 0.985;
-		const double Theta = FMath::RadiansToDegrees(FMath::Atan2(M.Y, M.X));
-		Sign(R.Key, U(M.X, M.Y, 2.62), Theta + 90.0, 2.4, 0.45, false);
-	}
-	const struct { const TCHAR* Key; double Deg; } Doors[] = { {TEXT("airlock"),0}, {TEXT("greenhouse"),180}, {TEXT("lab"),-90} };
-	for (const auto& D : Doors)
-	{
-		const double A = FMath::DegreesToRadians(D.Deg);
-		Sign(D.Key, U(FMath::Cos(A) * 9.8, FMath::Sin(A) * 9.8, 3.5), D.Deg + 90.0, 2.4, 0.45, false);
-	}
-
 	// interior lights
 	auto Lamp = [&](double X, double Z, double Y, FLinearColor C, float Lumens, float RadiusM)
 	{

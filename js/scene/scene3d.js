@@ -40,6 +40,53 @@ const ICONS = {
 };
 function ic(n, cls){ return `<svg class="ic${cls?' '+cls:''}" viewBox="0 0 24 24" aria-hidden="true"><path d="${ICONS[n]||''}"/></svg>`; }
 
+/* ---------- shooting stars: a small pool of glowing streaks that fall across the sky ---------- */
+function meteorShower(T, scene, o){
+  o = Object.assign({ n:6, rate:0.25, w:0.0035, len:1, dist:1500, minEl:0.35, maxEl:1.2, spreadAz:1.6, fog:false }, o||{});
+  const c = document.createElement('canvas'); c.width = 256; c.height = 16;
+  { const g = c.getContext('2d'), gr = g.createLinearGradient(0,0,256,0);
+    gr.addColorStop(0,'rgba(120,160,255,0)'); gr.addColorStop(0.7,'rgba(190,215,255,.55)'); gr.addColorStop(0.96,'rgba(255,255,255,1)'); gr.addColorStop(1,'rgba(255,255,255,0)');
+    g.fillStyle = gr; g.fillRect(0,0,256,16);
+    const v = g.createLinearGradient(0,0,0,16); v.addColorStop(0,'rgba(0,0,0,1)'); v.addColorStop(0.5,'rgba(0,0,0,0)'); v.addColorStop(1,'rgba(0,0,0,1)');
+    g.globalCompositeOperation = 'destination-out'; g.fillStyle = v; g.fillRect(0,0,256,16); }
+  const tex = new T.CanvasTexture(c);
+  const geo = new T.PlaneGeometry(1,1); geo.translate(-0.5,0,0);   // head at the local origin, tail trails behind
+  const pool = [];
+  for(let i=0;i<o.n;i++){
+    const m = new T.Mesh(geo, new T.MeshBasicMaterial({ map:tex, transparent:true, opacity:0, depthWrite:false, blending:T.AdditiveBlending, side:T.DoubleSide, fog:o.fog }));
+    m.visible = false; m.frustumCulled = false; m.renderOrder = 2; scene.add(m);
+    pool.push({ m, age:0, life:1, p:new T.Vector3(), v:new T.Vector3(), len:1 });
+  }
+  const X = new T.Vector3(), Y = new T.Vector3(), Z = new T.Vector3(), fwd = new T.Vector3();
+  let wait = 0.5;
+  function spawn(cam){
+    const s = pool.find(q=>!q.m.visible); if(!s) return;
+    cam.getWorldDirection(fwd);
+    const az = Math.atan2(fwd.z, fwd.x) + (Math.random()-0.5)*o.spreadAz;
+    const el = o.minEl + Math.random()*(o.maxEl-o.minEl), d = o.dist*(0.8+Math.random()*0.4);
+    s.p.set(cam.position.x + Math.cos(az)*Math.cos(el)*d, cam.position.y + Math.sin(el)*d, cam.position.z + Math.sin(az)*Math.cos(el)*d);
+    // fall mostly downward along the sky, with a sideways drift
+    const side = (Math.random()<0.5?-1:1)*(0.6+Math.random()*0.9);
+    Z.set(-Math.sin(az), 0, Math.cos(az));                       // horizontal tangent
+    s.v.set(0,-1,0).addScaledVector(Z, side).normalize().multiplyScalar(d*(0.3+Math.random()*0.2));
+    s.len = d*o.len*(0.06+Math.random()*0.05); s.life = 0.7+Math.random()*0.7; s.age = 0;
+    s.m.scale.set(s.len, d*o.w, 1); s.m.visible = true;
+  }
+  function step(dt, cam, on){
+    if(on){ wait -= dt; if(wait <= 0){ spawn(cam); wait = -Math.log(1-Math.random())/o.rate; } }
+    for(const s of pool){ if(!s.m.visible) continue;
+      s.age += dt; if(s.age >= s.life){ s.m.visible = false; s.m.material.opacity = 0; continue; }
+      s.p.addScaledVector(s.v, dt);
+      const q = s.age/s.life; s.m.material.opacity = Math.min(1, q*6) * (1-q*q);
+      s.m.scale.x = s.len*Math.min(1, 0.3 + q*2.5);
+      X.copy(s.v).normalize(); Z.subVectors(cam.position, s.p).normalize();
+      Y.crossVectors(Z, X).normalize(); Z.crossVectors(X, Y);
+      s.m.matrix.makeBasis(X, Y, Z); s.m.matrix.setPosition(s.p); s.m.matrix.scale(s.m.scale);
+      s.m.matrixAutoUpdate = false; s.m.matrixWorldNeedsUpdate = true;
+    }
+  }
+  return { step };
+}
 const G3 = (()=>{
   const T = window.THREE; if(!T || !T.GLTFLoader) return null;
   let renderer;
@@ -161,14 +208,14 @@ const G3 = (()=>{
       const d = Math.hypot(x,z);
       const amp = 0.35 + 0.65*sstep(30,140,d);
       let h = (mars ? (fbm(x/40,z/40,seed,5)-0.5)*9 + Math.sin(x/9+fbm(x/30,z/30,seed+3,3)*4)*0.6
-                    : (fbm(x/34,z/34,seed,6)-0.5)*7) * amp;
+                    : (fbm(x/34,z/34,seed,6)-0.5)*6) * amp;
       for(const [cx,cz,R] of craters){ const q = Math.hypot(x-cx,z-cz)/R; if(q<1.6){ h += q<1 ? -R*0.32*(1-q*q) + R*0.1*q*q*q : R*0.1*Math.exp(-(q-1)*(q-1)*12); } }
       if(!mars){ // polar massifs on the horizon, and the floor of Shackleton falling away to the south-west
-        h += Math.pow(Math.max(0, d-200)/250, 1.6) * 120 * (0.35 + fbm(x/90,z/90,11,4));
+        h += Math.pow(Math.max(0, d-200)/250, 1.6) * 85 * (0.35 + fbm(x/90,z/90,11,4));
         const sh = Math.hypot(x+330, z+300); if(sh < 260) h -= (1 - sh/260)*(1 - sh/260)*90;
       } else { // mesas and the far rim
-        h += Math.max(0,(fbm(x/70,z/70,13,3)-0.52))*90*sstep(110,190,d);
-        h += Math.pow(Math.max(0, d-260)/190, 2) * 70 * fbm(x/120,z/120,17,3);
+        h += Math.max(0,(fbm(x/70,z/70,13,3)-0.52))*65*sstep(110,190,d);
+        h += Math.pow(Math.max(0, d-260)/190, 2) * 50 * fbm(x/120,z/120,17,3);
       }
       let m = 1e9; for(const [cx,cz,R] of FOOT) m = Math.min(m, Math.hypot(x-cx,z-cz) - R);
       const fl = sstep(0, 16, m);
@@ -225,7 +272,7 @@ const G3 = (()=>{
   const domeR = y => Math.sqrt(Math.max(0, 121 - y*y));
   function bermDims(layers){ const H = Math.min(9.6, 2.2 + layers*1.8); const rc = domeR(H) + 0.15 + 0.8*layers; return {H, rc: Math.max(rc, domeR(H)+0.6), rf: Math.max(rc, domeR(H)+0.6) + H/0.7}; }
   function trench(x,z){ let k = 1; for(const [dx,dz] of DOORS){ if(x*dx+z*dz > 0){ const lat = Math.abs(x*dz - z*dx); k = Math.min(k, sstep(2.1, 3.8, lat)); } } return k; }
-  function bermY(x,z,layers){ if(!(layers>0)) return -1; const r = Math.hypot(x,z); const d = bermDims(layers); if(r > d.rf || r < 11.4) return -1;
+  function bermY(x,z,layers){ if(!(layers>0)) return -1e9; const r = Math.hypot(x,z); const d = bermDims(layers); if(r > d.rf || r < 11.4) return -1e9; // -1e9 = no berm here (a real number like -1 would fill every pit deeper than 1 m)
     const y = r < d.rc ? d.H : d.H*(1 - (r-d.rc)/(d.rf-d.rc)); const t = trench(x,z), n = (fbm(x/1.6,z/1.6,5,3)-0.5)*0.5*Math.min(1,y); return Math.max(-0.05, (y+n)*t - (1-t)*0.3); }
   function berm(layers){
     const d = bermDims(layers), pts = [];
@@ -258,7 +305,7 @@ const G3 = (()=>{
     if(rg==='hab') return 0.3; if(rg==='gh') return 0.27; if(rg==='lab') return 0.65;
     if(rg==='cS') return 0.2 + 0.45*Math.max(0, Math.min(1, (-20.4 - z)/1.5));   // ramp up into the lab
     if(rg) return 0.2;
-    return Math.max(groundAt(x,z), world ? bermY(x,z,world.bermLayers) : -1); }
+    return Math.max(groundAt(x,z), world ? bermY(x,z,world.bermLayers) : -1e9); }
   function inPortal(x,z){ for(const [dx,dz] of DOORS){ const a = x*dx+z*dz; if(a > 9.6 && a < 11.6 && Math.abs(x*dz - z*dx) < 1.7) return true; } return (x - GH.x > 7.3 && x - GH.x < 9.6 && Math.abs(z) < 1.7) || (z > -22.8 && z < -20.3 && Math.abs(x) < 1.7); }
   function ceilAt(x,z){ const rg = region(x,z);
     if(inPortal(x,z)) return 2.95;
@@ -287,7 +334,7 @@ const G3 = (()=>{
   }
   const HAB_SOLID = [[0,0,0.55],[-5.49,-6.96,0.42],[-4.67,-7.54,0.42],[-4.42,-6.31,0.3],[-6.91,-5.55,0.42],[-6.24,-6.29,0.42],[-5.72,-5.15,0.3],[-7.98,-3.85,0.42],[-7.50,-4.73,0.42],[-6.73,-3.73,0.3],[-4.38,-8.60,0.45],[5.76,-5.19,0.5],[6.58,-5.92,0.5],[5.66,-6.99,0.22],[6.53,-4.08,0.32],[8.91,-4.54,0.55],[5.04,-8.18,0.4],[5.70,-7.74,0.4],
     
-    [2.44,7.74,0.55],[1.47,7.98,0.55],[-0.07,8.12,0.55],[-1.06,8.05,0.55],[-2.57,7.70,0.55],[-3.50,7.32,0.55],[-4.82,6.53,0.55],[-5.59,5.88,0.55],[8.54,3.84,0.4],[8.13,4.65,0.4],[7.64,5.40,0.4],[7.09,6.11,0.4],[6.47,6.76,0.4],[5.79,7.35,0.4],[5.43,4.72,0.75],[5.07,7.80,0.48],[-6.91,3.83,0.48],[-7.87,4.36,0.48],[-7.56,2.60,0.35],[-8.32,2.86,0.35],[-9.18,4.09,0.6]];
+    [2.44,7.74,0.55],[1.47,7.98,0.55],[-0.07,8.12,0.55],[-1.06,8.05,0.55],[-2.57,7.70,0.55],[-3.50,7.32,0.55],[-4.82,6.53,0.55],[-5.59,5.88,0.55],[8.54,3.84,0.4],[8.13,4.65,0.4],[7.64,5.40,0.4],[7.09,6.11,0.4],[6.47,6.76,0.4],[5.79,7.35,0.4],[5.43,4.72,0.75],[5.07,7.80,0.48],[-6.91,3.83,0.48],[-7.87,4.36,0.48],[-7.52,2.74,0.35],[-8.36,3.04,0.35],[-8.95,1.9,0.6],[-9.18,4.09,0.6]];
   function rebuildSolids(){
     const w = world; SOLID = HAB_SOLID.slice(); BOXES = [[7.75,-27.5,10,-20.5],[-10,-27.5,-7.75,-20.5],[-7.7,-26.1,7.7,-25.1],[-7.3,-22.4,-4.7,-21.8],[2.9,-23.95,5.1,-23.05],[-3.7,-22.6,-2.7,-21.8],[5.1,-22.3,6.4,-21.8],[6.9,-22.6,7.75,-21.9]];
     const v = (o,r)=>SOLID.push([o.position.x,o.position.z,r]);
@@ -338,6 +385,7 @@ const G3 = (()=>{
     w.cellMat = (()=>{ let m = null; const s = ASSET.solar; if(s) s.traverse(o=>{ if(!m && o.isMesh && o.material && o.material.name==='solar_cell') m = o.material.clone(); }); return m || M({color:0x16307a, roughness:0.2, metalness:0.6}); })();
     w.terrain = buildTerrain(pid); group.add(w.terrain); rocks(pid, group);
     w.stars = stars(mars?600:6000, 2600, mars?1.2:1.6, mars?0.25:0.95); group.add(w.stars);
+    w.meteors = meteorShower(T, group, { n:5, rate:0.18, w:0.005, dist:1700 });
     if(mars){ w.sky = skyDome(0x5a3a2c, 0xd59a68); group.add(w.sky); scene.fog = new T.Fog(0xc98b5c, 120, 700); scene.background = new T.Color(0x3a261d);
       const ph = mesh(new T.SphereGeometry(10,16,12), M({color:0x6b625a, roughness:1, map:grainTex}),false,false); ph.position.set(700,560,-1200); group.add(ph); }
     else { scene.fog = null; scene.background = new T.Color(0x000002);
@@ -383,21 +431,8 @@ const G3 = (()=>{
       deck(new T.PlaneGeometry(14.0, 3.2), floorMat(7,1.6), -17.8, 0.203, 0);
       deck(new T.PlaneGeometry(3.2, 9.6), floorMat(1.6,4.8), 0, 0.203, -15.6);
       deck(new T.PlaneGeometry(16.0, 4.4), floorMat(8,2.2), 0, 0.652, LAB.z);
-      // room signs hang from a beam between the two pillars of each room (no more floating signs)
-      const beamMat = M({color:0x2a2f3a, roughness:0.6, metalness:0.3});
-      w.roomSigns = [[20,62],[62,145],[145,195],[-62,-22],[-165,-112]].map(([a0,a1])=>{
-        const p0 = new T.Vector3(Math.cos(a0*Math.PI/180)*6, 0, Math.sin(a0*Math.PI/180)*6), p1 = new T.Vector3(Math.cos(a1*Math.PI/180)*6, 0, Math.sin(a1*Math.PI/180)*6);
-        const mid = p0.clone().add(p1).multiplyScalar(0.5), len = p0.distanceTo(p1);
-        const bm = mesh(new T.BoxGeometry(len, 0.14, 0.14), beamMat, false, false); bm.position.set(mid.x, 3.05, mid.z); bm.rotation.y = -Math.atan2(p1.z-p0.z, p1.x-p0.x); group.add(bm);
-        for(const sx of [-0.9, 0.9]){ const h = mesh(new T.CylinderGeometry(0.02,0.02,0.35,6), beamMat, false, false); h.position.set(sx,-0.2,0); bm.add(h); }
-        return a0===145 ? p0.clone().lerp(p1, 0.32) : mid; }); }
+    }
     const bc = mesh(new T.SphereGeometry(0.3,12,8), mat.amber,false,false); bc.position.set(0,11.15,0); group.add(bc); w.beacon = bc;
-    [[41,'КУХНЯ / GALLEY','#ffd35a','basket'],[103,'СПАЛЬНИ / BUNKS','#8fb8ff','bed'],[163,'СПОРТ / GYM','#8ddc6a','run'],[-42,'МЕДОТСЕК / MED BAY','#ff8fa3','med'],[-138,'СВЯЗЬ / COMMS','#7fd3ff','screen'],
-     [0,'ШЛЮЗ / AIRLOCK','#8fb8ff','door'],[180,'ТЕПЛИЦА / GREENHOUSE','#8ddc6a','leaf'],[-90,'ЛАБОРАТОРИЯ / LAB','#8ddc6a','flask']].forEach(([deg,txt,col,icn])=>{
-      const a = deg*Math.PI/180, door = deg%90===0, r = door ? 9.8 : 6.4; const room = !door && w.roomSigns ? w.roomSigns.reduce((b,m)=> Math.abs(Math.atan2(m.z,m.x)*180/Math.PI - deg) < Math.abs(Math.atan2(b.z,b.x)*180/Math.PI - deg) ? m : b) : null;
-      const tex = canvasTex(512,96,(c,w2,h)=>{ c.fillStyle='rgba(8,14,30,.92)'; c.fillRect(0,0,w2,h); c.fillStyle=col; c.fillRect(0,0,10,h); c.save(); c.translate(26,18); c.scale(2.5,2.5); c.strokeStyle=col; c.lineWidth=2; c.lineCap='round'; c.lineJoin='round'; c.stroke(new Path2D(ICONS[icn])); c.restore(); c.fillStyle='#fff'; c.font='600 34px system-ui,sans-serif'; c.textBaseline='middle'; c.fillText(txt, 100, h/2+2); });
-      const sg = mesh(new T.PlaneGeometry(2.4,0.45), new T.MeshBasicMaterial({map:tex, side:T.DoubleSide}), false, false);
-      if(room) sg.position.set(room.x*0.985, 2.62, room.z*0.985); else sg.position.set(Math.cos(a)*r, door ? 3.5 : 3.0, Math.sin(a)*r); sg.lookAt(0, sg.position.y, 0); group.add(sg); });
     // interior lights
     const lamp = (x,y,z,c,i,d)=>{ const l = new T.PointLight(c,i,d,1.2); l.position.set(x,y,z); group.add(l); return l; };
     w.lamps = [lamp(0,6.4,0,0xfff1dd,0.62,24), lamp(0,5.6,LAB.z,0xe8f4ff,1.3,18), lamp(17,2.6,0,0xfff1dd,0.8,10), lamp(-17,2.6,0,0xfff1dd,0.8,10), lamp(0,2.6,-16,0xfff1dd,0.8,10)];
@@ -415,7 +450,7 @@ const G3 = (()=>{
     const pad = mesh(new T.CylinderGeometry(8,8.4,0.25,48), M({color:0x5d6068, roughness:0.9})); place(pad, lp, 0.05); group.add(pad);
     const ring = mesh(new T.RingGeometry(6,6.4,48), M({color:0xffc94a, emissive:0x6a4a00, side:T.DoubleSide}),false,false); ring.rotation.x=-Math.PI/2; place(ring, lp, 0.2); group.add(ring);
     const reg = M({color: mars?0xa85d38:0x7d7f84, roughness:1, map:grainTex});
-    const qp = SLOT.quarry(); const pg = new T.SphereGeometry(1, 32, 12, 0, Math.PI*2, 0, Math.PI/2); const pp = pg.attributes.position; for(let i=0;i<pp.count;i++){ const x = pp.getX(i), y = pp.getY(i), z = pp.getZ(i); const k = 1 + 0.18*(fbm(x*1.7+3, z*1.7+3, 21, 3)-0.5); pp.setXYZ(i, x*4.4*k, y*2.4*(0.9+0.2*k), z*4.4*k); } pg.computeVertexNormals(); const pile = mesh(pg, reg);
+    const qp = SLOT.quarry(); const pg = new T.SphereGeometry(1, 32, 12, 0, Math.PI*2, 0, Math.PI/2); const pp = pg.attributes.position; for(let i=0;i<pp.count;i++){ const x = pp.getX(i), y = pp.getY(i), z = pp.getZ(i); const k = 1 + 0.18*(fbm(x*1.7+3, z*1.7+3, 21, 3)-0.5); const rr = Math.min(1, Math.hypot(x,z)); pp.setXYZ(i, x*4.6*k, 2.6*Math.pow(1-rr, 0.85)*(0.88+0.24*k) + 0.12*Math.sin(x*7)*Math.cos(z*6)*(1-rr), z*4.6*k); } /* a tipped cone of loose regolith, not a dome */ pg.computeVertexNormals(); const pile = mesh(pg, reg);
     place(pile, qp, -0.15); group.add(pile);
     { const rg = new T.DodecahedronGeometry(0.35, 0); const rm = M({color: mars?0x6e3a24:0x5f6166, roughness:1, map:grainTex}); const r = mulberry32(44);
       for(let k=0;k<16;k++){ const a = r()*Math.PI*2, d = 1.5 + r()*3.6, x = qp.x + Math.cos(a)*d, z = qp.z + Math.sin(a)*d, sc = 0.4 + r()*0.9;
@@ -425,19 +460,52 @@ const G3 = (()=>{
     { const steel = M({color:0x9aa2ae, roughness:0.45, metalness:0.7}), dark = M({color:0x2c323e, roughness:0.6, metalness:0.3}), yel = M({color:0xf2b233, roughness:0.5, metalness:0.2});
       const bagM = M({color: mars?0xd9c3a8:0xe4e2dc, roughness:0.95}), strap = M({color:0x3b6bd1, roughness:0.7}), wood = M({color:0x8a7a5a, roughness:0.9});
       const at = (o, x, z, dy=0)=>{ o.position.set(x, ground(x,z) + dy, z); group.add(o); return o; };
-      // hopper on four legs
-      const hx = 25.2, hz = -21.4;
-      for(const [dx,dz] of [[-0.7,-0.7],[0.7,-0.7],[-0.7,0.7],[0.7,0.7]]) at(mesh(new T.CylinderGeometry(0.06,0.06,2.0,8), steel), hx+dx, hz+dz, 1.0);
-      at(mesh(new T.CylinderGeometry(1.05,0.35,1.1,4,1,true), yel), hx, hz, 2.45).rotation.y = Math.PI/4;
-      at(mesh(new T.BoxGeometry(1.6,0.12,1.6), dark), hx, hz, 2.0);
-      // belt from the hopper to the bagger
-      const bx = 22.4, bz = -19.2, dx = bx-hx, dz = bz-hz, len = Math.hypot(dx,dz);
-      const belt = at(mesh(new T.BoxGeometry(len, 0.12, 0.7), dark), (hx+bx)/2, (hz+bz)/2, 1.25); belt.rotation.y = -Math.atan2(dz, dx); belt.rotation.z = 0.12;
-      for(let k=0;k<=3;k++){ const t = k/3, x = hx + dx*t, z = hz + dz*t; at(mesh(new T.CylinderGeometry(0.05,0.05,1.3 - t*0.35,8), steel), x, z, (1.3 - t*0.35)/2); }
-      // bagger: a box with a chute and a status light
-      const bg = at(mesh(new T.BoxGeometry(1.4,1.3,1.2), M({color:0xd6dbe3, roughness:0.5, metalness:0.2})), bx, bz, 0.65);
-      const lightG = mesh(new T.SphereGeometry(0.09,10,8), M({color:0x55ff88, emissive:0x22aa44}), false, false); lightG.position.set(0,0.75,0); bg.add(lightG);
-      const chute = mesh(new T.BoxGeometry(0.5,0.12,0.5), steel, false, false); chute.position.set(-0.85,-0.25,0); chute.rotation.z = 0.5; bg.add(chute);
+      const glowY = M({color:0xffb347, emissive:0xff9a1f, emissiveIntensity:1.6});
+      // hopper: yellow funnel in a steel frame with a grid on top, the excavator tips regolith in here
+      const hx = 25.2, hz = -21.4, hg = ground(hx,hz);
+      for(const [dx,dz] of [[-0.75,-0.75],[0.75,-0.75],[-0.75,0.75],[0.75,0.75]]){ at(mesh(new T.BoxGeometry(0.12,2.1,0.12), steel), hx+dx, hz+dz, 1.05); }
+      for(const y of [0.5, 1.9]) for(const [ax,az,rx] of [[0,-0.75,0],[0,0.75,0],[-0.75,0,1],[0.75,0,1]]){ const b = at(mesh(new T.BoxGeometry(1.5,0.08,0.08), steel), hx+ax, hz+az, y); if(rx) b.rotation.y = Math.PI/2; }
+      at(mesh(new T.CylinderGeometry(1.15,0.32,1.2,4,1,true), M({color:0xf2b233, roughness:0.5, metalness:0.2, side:T.DoubleSide})), hx, hz, 2.55).rotation.y = Math.PI/4;
+      for(let k=-3;k<=3;k++){ at(mesh(new T.BoxGeometry(0.04,0.04,1.6), dark), hx+k*0.22, hz, 3.15); }
+      at(mesh(new T.CylinderGeometry(0.75,0.75,0.25,4), reg), hx, hz, 2.95).rotation.y = Math.PI/4;   // regolith heaped inside
+      // conveyor: a lattice frame on A-frame legs, rollers, a dark belt carrying a line of regolith, side rails
+      const bx = 22.4, bz = -19.2, dx = bx-hx, dz = bz-hz, len = Math.hypot(dx,dz), ang = -Math.atan2(dz, dx), y0 = 1.75, y1 = 1.45;
+      const conv = new T.Group(); conv.position.set((hx+bx)/2, ground((hx+bx)/2,(hz+bz)/2) + (y0+y1)/2, (hz+bz)/2); conv.rotation.y = ang; conv.rotation.z = Math.atan2(y1-y0, len) * -1; group.add(conv);
+      const cp = (o,x,y,z)=>{ o.position.set(x,y,z); conv.add(o); return o; };
+      cp(mesh(new T.BoxGeometry(len, 0.05, 0.62), M({color:0x1a1d24, roughness:0.85})), 0, 0.06, 0);
+      cp(mesh(new T.BoxGeometry(len, 0.07, 0.3), reg), 0, 0.12, 0);
+      for(const zz of [-0.36, 0.36]){ cp(mesh(new T.BoxGeometry(len, 0.14, 0.05), yel), 0, 0.12, zz); cp(mesh(new T.BoxGeometry(len, 0.06, 0.06), steel), 0, -0.12, zz); }
+      for(let k=0;k<=Math.floor(len/0.45);k++){ const r = cp(mesh(new T.CylinderGeometry(0.05,0.05,0.7,8), steel), -len/2 + k*0.45, 0, 0); r.rotation.x = Math.PI/2; }
+      for(let k=0;k<Math.floor(len/0.6);k++){ const d = cp(mesh(new T.BoxGeometry(0.04,0.04,0.75), steel), -len/2 + 0.3 + k*0.6, -0.08, 0); d.rotation.y = (k%2 ? 0.6 : -0.6); }
+      for(const t of [0.2, 0.75]){ const x = hx + dx*t, z = hz + dz*t, h = y0 + (y1-y0)*t;
+        for(const side of [-1,1]){ const leg = at(mesh(new T.BoxGeometry(0.07, h, 0.07), steel), x + Math.sin(ang)*0.3*side, z + Math.cos(ang)*0.3*side, h/2); leg.rotation.y = ang; } }
+      // bagging machine: housing, control panel with a screen, chute down into a bag on a weighing scale, warning beacon
+      const bag0 = M({color:0xd6dbe3, roughness:0.5, metalness:0.2});
+      const bm = new T.Group(); bm.position.set(bx, ground(bx,bz), bz); bm.rotation.y = ang; group.add(bm);
+      const bp = (o,x,y,z)=>{ o.position.set(x,y,z); bm.add(o); return o; };
+      bp(mesh(new T.BoxGeometry(1.5,0.12,1.3), dark), 0, 0.06, 0);
+      bp(mesh(new T.BoxGeometry(1.2,1.25,1.1), bag0), 0.1, 0.75, 0);
+      bp(mesh(new T.CylinderGeometry(0.45,0.2,0.5,4,1,true), M({color:0xf2b233, roughness:0.5, side:T.DoubleSide})), -0.1, 1.55, 0).rotation.y = Math.PI/4;
+      bp(mesh(new T.BoxGeometry(0.06,0.5,0.7), dark), 0.73, 0.95, 0);
+      bp(mesh(new T.PlaneGeometry(0.55,0.3), M({color:0x0e2846, emissive:0x2a7fd8, emissiveIntensity:0.9})), 0.765, 1.02, 0).rotation.y = Math.PI/2;
+      for(const [zz,c] of [[-0.2,0x55ff88],[0,0xffd35a],[0.2,0xff5555]]){ const bt = bp(mesh(new T.CylinderGeometry(0.035,0.035,0.03,10), M({color:c, emissive:c, emissiveIntensity:0.8})), 0.77, 0.8, zz); bt.rotation.z = Math.PI/2; }
+      const chute = bp(mesh(new T.CylinderGeometry(0.16,0.2,0.7,12,1,true), M({color:0x9aa2ae, roughness:0.45, metalness:0.7, side:T.DoubleSide})), -0.85, 0.75, 0); chute.rotation.z = -0.5;
+      bp(mesh(new T.BoxGeometry(0.75,0.08,0.75), steel), -1.15, 0.04, 0);                    // scale
+      const fill = bp(mesh(new T.CylinderGeometry(0.32,0.36,0.62,14), bagM), -1.15, 0.4, 0);   // the bag being filled
+      for(const zz of [-0.24,0.24]) bp(mesh(new T.TorusGeometry(0.08,0.02,6,12,Math.PI), strap), -1.15, 0.72, zz);
+      const beacon = bp(mesh(new T.CylinderGeometry(0.08,0.08,0.16,12), glowY), 0.35, 1.46, 0.35);
+      const bl = new T.PointLight(0xffa020, 0, 6, 2); bl.position.set(0.35, 1.7, 0.35); bm.add(bl);
+      w.bagger = { beacon, bl, fill };
+      // work-light mast so the quarry is lit in the shadow of the mountains
+      { const lx = 26.8, lz = -17.6; at(mesh(new T.CylinderGeometry(0.06,0.09,4.2,8), steel), lx, lz, 2.1);
+        const head = at(mesh(new T.BoxGeometry(0.5,0.25,0.18), dark), lx, lz, 4.25); head.rotation.y = 0.9;
+        const lens = mesh(new T.PlaneGeometry(0.42,0.18), M({color:0xffffff, emissive:0xfff1d0, emissiveIntensity:2})); lens.position.z = 0.1; head.add(lens);
+        const sl = new T.SpotLight(0xfff1d0, 1.4, 22, 0.7, 0.6, 1.5); sl.position.set(lx, ground(lx,lz)+4.2, lz); sl.target.position.set(qp.x-2, ground(qp.x,qp.z), qp.z+2); group.add(sl, sl.target); }
+      // a flattened, darker work area with tyre tracks between the pile and the line
+      { const pad = mesh(new T.CircleGeometry(5.5, 40), M({color: mars?0x6b3a26:0x55575c, roughness:1, map:grainTex, transparent:true, opacity:0.55, depthWrite:false}), false, true);
+        pad.rotation.x = -Math.PI/2; pad.position.set(25.6, ground(25.6,-19.6)+0.04, -19.6); group.add(pad);
+        for(let k=0;k<2;k++){ const tr = mesh(new T.PlaneGeometry(0.35, 7.5), M({color:0x3a3c42, roughness:1, transparent:true, opacity:0.45, depthWrite:false}), false, false);
+          tr.rotation.x = -Math.PI/2; tr.rotation.z = 0.9; tr.position.set(27.6 + k*0.9*Math.cos(0.9), ground(27.6,-20.4)+0.05, -20.4 - k*0.9*Math.sin(0.9)); group.add(tr); } }
       // filled bags stacked on pallets
       const bagG = new T.BoxGeometry(0.9,0.32,0.55, 3,2,2); { const p = bagG.attributes.position; for(let i=0;i<p.count;i++){ const x = p.getX(i), y = p.getY(i), z = p.getZ(i); const k = 1 - 0.18*(Math.abs(x)/0.45)**2*(Math.abs(z)/0.275); p.setY(i, y*k); } bagG.computeVertexNormals(); }
       for(const [px,pz] of [[20.2,-17.2],[20.4,-15.3]]){
@@ -447,12 +515,7 @@ const G3 = (()=>{
           const st = mesh(new T.BoxGeometry(0.06,0.34,0.57), strap, false, false); b.add(st); }
         w.crates.push([px, pz]);
       }
-      // signboard
-      outdoorSign(22.0, -14.6, L('КАРЬЕР РЕГОЛИТА','REGOLITH QUARRY'), L('реголит → мешки → защита базы от радиации','regolith → bags → radiation shield for the base'), '#d38bff', 'mound', 2.6);
-      outdoorSign(SLOT.drill(pid).x - 2.6, SLOT.drill(pid).z - 3.0, L('БУРОВАЯ','DRILL SITE'), L('ищем лёд под поверхностью','looking for ice under the surface'), '#8ddc6a', 'drill', 0.4);
-      outdoorSign(27.2, 8.6, L('БАТАРЕИ','BATTERIES'), L('запас энергии на ночь','energy stored for the night'), '#ffd35a', 'battery', -0.8);
-      outdoorSign(-14.4, 9.6, L('СОЛНЕЧНОЕ ПОЛЕ','SOLAR FIELD'), L('свет Солнца → электричество','sunlight → electricity'), '#7fd3ff', 'sun', 0.6);
-      outdoorSign(19.0, 18.2, L('АНТЕННА СВЯЗИ','RADIO ANTENNA'), L('связь с Землёй','link to Earth'), '#7fd3ff', 'dish', 0.9);
+      // (signboards removed: the stations already show what each place is)
     }
     [[27,-6],[28.2,-6.6],[26.8,-7.4],[-46,-34],[-47.2,-35],[-45.4,-36]].forEach(([x,z],k)=>{ put(inst('crate'), x, ground(x,z), z, k*0.7); w.crates.push([x,z]); });
     // path lights from the airlock to each work site
@@ -599,7 +662,6 @@ const G3 = (()=>{
   let playerMesh = null, markers = [], hooks = { near:null, tick:null, jump:null, land:null };
   function buildWalk(w){
     playerMesh = person('astronaut'); playerMesh.visible = mode==='walk' && view==='tp';
-    const band = mesh(new T.TorusGeometry(0.33,0.05,8,24), mat.orange); band.rotation.x = Math.PI/2; band.position.y = 1.02; playerMesh.add(band);
     const lamp = new T.SpotLight(0xfff0d0, 0, 30, 0.5, 0.6); lamp.position.set(0,1.9,0.2); lamp.target.position.set(0,0,6); playerMesh.add(lamp, lamp.target); playerMesh.userData.lamp = lamp;
     w.group.add(playerMesh);
     drv.on = false; w.driver = person('astronaut'); w.driver.position.set(-0.22, 0.17, -0.42); w.driver.rotation.y = Math.PI/2; w.driver.visible = false;
@@ -773,7 +835,7 @@ const G3 = (()=>{
     let r = R;
     if(pl.indoor){ for(let i=1;i<=14;i++){ const q = R*i/14, x = hx+ex*q, y = ty+ey*q, z = hz+ez*q; if(!region(x,z) || y > ceilAt(x,z) - 0.25 || blocked(x,z) && i>2){ r = Math.max(0.6, q - R/14 - 0.2); break; } } }
     let cx = hx+ex*r, cy = ty+ey*r, cz = hz+ez*r;
-    if(!pl.indoor){ cy = Math.max(cy, Math.max(groundAt(cx,cz), world ? bermY(cx,cz,world.bermLayers) : -1) + 0.6); }
+    if(!pl.indoor){ cy = Math.max(cy, Math.max(groundAt(cx,cz), world ? bermY(cx,cz,world.bermLayers) : -1e9) + 0.6); }
     camera.position.set(cx, cy, cz); camera.lookAt(hx, ty, hz);
   }
 
@@ -808,6 +870,8 @@ const G3 = (()=>{
     const bl = (Math.sin(tNow*3)+1)/2;
     w.beacon.scale.setScalar(0.7+bl*0.6);
     if(w.dishHead) w.dishHead.rotation.z = Math.sin(tNow*0.25)*0.3;
+    if(w.meteors) w.meteors.step(dt, camera, w.stars.visible !== false && w.stars.material.opacity > 0.2 && !reduce);
+    if(w.bagger){ const g = w.bagger, on = Math.sin(tNow*5) > 0.2; g.beacon.material.emissiveIntensity = on ? 2.4 : 0.2; if(g.bl) g.bl.intensity = on ? 1.6 : 0; if(g.fill){ const f = (tNow*0.08)%1; const sy = 0.35+0.65*f; g.fill.scale.set(1, sy, 1); g.fill.position.y = 0.09+0.31*sy; } }
     if(w.earth) w.earth.rotation.y += dt*0.02;
     if(w.dust.visible){ const p = w.dust.geometry.attributes.position; const ox = mode==='walk'?pl.x:0, oz = mode==='walk'?pl.z:0; w.dust.position.set(ox, pl.y, oz); for(let i=0;i<p.count;i++){ let x = p.getX(i)+dt*(18+ (i%7)*3); if(x>100) x-=200; p.setX(i,x); p.setY(i, (p.getY(i)+dt*((i%5)-2)*0.6+30)%30); } p.needsUpdate = true; }
     if(w.protons.visible){ if(mode==='walk') w.protons.position.set(pl.x, pl.y, pl.z); const p = w.protons.geometry.attributes.position; for(let i=0;i<p.count;i++){ let y = p.getY(i)-dt*(35+(i%9)*4); if(y<0) y+=30; p.setY(i,y); } p.needsUpdate = true; }

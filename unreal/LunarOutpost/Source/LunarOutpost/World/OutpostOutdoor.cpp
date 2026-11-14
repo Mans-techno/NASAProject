@@ -70,18 +70,5 @@ void AOutpostWorld::BuildOutdoor()
 			AddShape(this, RootComponent, TEXT("Cube"), At, FVector(0.06, 0.57, 0.32), FRotator(0, (L % 2) * 2.0, 0), Strap, false);
 		}
 	}
-	// outdoor signs face the airlock
-	auto OutSign = [&](const TCHAR* Key, double X, double Z)
-	{
-		const double Ry = FMath::Atan2(26 - X, 0 - Z); // three.js: the sign's front looks back towards the airlock
-		const FVector2D Face(FMath::Sin(Ry), FMath::Cos(Ry));
-		const double Deg = FMath::RadiansToDegrees(FMath::Atan2(Face.Y, Face.X));
-		Sign(Key, G(X, Z, 0), Deg - 90.0, 2.6, 0.81, true);
-	};
-	OutSign(TEXT("quarry"), 22.0, -14.6);
-	OutSign(TEXT("drill"), (bMars ? 36 : 40) - 2.6, (bMars ? 34 : 30) - 3.0);
-	OutSign(TEXT("battery"), 27.2, 8.6);
-	OutSign(TEXT("solar"), -14.4, 9.6);
-	OutSign(TEXT("radio"), 19.0, 18.2);
 }
 

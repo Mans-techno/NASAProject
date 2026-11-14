@@ -82,7 +82,7 @@ namespace Outpost
 		const double D = FMath::Sqrt(X * X + Z * Z);
 		const double Amp = 0.35 + 0.65 * SmoothStep(30, 140, D);
 		double H = bMars ? (Fbm(X / 40, Z / 40, Seed, 5) - 0.5) * 9 + FMath::Sin(X / 9 + Fbm(X / 30, Z / 30, Seed + 3, 3) * 4) * 0.6
-		                 : (Fbm(X / 34, Z / 34, Seed, 6) - 0.5) * 7;
+		                 : (Fbm(X / 34, Z / 34, Seed, 6) - 0.5) * 6;
 		H *= Amp;
 		for (const FVector& C : Craters)
 		{
@@ -91,14 +91,14 @@ namespace Outpost
 		}
 		if (!bMars)
 		{   // polar massifs on the horizon, and the floor of Shackleton falling away to the south-west
-			H += FMath::Pow(FMath::Max(0.0, D - 200) / 250, 1.6) * 120 * (0.35 + Fbm(X / 90, Z / 90, 11, 4));
+			H += FMath::Pow(FMath::Max(0.0, D - 200) / 250, 1.6) * 85 * (0.35 + Fbm(X / 90, Z / 90, 11, 4));
 			const double Sh = FMath::Sqrt((X + 330) * (X + 330) + (Z + 300) * (Z + 300));
 			if (Sh < 260) H -= (1 - Sh / 260) * (1 - Sh / 260) * 90;
 		}
 		else
 		{
-			H += FMath::Max(0.0, Fbm(X / 70, Z / 70, 13, 3) - 0.52) * 90 * SmoothStep(110, 190, D);
-			H += FMath::Pow(FMath::Max(0.0, D - 260) / 190, 2.0) * 70 * Fbm(X / 120, Z / 120, 17, 3);
+			H += FMath::Max(0.0, Fbm(X / 70, Z / 70, 13, 3) - 0.52) * 65 * SmoothStep(110, 190, D);
+			H += FMath::Pow(FMath::Max(0.0, D - 260) / 190, 2.0) * 50 * Fbm(X / 120, Z / 120, 17, 3);
 		}
 		double M = 1e9;
 		for (const auto& F : FootPrints) M = FMath::Min(M, FMath::Sqrt((X - F[0]) * (X - F[0]) + (Z - F[1]) * (Z - F[1])) - F[2]);
