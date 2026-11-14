@@ -280,17 +280,17 @@ def build_hab():
     def gp(a, r, t, z): return (math.cos(a)*r - math.sin(a)*t, math.sin(a)*r + math.cos(a)*t, z)
     for k, gd in enumerate((27, 38, 49)):
         a = math.radians(-gd); rr = a + math.pi/2; R = 9.35
-        objs.append(cube((1.75, 0.66, 0.84), gp(a, R+0.02, 0, 0.74), M_CAB, 'counter', rot=(0,0,rr), bevel=0.02))
-        objs.append(cube((1.7, 0.05, 0.1), gp(a, R-0.27, 0, 0.36), M_DARK(), 'plinth', rot=(0,0,rr)))
+        objs.append(cube((1.92, 0.66, 0.84), gp(a, R+0.02, 0, 0.74), M_CAB, 'counter', rot=(0,0,rr), bevel=0.02))
+        objs.append(cube((1.8, 0.05, 0.1), gp(a, R-0.27, 0, 0.36), M_DARK(), 'plinth', rot=(0,0,rr)))
         for q in (-0.43, 0.43):
             objs.append(cube((0.82, 0.02, 0.66), gp(a, R-0.32, q, 0.8), M_PANEL(), 'cabdoor', rot=(0,0,rr), bevel=0.01))
             objs.append(cube((0.3, 0.03, 0.025), gp(a, R-0.345, q, 1.05), M_STEEL, 'cabhandle', rot=(0,0,rr)))
-        objs.append(cube((1.8, 0.74, 0.05), gp(a, R, 0, 1.2), M_STONE, 'worktop', rot=(0,0,rr), bevel=0.01))
-        objs.append(cube((1.8, 0.03, 0.62), gp(a, R+0.36, 0, 1.54), M_SPLASH, 'backsplash', rot=(0,0,rr)))
-        objs.append(cube((1.7, 0.4, 0.6), gp(a, R+0.4, 0, 2.15), M_WHITE(), 'upper', rot=(0,0,rr), bevel=0.03))
+        objs.append(cube((1.98, 0.74, 0.05), gp(a, R, 0, 1.2), M_STONE, 'worktop', rot=(0,0,rr), bevel=0.01))
+        objs.append(cube((2.0, 0.03, 0.62), gp(a, R+0.36, 0, 1.54), M_SPLASH, 'backsplash', rot=(0,0,rr)))
+        objs.append(cube((1.98, 0.4, 0.6), gp(a, R+0.4, 0, 2.15), M_WHITE(), 'upper', rot=(0,0,rr), bevel=0.03))
         for q in (-0.43, 0.43):
             objs.append(cube((0.25, 0.03, 0.025), gp(a, R+0.185, q, 1.9), M_STEEL, 'uphandle', rot=(0,0,rr)))
-        objs.append(cube((1.6, 0.04, 0.02), gp(a, R+0.24, 0, 1.84), M_LIGHT(), 'undercab', rot=(0,0,rr)))
+        objs.append(cube((1.9, 0.04, 0.02), gp(a, R+0.24, 0, 1.84), M_LIGHT(), 'undercab', rot=(0,0,rr)))
         if k == 0:
             # sink: steel rim, a dark recessed bowl, drainer grooves, gooseneck tap with a lever
             objs.append(cube((0.78, 0.52, 0.02), gp(a, R-0.02, -0.25, 1.235), M_STEEL, 'sinkrim', rot=(0,0,rr)))
@@ -579,8 +579,16 @@ def build_lab():
         objs.append(cube((0.05, 0.05, 0.35), (x-0.6, 1.88, 1.79), M_DARK(), 'monneck'))
         objs.append(cube((1.0, 0.05, 0.6), (x-0.6, 1.84, 2.2), M_DARK(), 'labbezel', bevel=0.015))
         objs.append(cube((0.92, 0.02, 0.52), (x-0.6, 1.81, 2.2), M_SCREEN(), 'labscreen'))
-        objs.append(cube((0.8, 0.5, 0.6), (x+0.8, 1.6, 1.9), M_GLASS(), 'glovebox', bevel=0.05))
-        for q in (-0.18, 0.18): objs.append(torus(0.09, 0.02, (x+0.8+q, 1.34, 1.85), M_DARK(), 'gloveport', rot=(math.pi/2,0,0), maj=14, mnr=4))
+        # glovebox: solid frame and back, glass front with two glove ports and gloves reaching inside
+        gx = x+0.8
+        objs.append(cube((0.84, 0.52, 0.06), (gx, 1.6, 1.63), M_DARK(), 'gbbase'))
+        objs.append(cube((0.84, 0.52, 0.06), (gx, 1.6, 2.2), M_DARK(), 'gbroof'))
+        objs.append(cube((0.84, 0.06, 0.6), (gx, 1.84, 1.92), M_PANEL(), 'gbback'))
+        for q in (-0.4, 0.4): objs.append(cube((0.05, 0.52, 0.6), (gx+q, 1.6, 1.92), M_DARK(), 'gbside'))
+        objs.append(cube((0.76, 0.02, 0.5), (gx, 1.36, 1.92), M_GLASS(), 'glovebox'))
+        for q in (-0.18, 0.18):
+            objs.append(cyl(0.085, 0.04, (gx+q, 1.35, 1.88), M_DARK(), 'gloveport', verts=16, rot=(math.pi/2,0,0)))
+            objs.append(cyl(0.06, 0.3, (gx+q, 1.5, 1.86), M_RUBBER(), 'glove', verts=10, rot=(math.pi/2,0,0), r2=0.045))
         objs.append(sphere(0.11, (x+0.8, 1.65, 1.7), M_DARK() if k%2 else M_PANEL(), 'rock', seg=7, ring=5, scale=(1.2,1,0.8)))
         objs.append(cube((0.6, 0.4, 0.04), (x, 1.85, 2.85), M_WHITE(), 'shelf'))
         for j in range(5): objs.append(cyl(0.06, 0.16, (x-0.24+j*0.12, 1.85, 2.95), M_GLASS() if j%2 else M_ORANGE(), 'jar', verts=10))
@@ -609,17 +617,30 @@ def build_lab():
     # central island with microscope, sample trays and stools
     objs.append(cube((2.2, 0.9, 0.9), (4.0, -0.5, 1.1), M_PANEL(), 'island', bevel=0.04))
     objs.append(cube((2.3, 1.0, 0.05), (4.0, -0.5, 1.57), M_DARK(), 'islandtop'))
-    objs.append(cyl(0.12, 0.08, (3.3, -0.5, 1.64), M_DARK(), 'mscbase', verts=12))
-    objs.append(cyl(0.04, 0.45, (3.3, -0.35, 1.85), M_METAL(), 'mscarm', verts=8))
-    objs.append(cyl(0.06, 0.25, (3.3, -0.5, 2.0), M_DARK(), 'msctube', verts=10, rot=(0.4,0,0)))
-    for k in range(3): objs.append(cube((0.22, 0.32, 0.05), (3.65+k*0.26, -0.6, 1.62), M_GLASS(), 'tray', bevel=0.01))
+    # microscope: heavy base, upright pillar, arm, stage with a slide, objective and an angled eyepiece
+    objs.append(cube((0.3, 0.36, 0.05), (3.3, -0.45, 1.62), M_WHITE(), 'mscbase', bevel=0.02))
+    objs.append(cube((0.08, 0.08, 0.42), (3.3, -0.3, 1.85), M_WHITE(), 'mscpillar', bevel=0.02))
+    objs.append(cube((0.1, 0.24, 0.08), (3.3, -0.39, 2.06), M_WHITE(), 'mscarm', bevel=0.02))
+    objs.append(cube((0.2, 0.18, 0.02), (3.3, -0.5, 1.8), M_DARK(), 'mscstage'))
+    objs.append(cube((0.08, 0.03, 0.005), (3.3, -0.52, 1.813), M_GLASS(), 'slide'))
+    objs.append(cyl(0.03, 0.12, (3.3, -0.5, 1.96), M_DARK(), 'objective', verts=12))
+    objs.append(cyl(0.025, 0.16, (3.3, -0.36, 2.15), M_DARK(), 'eyepiece', verts=12, rot=(-0.5,0,0)))
+    for k in range(3): objs.append(cube((0.22, 0.32, 0.05), (3.75+k*0.26, -0.6, 1.62), M_WHITE(), 'tray', bevel=0.01))
+    for k in range(3): objs.append(sphere(0.045, (3.75+k*0.26, -0.6, 1.67), M_DARK() if k%2 else M_PANEL(), 'sample', seg=7, ring=5, scale=(1.3,1,0.7)))
+    # laptop at the other end of the island
+    objs.append(cube((0.36, 0.26, 0.02), (4.75, -0.75, 1.605), M_DARK(), 'laptopbase'))
+    objs.append(cube((0.36, 0.02, 0.24), (4.75, -0.62, 1.73), M_DARK(), 'laptoplid', rot=(-0.25,0,0)))
+    objs.append(cube((0.32, 0.005, 0.2), (4.75, -0.635, 1.73), M_SCREEN(), 'laptopscreen', rot=(-0.25,0,0)))
     for x in (3.4, 4.6):
         objs.append(cyl(0.22, 0.08, (x, -1.35, 1.0), M_BLUE(), 'labstool', verts=14))
         objs.append(cyl(0.04, 0.4, (x, -1.35, 0.78), M_METAL(), 'labstoolleg', verts=8))
     # sample freezer and core-sample rack (west end)
     objs.append(cube((1.0, 0.8, 1.6), (-3.2, -1.8, 1.45), M_WHITE(), 'freezer', bevel=0.04))
     objs.append(cube((0.6, 0.04, 0.25), (-3.2, -2.22, 1.9), M_SCREEN(), 'freezerscreen'))
-    for k in range(6): objs.append(cyl(0.06, 0.9, (5.2+k*0.22, -1.95, 1.2), M_ORANGE() if k%2 else M_DARK(), 'core', verts=8, rot=(0,math.pi/2,0)))
+    # drill cores lie in a proper core box on a low cabinet instead of floating
+    objs.append(cube((1.5, 0.6, 0.8), (5.75, -1.85, 1.0), M_PANEL(), 'corecab', bevel=0.03))
+    objs.append(cube((1.4, 0.55, 0.12), (5.75, -1.85, 1.46), M_DARK(), 'corebox'))
+    for k in range(4): objs.append(cyl(0.05, 1.25, (5.75, -2.06+k*0.14, 1.52), M_ORANGE() if k%2 else M_PANEL(), 'core', verts=10, rot=(0,math.pi/2,0)))
     lab = join(objs, 'lab')
     export('lab')
 

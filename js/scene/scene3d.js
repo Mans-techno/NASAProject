@@ -351,7 +351,7 @@ const G3 = (()=>{
     w.beds.forEach(b=>BOXES.push([b.position.x-2.5,b.position.z-0.7,b.position.x+2.5,b.position.z+0.7]));
     (w.ghRacks||[]).forEach(r=>SOLID.push([r.position.x, r.position.z, 0.75]));
     if(w.reactor.visible) SOLID.push([SLOT.reactor().x, SLOT.reactor().z, 5.6]);
-    SOLID.push([SLOT.dish().x, SLOT.dish().z, 1.2],[SLOT.quarry().x, SLOT.quarry().z, 3.8],[31.2,-20.8,2.2],[25.2,-21.4,1.0],[22.4,-19.2,0.9],
+    SOLID.push([SLOT.dish().x, SLOT.dish().z, 1.2],[SLOT.quarry().x, SLOT.quarry().z, 3.8],[33.4,-18.6,2.2],[25.2,-21.4,1.0],[22.4,-19.2,0.9],
       [SLOT.drill(w.pid).x, SLOT.drill(w.pid).z, 1.0],[27,5,0.25]);
     if(w.viking) SOLID.push([w.viking.position.x, w.viking.position.z, 1.9]);
     w.crates.forEach(c=>SOLID.push([c[0],c[1],0.75]));
@@ -496,7 +496,7 @@ const G3 = (()=>{
     { const rg = new T.DodecahedronGeometry(0.35, 0); const rm = M({color: mars?0x6e3a24:0x5f6166, roughness:1, map:grainTex}); const r = mulberry32(44);
       for(let k=0;k<16;k++){ const a = r()*Math.PI*2, d = 1.5 + r()*3.6, x = qp.x + Math.cos(a)*d, z = qp.z + Math.sin(a)*d, sc = 0.4 + r()*0.9;
         const hy = d < 4.3 ? 2.4*Math.sqrt(Math.max(0, 1 - (d/4.4)*(d/4.4))) - 0.15 : 0; const rk = mesh(rg, rm); rk.scale.set(sc, sc*0.7, sc); rk.rotation.set(r()*3, r()*3, r()*3); rk.position.set(x, ground(x,z) + hy + 0.1, z); group.add(rk); } }
-    put(inst('excavator'), 31.2, ground(31.2,-20.8), -20.8, 2.36);
+    put(inst('excavator'), 33.4, ground(33.4,-18.6), -18.6, 2.36);   // parked clear of the regolith pile, bucket reaching its edge
     // regolith bagging line: the excavator fills a hopper, a belt carries regolith to the bagger, filled bags wait on pallets
     { const steel = M({color:0x9aa2ae, roughness:0.45, metalness:0.7}), dark = M({color:0x2c323e, roughness:0.6, metalness:0.3}), yel = M({color:0xf2b233, roughness:0.5, metalness:0.2});
       const bagM = M({color: mars?0xd9c3a8:0xe4e2dc, roughness:0.95}), strap = M({color:0x3b6bd1, roughness:0.7}), wood = M({color:0x8a7a5a, roughness:0.9});
@@ -674,41 +674,24 @@ const G3 = (()=>{
     w.crew = CREW_DEF.map((d,k)=>{ const p = person('crew', d.tint); const at = NAV[d.start]; p.position.set(at[0], 0.3, at[1]); w.group.add(p);
       return { k, p, node:d.start, path:[], wait:3+k*2, ph:k, def:d, avail:true, ghOnly:false, x:at[0], z:at[1] }; });
   }
-  const angTo = (cur, want, k)=>{ let dy = want - cur; while(dy>Math.PI) dy-=Math.PI*2; while(dy<-Math.PI) dy+=Math.PI*2; return cur + dy*Math.min(1,k); };
   function stepCrew(dt){
     if(!world || !world.crew) return;
     for(const n of world.crew){
-      const p = n.p; n.v = n.v || 0; const vmax = 1.1 + 0.12*n.k;
+      const p = n.p;
       if(n.path.length){
-        // walk the route with smooth starts/stops and rounded corners instead of sharp zig-zags
-        const [tx,tz] = NAV[n.path[0]]; let gx = tx, gz = tz; const d = Math.hypot(tx-n.x, tz-n.z);
-        if(n.path.length > 1 && d < 0.9){ const [nx2,nz2] = NAV[n.path[1]]; const t = (0.9-d)/0.9*0.6; gx = tx + (nx2-tx)*t; gz = tz + (nz2-tz)*t; }
-        const last = n.path.length === 1;
-        if(d < (last ? 0.12 : 0.4)){ n.node = n.path.shift(); if(!n.path.length){ n.wait = 6 + Math.random()*10; n.v = 0; } continue; }
-        let target = last ? vmax*Math.min(1, d/0.9) + 0.15 : vmax;
-        const dx = gx-n.x, dz = gz-n.z, dg = Math.hypot(dx,dz) || 1, ux = dx/dg, uz = dz/dg;
-        // give way: stop for the commander standing in the way, and step aside from other crew
-        if(mode==='walk'){ const px = pl.x-n.x, pz = pl.z-n.z, pd = Math.hypot(px,pz); if(pd < 1.3 && (px*ux+pz*uz)/pd > 0.4){ target = 0; n.wait = 0; } }
-        let sx = 0, sz = 0; for(const o of world.crew){ if(o===n) continue; const ox = n.x-o.x, oz = n.z-o.z, od = Math.hypot(ox,oz); if(od > 0.01 && od < 0.8){ sx += ox/od*(0.8-od); sz += oz/od*(0.8-od); } }
-        n.v += (target - n.v)*Math.min(1, dt*(target > n.v ? 2.5 : 6));
-        const step = n.v*dt; n.x += ux*step + sx*dt*1.5; n.z += uz*step + sz*dt*1.5;
-        if(n.v > 0.05) p.rotation.y = angTo(p.rotation.y, Math.atan2(ux,uz), dt*6);
-        n.ph += dt*(2 + n.v*5.2); animPerson(p, n.ph, 0.6*Math.min(1, n.v/1.0) + 0.03, false);
+        const [tx,tz] = NAV[n.path[0]]; const dx = tx-n.x, dz = tz-n.z, d = Math.hypot(dx,dz);
+        if(d < 0.15){ n.node = n.path.shift(); if(!n.path.length){ n.wait = 7 + Math.random()*9; } }
+        else { const sp = Math.min(d, 1.25*dt); n.x += dx/d*sp; n.z += dz/d*sp; const want = Math.atan2(dx,dz); let dy = want - p.rotation.y; while(dy>Math.PI) dy-=Math.PI*2; while(dy<-Math.PI) dy+=Math.PI*2; p.rotation.y += dy*Math.min(1,dt*8); n.ph += dt*7; animPerson(p, n.ph, 0.55, false); }
       } else {
         const sp = SPOT[n.node] || {}; n.wait -= dt; n.ph += dt*(sp.run?9:2.2);
-        // now and then glance around instead of staring at the wall
-        n.glance = (n.glance||0) - dt; if(n.glance <= 0){ n.glance = 3 + Math.random()*4; n.look = Math.random() < 0.4 ? (Math.random()-0.5)*1.4 : 0; }
-        const face = sp.face ? Math.atan2(sp.face[0]-n.x, sp.face[1]-n.z) : p.rotation.y;
-        p.rotation.y = angTo(p.rotation.y, face + (sp.work || sp.run ? 0 : (n.look||0)), dt*3);
+        if(sp.face){ const want = Math.atan2(sp.face[0]-n.x, sp.face[1]-n.z); let dy = want - p.rotation.y; while(dy>Math.PI) dy-=Math.PI*2; while(dy<-Math.PI) dy+=Math.PI*2; p.rotation.y += dy*Math.min(1,dt*4); }
         animPerson(p, n.ph, sp.run?0.6:0.05, !!sp.work);
         // stop and look at the commander when they are close
-        if(mode==='walk' && Math.hypot(pl.x-n.x, pl.z-n.z) < 2.4){ p.rotation.y = angTo(p.rotation.y, Math.atan2(pl.x-n.x, pl.z-n.z), dt*5); n.wait = Math.max(n.wait, 1.5); animPerson(p, n.ph, 0.02, false); }
-        if(n.wait <= 0){ const busy = new Set(world.crew.filter(o=>o!==n).map(o=>o.path.length ? o.path[o.path.length-1] : o.node));
-          const opts = n.def.spots.filter(s=>s!==n.node && !busy.has(s)); if(opts.length){ const goal = opts[Math.floor(Math.random()*opts.length)]; n.path = route(n.node, goal).slice(1); } else n.wait = 3; }
+        if(mode==='walk' && Math.hypot(pl.x-n.x, pl.z-n.z) < 2.4){ const want = Math.atan2(pl.x-n.x, pl.z-n.z); let dy = want - p.rotation.y; while(dy>Math.PI) dy-=Math.PI*2; while(dy<-Math.PI) dy+=Math.PI*2; p.rotation.y += dy*Math.min(1,dt*5); n.wait = Math.max(n.wait, 1.5); animPerson(p, n.ph, 0.02, false); }
+        if(n.wait <= 0){ const opts = n.def.spots.filter(s=>s!==n.node); const goal = opts[Math.floor(Math.random()*opts.length)]; n.path = route(n.node, goal).slice(1); }
       }
       const sp = SPOT[n.node]; const lift = (!n.path.length && sp && sp.run) ? 0.42 : 0;
-      const fy = floorY(n.x, n.z) + lift; n.y = n.y == null ? fy : n.y + (fy - n.y)*Math.min(1, dt*10);
-      p.position.set(n.x, n.y, n.z);
+      p.position.set(n.x, floorY(n.x, n.z) + lift, n.z);
     }
   }
 
