@@ -28,6 +28,30 @@ function paintPreviews(){
 
 let chosenMode = 'cadet';
 let useLive = false;
+/* ---------- space weather in the HUD: today's state of the Sun from the mission's real (archived) events ---------- */
+function spaceWx(s){
+  const f = flareOn(s, s.day), next = isFlare(s, s.day+1) ? flareOn(s, s.day+1) : null;
+  if(f && f.s > 0) return {lvl:'bad', tag:`S${f.s}`, txt:L(`Протонная буря S${f.s}`,`Proton storm S${f.s}`), f};
+  if(f) return {lvl:'warn', tag:esc(f.cls), txt:L(`Вспышка ${esc(f.cls)}, протонов мало`,`Flare ${esc(f.cls)}, few protons`), f};
+  if(next) return {lvl:'warn', tag:'!', txt:L('Завтра ожидается вспышка','Flare expected tomorrow'), f:null};
+  return {lvl:'ok', tag:'S0', txt:L('Солнце спокойно','The Sun is calm'), f:null};
+}
+function spaceWxChip(s){ const w = spaceWx(s);
+  return `<button type="button" class="hud-wx ${w.lvl}" data-cmd="spacewx" title="${L('Космическая погода','Space weather')}"><i aria-hidden="true">${w.tag}</i><span>${L('Космическая погода','Space weather')}</span><b>${w.txt}</b></button>`; }
+function showSpaceWx(){
+  if(!S) return; const s = S, w = spaceWx(s), P = PLANETS[s.pid];
+  const rows = [];
+  for(let d = s.day; d <= Math.min(P.days, s.day+2); d++){ const f = flareOn(s,d); const known = d <= s.day+1;
+    rows.push(`<tr><td>${L('День','Day')} ${d}</td><td>${!known ? L('прогноз ещё не готов','no forecast yet') : f ? (f.s>0 ? L(`буря S${f.s} · вспышка ${esc(f.cls)}`,`storm S${f.s} · flare ${esc(f.cls)}`) : L(`вспышка ${esc(f.cls)}, без бури`,`flare ${esc(f.cls)}, no storm`)) : L('спокойно','calm')}</td><td>${known && f ? `${fmt(flareDose(s,d))} ${U.msv()}` : '—'}</td></tr>`); }
+  const real = w.f ? `<div class="wx-real"><b>${L('Настоящее событие','Real event')}: ${solarDate(w.f.date)} · ${esc(w.f.cls)}${w.f.s>0?` · S${w.f.s}`:''}</b><p>${esc(w.f.note[LANG]||w.f.note.ru)}</p><small>${L('Источник','Source')}: ${esc(w.f.src)}${w.f.pfu && w.f.pfu!=='—' ? ` · ${L('пик протонов','proton peak')} ${esc(w.f.pfu)} pfu` : ''}</small></div>` : '';
+  openModal(`<div class="toprow"><div class="eyebrow">${L('Космическая погода','Space weather')}</div><button class="btn" type="button" data-cmd="close" data-focus aria-label="${L('Закрыть','Close')}">${ic('close')}</button></div>
+    <h2 class="wx-h ${w.lvl}">${w.txt}</h2>
+    <p class="pd">${L(`Защита сейчас: ${s.shield} ${plural(s.shield,'слой','слоя','слоёв')} реголита, доза внутри ×${fmt(SHIELD[s.shield],2)}. Опасна протонная буря (шкала NOAA S1–S5), а не яркость вспышки.`,`Shielding now: ${s.shield} regolith ${s.shield===1?'layer':'layers'}, dose inside ×${fmt(SHIELD[s.shield],2)}. The danger is the proton storm (NOAA scale S1–S5), not how bright the flare is.`)}</p>
+    <table class="wx-tbl"><thead><tr><th>${L('Когда','When')}</th><th>${L('Солнце','Sun')}</th><th>${L('Доза в модуле','Dose in habitat')}</th></tr></thead><tbody>${rows.join('')}</tbody></table>
+    ${real}
+    <p class="pd" style="margin-top:14px">${L('События в миссии взяты из архива NOAA и NASA DONKI. Можно проверить и сегодняшнее Солнце:','Mission events come from NOAA and NASA DONKI archives. You can also check today’s Sun:')}</p>
+    <div class="live" id="liveStart">${liveBoxHTML()}</div>`, L('Космическая погода','Space weather'), showSpaceWx);
+}
 function liveBoxHTML(){
   if(liveState==='idle') return `<button class="btn" type="button" data-cmd="live-check">${L('Проверить космическую погоду сегодня (NASA DONKI)','Check today’s space weather (NASA DONKI)')}</button>`;
   if(liveState==='loading') return `<span>${L('Связываемся с NASA DONKI…','Contacting NASA DONKI…')}</span>`;

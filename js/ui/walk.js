@@ -38,6 +38,7 @@ function hudHTML(s, i){
       ${bar('hp', L('Здоровье','Health'), s.health, 100, 'var(--hp)', `${fmt(s.health,0)}%`)}
       ${bar('dose', L('Доза','Dose'), s.dose, DOSE_LIMIT, 'var(--rad)', `${fmt(s.dose)} ${U.msv()}`)}
       ${s.mode!=='cadet'?bar('food', L('Еда','Food'), s.food, 120, '#8ddc6a', `${fmt(s.food,0)} ${U.kg()}`):''}
+      ${spaceWxChip(s)}
       <div class="hud-sci">${L('Наука на Земле','Science at Earth')}: <b>${fmt(s.science)} / ${SCIENCE_GOAL}</b>${s.data>0.01?` · ${L('ждёт','waiting')} ${fmt(s.data)}`:''}</div>
     </div>
     <div class="hud-tr">

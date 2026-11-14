@@ -120,6 +120,7 @@ const G3 = (()=>{
   const scene = new T.Scene();
   const camera = new T.PerspectiveCamera(50, 16/9, 0.08, 6000);
   const sun = new T.DirectionalLight(0xffffff, 3);
+  const LIT = {sun:3.4, hemi:0.3, fill:0.4, k:0, sky:new T.Color(0x8899bb), gnd:new T.Color(0x222222), skyIn:new T.Color(0xf2f0ea), gndIn:new T.Color(0x6a6e78)};
   sun.castShadow = true; sun.shadow.mapSize.set(2048,2048); sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.05;
   Object.assign(sun.shadow.camera, {left:-60,right:60,top:60,bottom:-60,near:10,far:420});
   scene.add(sun, sun.target);
@@ -348,6 +349,7 @@ const G3 = (()=>{
     const v = (o,r)=>SOLID.push([o.position.x,o.position.z,r]);
     w.panels.forEach(p=>v(p,0.6)); w.batteries.forEach(b=>v(b,1.0));
     w.beds.forEach(b=>BOXES.push([b.position.x-2.5,b.position.z-0.7,b.position.x+2.5,b.position.z+0.7]));
+    (w.ghRacks||[]).forEach(r=>SOLID.push([r.position.x, r.position.z, 0.75]));
     if(w.reactor.visible) SOLID.push([SLOT.reactor().x, SLOT.reactor().z, 5.6]);
     SOLID.push([SLOT.dish().x, SLOT.dish().z, 1.2],[SLOT.quarry().x, SLOT.quarry().z, 3.8],[31.2,-20.8,2.2],[25.2,-21.4,1.0],[22.4,-19.2,0.9],
       [SLOT.drill(w.pid).x, SLOT.drill(w.pid).z, 1.0],[27,5,0.25]);
@@ -380,7 +382,7 @@ const G3 = (()=>{
   const PLANT = ['lettuce','tomato','wheat'];
   function bedWithPlants(k){
     const g = inst('bed'); const plants = [];
-    for(let i=0;i<8;i++) for(const dz of [-0.4,0,0.4]){ const p = inst(PLANT[k%3]); p.position.set(-2.1+i*0.6, 0.73, dz + (i%2)*0.06); p.rotation.y = (i*1.7+dz*5); p.userData.big = 1.2 + 0.15*((i*3+dz*10)%2); g.add(p); plants.push(p); }
+    for(let i=0;i<10;i++) for(const dz of [-0.45,-0.15,0.15,0.45]){ const p = inst(PLANT[k%3]); p.position.set(-2.25+i*0.5, 0.73, dz + (i%2)*0.05); p.rotation.y = (i*1.7+dz*5); p.userData.big = 1.45 + 0.2*(((i*3+Math.round(dz*20))%3)/2); g.add(p); plants.push(p); }
     let led = null; g.traverse(o=>{ if(o.isMesh && o.material && o.material.name==='grow_led'){ o.material = o.material.clone(); led = o; } });
     g.userData.plants = plants; g.userData.led = led; return g;
   }
@@ -463,6 +465,18 @@ const G3 = (()=>{
     // interior lights
     const lamp = (x,y,z,c,i,d)=>{ const l = new T.PointLight(c,i,d,1.2); l.position.set(x,y,z); group.add(l); return l; };
     w.lamps = [lamp(0,6.4,0,0xfff1dd,0.42,24), lamp(0,5.6,LAB.z,0xe8f4ff,0.9,18), lamp(17,2.6,0,0xfff1dd,0.55,10), lamp(-17,2.6,0,0xfff1dd,0.55,10), lamp(0,2.6,-16,0xfff1dd,0.55,10)];
+    // vertical grow racks along the greenhouse wall: three shelves of lettuce/herbs under pink LED strips
+    w.ghRacks = [];
+    { const shelfM = M({color:0xdfe3ea, roughness:0.5, metalness:0.3}), soilM = M({color:0x4a3324, roughness:1}), ledM = M({color:0xff9ae6, emissive:0xff5ad2, emissiveIntensity:2.2});
+      for(const deg of [50, 90, 130, 180, 230, 270, 310]){ const an = deg*Math.PI/180, r = 7.25, rg = new T.Group();
+        rg.position.set(GH.x + Math.cos(an)*r, 0.27, GH.z + Math.sin(an)*r); rg.rotation.y = -an - Math.PI/2;
+        for(const sx of [-0.85, 0.85]){ const post = mesh(new T.BoxGeometry(0.06,2.3,0.06), shelfM); post.position.set(sx,1.15,0); rg.add(post); }
+        for(let lv=0; lv<3; lv++){ const y = 0.45 + lv*0.7;
+          const tray = mesh(new T.BoxGeometry(1.8,0.12,0.5), shelfM); tray.position.set(0,y,0); rg.add(tray);
+          const soil = mesh(new T.BoxGeometry(1.7,0.04,0.42), soilM, false); soil.position.set(0,y+0.07,0); rg.add(soil);
+          const led = mesh(new T.BoxGeometry(1.6,0.03,0.08), ledM, false, false); led.position.set(0,y+0.6,0); rg.add(led);
+          for(let i=0;i<5;i++){ const pl2 = inst(lv===1 ? 'tomato' : 'lettuce'); pl2.position.set(-0.68+i*0.34, y+0.08, 0); pl2.scale.setScalar(lv===1 ? 0.55 : 0.85); pl2.rotation.y = i*1.3+lv; rg.add(pl2); } }
+        group.add(rg); w.ghRacks.push(rg); } }
     w.ghLamp = lamp(GH.x,5.5,GH.z,0xff8fe0,1.0,20); w.ghLamp2 = lamp(GH.x,3,GH.z,0xfff4e0,0.5,14);
     const dl = new T.PointLight(0xffe0a0, 1.2, 16); dl.position.set(26.5,3,0); group.add(dl);
     // outdoor kit
@@ -591,7 +605,7 @@ const G3 = (()=>{
     const nb = Math.min(Math.round((s.batCap-BAT_START_CAP)/BAT_ADD)+1, 8);
     added.push(...setCount(w.batteries, nb, battery, SLOT.battery, opt.animate));
     w.batteries.forEach(b=>{ const f = Math.max(0.05, s.battery/s.batCap); b.userData.strip.scale.y = f; b.userData.strip.position.y = 0.4 + 0.5*f; });
-    const ng = eng ? Math.min(s.gh, 8) : 2;
+    const ng = eng ? Math.min(s.gh, 8) : 4;
     added.push(...setCount(w.beds, ng, bedWithPlants, SLOT.bed, opt.animate, true));
     const grow = Math.min(1, 0.3 + 0.25*Math.max(0, day - (s.harvestDay ?? -9)));
     w.beds.forEach((g,k)=>{ const broken = eng && k >= s.gh - s.ghBroken, on = (!eng || s.lv.farm>0) && !broken;
@@ -604,9 +618,9 @@ const G3 = (()=>{
     rebuildSolids();
     // lighting
     const sunK = dark ? (mars ? 0.25 : 0.04) : 1;
-    sun.intensity = (mars ? 2.6 : 3.4) * sunK;
+    sun.intensity = (mars ? 2.6 : 3.4) * sunK; LIT.sun = sun.intensity;
     sun.color.set(flare ? 0xffd2c0 : (mars ? 0xffe2c4 : 0xfff6ea));
-    hemi.intensity = mars ? (dark?0.55:0.45) : (dark?0.22:0.3); fill.intensity = mars ? 0.15 : (dark?0.35:0.45);
+    hemi.intensity = mars ? (dark?0.55:0.45) : (dark?0.22:0.3); fill.intensity = mars ? 0.15 : (dark?0.35:0.45); LIT.hemi = hemi.intensity; LIT.fill = fill.intensity;
     sunSprite.material.opacity = dark ? (mars?0.15:0) : 1;
     sunSprite.material.color.set(flare ? 0xffb0a0 : 0xfff2d8);
     if(mars){ scene.fog.near = dark ? 8 : 120; scene.fog.far = dark ? 110 : 700; scene.fog.color.set(dark?0x9a6440:0xc98b5c); w.sky.material.color.set(dark?0x9a7060:0xffffff); }
@@ -660,24 +674,41 @@ const G3 = (()=>{
     w.crew = CREW_DEF.map((d,k)=>{ const p = person('crew', d.tint); const at = NAV[d.start]; p.position.set(at[0], 0.3, at[1]); w.group.add(p);
       return { k, p, node:d.start, path:[], wait:3+k*2, ph:k, def:d, avail:true, ghOnly:false, x:at[0], z:at[1] }; });
   }
+  const angTo = (cur, want, k)=>{ let dy = want - cur; while(dy>Math.PI) dy-=Math.PI*2; while(dy<-Math.PI) dy+=Math.PI*2; return cur + dy*Math.min(1,k); };
   function stepCrew(dt){
     if(!world || !world.crew) return;
     for(const n of world.crew){
-      const p = n.p;
+      const p = n.p; n.v = n.v || 0; const vmax = 1.1 + 0.12*n.k;
       if(n.path.length){
-        const [tx,tz] = NAV[n.path[0]]; const dx = tx-n.x, dz = tz-n.z, d = Math.hypot(dx,dz);
-        if(d < 0.15){ n.node = n.path.shift(); if(!n.path.length){ n.wait = 7 + Math.random()*9; } }
-        else { const sp = Math.min(d, 1.25*dt); n.x += dx/d*sp; n.z += dz/d*sp; const want = Math.atan2(dx,dz); let dy = want - p.rotation.y; while(dy>Math.PI) dy-=Math.PI*2; while(dy<-Math.PI) dy+=Math.PI*2; p.rotation.y += dy*Math.min(1,dt*8); n.ph += dt*7; animPerson(p, n.ph, 0.55, false); }
+        // walk the route with smooth starts/stops and rounded corners instead of sharp zig-zags
+        const [tx,tz] = NAV[n.path[0]]; let gx = tx, gz = tz; const d = Math.hypot(tx-n.x, tz-n.z);
+        if(n.path.length > 1 && d < 0.9){ const [nx2,nz2] = NAV[n.path[1]]; const t = (0.9-d)/0.9*0.6; gx = tx + (nx2-tx)*t; gz = tz + (nz2-tz)*t; }
+        const last = n.path.length === 1;
+        if(d < (last ? 0.12 : 0.4)){ n.node = n.path.shift(); if(!n.path.length){ n.wait = 6 + Math.random()*10; n.v = 0; } continue; }
+        let target = last ? vmax*Math.min(1, d/0.9) + 0.15 : vmax;
+        const dx = gx-n.x, dz = gz-n.z, dg = Math.hypot(dx,dz) || 1, ux = dx/dg, uz = dz/dg;
+        // give way: stop for the commander standing in the way, and step aside from other crew
+        if(mode==='walk'){ const px = pl.x-n.x, pz = pl.z-n.z, pd = Math.hypot(px,pz); if(pd < 1.3 && (px*ux+pz*uz)/pd > 0.4){ target = 0; n.wait = 0; } }
+        let sx = 0, sz = 0; for(const o of world.crew){ if(o===n) continue; const ox = n.x-o.x, oz = n.z-o.z, od = Math.hypot(ox,oz); if(od > 0.01 && od < 0.8){ sx += ox/od*(0.8-od); sz += oz/od*(0.8-od); } }
+        n.v += (target - n.v)*Math.min(1, dt*(target > n.v ? 2.5 : 6));
+        const step = n.v*dt; n.x += ux*step + sx*dt*1.5; n.z += uz*step + sz*dt*1.5;
+        if(n.v > 0.05) p.rotation.y = angTo(p.rotation.y, Math.atan2(ux,uz), dt*6);
+        n.ph += dt*(2 + n.v*5.2); animPerson(p, n.ph, 0.6*Math.min(1, n.v/1.0) + 0.03, false);
       } else {
         const sp = SPOT[n.node] || {}; n.wait -= dt; n.ph += dt*(sp.run?9:2.2);
-        if(sp.face){ const want = Math.atan2(sp.face[0]-n.x, sp.face[1]-n.z); let dy = want - p.rotation.y; while(dy>Math.PI) dy-=Math.PI*2; while(dy<-Math.PI) dy+=Math.PI*2; p.rotation.y += dy*Math.min(1,dt*4); }
+        // now and then glance around instead of staring at the wall
+        n.glance = (n.glance||0) - dt; if(n.glance <= 0){ n.glance = 3 + Math.random()*4; n.look = Math.random() < 0.4 ? (Math.random()-0.5)*1.4 : 0; }
+        const face = sp.face ? Math.atan2(sp.face[0]-n.x, sp.face[1]-n.z) : p.rotation.y;
+        p.rotation.y = angTo(p.rotation.y, face + (sp.work || sp.run ? 0 : (n.look||0)), dt*3);
         animPerson(p, n.ph, sp.run?0.6:0.05, !!sp.work);
         // stop and look at the commander when they are close
-        if(mode==='walk' && Math.hypot(pl.x-n.x, pl.z-n.z) < 2.4){ const want = Math.atan2(pl.x-n.x, pl.z-n.z); let dy = want - p.rotation.y; while(dy>Math.PI) dy-=Math.PI*2; while(dy<-Math.PI) dy+=Math.PI*2; p.rotation.y += dy*Math.min(1,dt*5); n.wait = Math.max(n.wait, 1.5); animPerson(p, n.ph, 0.02, false); }
-        if(n.wait <= 0){ const opts = n.def.spots.filter(s=>s!==n.node); const goal = opts[Math.floor(Math.random()*opts.length)]; n.path = route(n.node, goal).slice(1); }
+        if(mode==='walk' && Math.hypot(pl.x-n.x, pl.z-n.z) < 2.4){ p.rotation.y = angTo(p.rotation.y, Math.atan2(pl.x-n.x, pl.z-n.z), dt*5); n.wait = Math.max(n.wait, 1.5); animPerson(p, n.ph, 0.02, false); }
+        if(n.wait <= 0){ const busy = new Set(world.crew.filter(o=>o!==n).map(o=>o.path.length ? o.path[o.path.length-1] : o.node));
+          const opts = n.def.spots.filter(s=>s!==n.node && !busy.has(s)); if(opts.length){ const goal = opts[Math.floor(Math.random()*opts.length)]; n.path = route(n.node, goal).slice(1); } else n.wait = 3; }
       }
       const sp = SPOT[n.node]; const lift = (!n.path.length && sp && sp.run) ? 0.42 : 0;
-      p.position.set(n.x, floorY(n.x, n.z) + lift, n.z);
+      const fy = floorY(n.x, n.z) + lift; n.y = n.y == null ? fy : n.y + (fy - n.y)*Math.min(1, dt*10);
+      p.position.set(n.x, n.y, n.z);
     }
   }
 
@@ -744,14 +775,13 @@ const G3 = (()=>{
     // shadows follow the player
     sun.target.position.set(pl.x, 0, pl.z); sun.position.copy(world.sunDir).multiplyScalar(200).add(sun.target.position);
     Object.assign(sun.shadow.camera, {left:-40,right:40,top:40,bottom:-40}); sun.shadow.camera.updateProjectionMatrix();
-    hemi.intensity = (built==='mars' ? 0.5 : 0.3) + (pl.indoor ? 0.04 : 0);
-    // softer light inside the base: the white walls looked blown out, so expose less while indoors
-    { const ex = pl.indoor ? 0.72 : 1.05; renderer.toneMappingExposure += (ex - renderer.toneMappingExposure)*0.08; }
     // what is close enough to use?
     let best = null, bd = 2.6;
     for(const mk of markers){ const on = mk.st.in==='both' || mk.st.in===pl.indoor || (!mk.st.in && !pl.indoor); mk.grp.visible = on; if(!on) continue;
       const d = Math.hypot(mk.st.x-pl.x, mk.st.z-pl.z); if(d < (mk.st.in===true ? 1.9 : 3.2) && d < bd + (mk.st.in===true?0:1)){ bd = d; best = mk.st.id; }
-      mk.ring.material.opacity = 0.35 + 0.25*Math.sin(tNow*3); }
+      mk.ring.material.opacity = 0.35 + 0.25*Math.sin(tNow*3);
+      // indoor stations: no floating round icons (the E prompt and the minimap show them); only a faint floor ring when near
+      if(mk.st.in===true){ mk.icon.visible = false; mk.ring.material.opacity = d < 3.5 ? 0.18 + 0.1*Math.sin(tNow*3) : 0; } }
     for(const n of world.crew){ const d = Math.hypot(n.x-pl.x, n.z-pl.z); if(d < 2.0 && d < bd){ bd = d; best = 'npc'+n.k; } }
     if(!pl.indoor && world.rover){ const d = Math.hypot(world.rover.position.x-pl.x, world.rover.position.z-pl.z); if(d < 3.4 && d < bd + 1){ bd = d; best = 'rover'; } }
     if(best !== pl.near){ pl.near = best; hooks.near && hooks.near(best); }
@@ -799,7 +829,6 @@ const G3 = (()=>{
     if(view!=='fp') camGoal.az = behind();
     playerMesh.userData.lamp.intensity = 0;
     sun.target.position.set(pl.x, 0, pl.z); sun.position.copy(world.sunDir).multiplyScalar(200).add(sun.target.position);
-    hemi.intensity = built==='mars' ? 0.5 : 0.3;
     markers.forEach(mk=>{ mk.grp.visible = !mk.st.in || mk.st.in==='both'; });
     if(pl.near !== 'rover'){ pl.near = 'rover'; hooks.near && hooks.near('rover'); }
     hooks.tick && hooks.tick(dt, { indoor:false, ground:true, driving:true, speed:Math.abs(drv.v) });
@@ -902,6 +931,12 @@ const G3 = (()=>{
     const k = 1 - Math.pow(walking ? 0.00002 : 0.0015, dt);
     for(const key of ['az','el','r','tx','ty','tz']) cam[key] += (camGoal[key]-cam[key])*k;
     if(walking) walkCamera();
+    // Stable indoor lighting: inside the base the sun (which changes with the lunar day, flares and the player's
+    // shadow box) is faded out and the room is lit only by the fixed ceiling lamps and a constant soft fill.
+    { const want = (walking && pl.indoor && !drv.on) ? 1 : 0; LIT.k += (want - LIT.k)*Math.min(1, dt*5); const k = LIT.k;
+      sun.intensity = LIT.sun*(1-k); fill.intensity = LIT.fill*(1-k);
+      hemi.intensity = LIT.hemi*(1-k) + 0.62*k; hemi.color.lerpColors(LIT.sky, LIT.skyIn, k); hemi.groundColor.lerpColors(LIT.gnd, LIT.gndIn, k);
+      renderer.toneMappingExposure = 1.05*(1-k) + 0.9*k; }
     if(w.berm){ const cp = camera.position; w.berm.visible = !(cp.x*cp.x + cp.y*cp.y + cp.z*cp.z < 118); }   // inside the dome the berm is behind the wall: skip it (no spikes, less to draw)
     else { camera.position.set(cam.tx + Math.cos(cam.az)*Math.cos(cam.el)*cam.r, cam.ty + Math.sin(cam.el)*cam.r, cam.tz + Math.sin(cam.az)*Math.cos(cam.el)*cam.r); camera.lookAt(cam.tx, cam.ty, cam.tz); }
     stepCrew(dt);

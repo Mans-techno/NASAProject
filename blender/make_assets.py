@@ -268,20 +268,63 @@ def build_hab():
         for h in (0.75, 1.1, 1.45):
             px, py = cx + rx*0.5 + tx*0.725, cy + ry*0.5 + ty*0.725
             objs.append(cube((0.35, 0.035, 0.035), (px, py, h), M_METAL(), 'rung', rot=(0,0,rot)))
-    # galley: counter + table + 4 stools (east-north)
+    # galley (east-north): base cabinets with doors and handles, stone worktop, backsplash, upper cabinets,
+    # a deep steel sink with a gooseneck tap, a glass induction hob with knobs, an oven and an extractor hood
+    M_STONE = mat('worktop_stone', C(236,236,232), 0.0, 0.3)
+    M_STEEL = mat('steel_brushed', C(196,200,206), 0.9, 0.22)
+    M_HOBG  = mat('hob_glass', C(16,16,20), 0.2, 0.08)
+    M_RING  = mat('hob_ring', C(120,40,30), 0.0, 0.4, emit=C(255,70,30), estr=1.6)
+    M_RINGO = mat('hob_ring_off', C(70,70,78), 0.0, 0.5)
+    M_SPLASH= mat('backsplash', C(150,190,215), 0.1, 0.25)
+    M_CAB   = mat('cabinet', C(70,92,120), 0.1, 0.55)
+    def gp(a, r, t, z): return (math.cos(a)*r - math.sin(a)*t, math.sin(a)*r + math.cos(a)*t, z)
     for k, gd in enumerate((27, 38, 49)):
-        a = math.radians(-gd); x, y = math.cos(a)*9.35, math.sin(a)*9.35; rr = a + math.pi/2
-        objs.append(cube((1.75, 0.7, 0.92), (x, y, 0.76), M_PANEL(), 'counter', rot=(0,0,rr), bevel=0.03))
-        objs.append(cube((1.8, 0.75, 0.05), (x, y, 1.245), M_WOOD(), 'worktop', rot=(0,0,rr)))
-        objs.append(cube((1.7, 0.4, 0.6), (math.cos(a)*9.75, math.sin(a)*9.75, 2.15), M_WHITE(), 'upper', rot=(0,0,rr), bevel=0.03))
+        a = math.radians(-gd); rr = a + math.pi/2; R = 9.35
+        objs.append(cube((1.75, 0.66, 0.84), gp(a, R+0.02, 0, 0.74), M_CAB, 'counter', rot=(0,0,rr), bevel=0.02))
+        objs.append(cube((1.7, 0.05, 0.1), gp(a, R-0.27, 0, 0.36), M_DARK(), 'plinth', rot=(0,0,rr)))
+        for q in (-0.43, 0.43):
+            objs.append(cube((0.82, 0.02, 0.66), gp(a, R-0.32, q, 0.8), M_PANEL(), 'cabdoor', rot=(0,0,rr), bevel=0.01))
+            objs.append(cube((0.3, 0.03, 0.025), gp(a, R-0.345, q, 1.05), M_STEEL, 'cabhandle', rot=(0,0,rr)))
+        objs.append(cube((1.8, 0.74, 0.05), gp(a, R, 0, 1.2), M_STONE, 'worktop', rot=(0,0,rr), bevel=0.01))
+        objs.append(cube((1.8, 0.03, 0.62), gp(a, R+0.36, 0, 1.54), M_SPLASH, 'backsplash', rot=(0,0,rr)))
+        objs.append(cube((1.7, 0.4, 0.6), gp(a, R+0.4, 0, 2.15), M_WHITE(), 'upper', rot=(0,0,rr), bevel=0.03))
+        for q in (-0.43, 0.43):
+            objs.append(cube((0.25, 0.03, 0.025), gp(a, R+0.185, q, 1.9), M_STEEL, 'uphandle', rot=(0,0,rr)))
+        objs.append(cube((1.6, 0.04, 0.02), gp(a, R+0.24, 0, 1.84), M_LIGHT(), 'undercab', rot=(0,0,rr)))
         if k == 0:
-            objs.append(cube((0.6, 0.45, 0.06), (x, y, 1.25), M_METAL(), 'sink', rot=(0,0,rr)))
-            objs.append(cyl(0.025, 0.35, (math.cos(a)*9.6, math.sin(a)*9.6, 1.42), M_METAL(), 'tap', verts=8))
+            # sink: steel rim, a dark recessed bowl, drainer grooves, gooseneck tap with a lever
+            objs.append(cube((0.78, 0.52, 0.02), gp(a, R-0.02, -0.25, 1.235), M_STEEL, 'sinkrim', rot=(0,0,rr)))
+            objs.append(cube((0.5, 0.38, 0.2), gp(a, R-0.02, -0.33, 1.15), mat('sink_bowl', C(70,74,82), 0.9, 0.3), 'sinkbowl', rot=(0,0,rr)))
+            for j in range(4):
+                objs.append(cube((0.015, 0.34, 0.006), gp(a, R-0.02, 0.0+j*0.035, 1.247), M_DARK(), 'drainer', rot=(0,0,rr)))
+            objs.append(cyl(0.022, 0.36, gp(a, R+0.22, -0.33, 1.42), M_STEEL, 'tap', verts=12))
+            objs.append(cyl(0.02, 0.28, gp(a, R+0.09, -0.33, 1.6), M_STEEL, 'tapneck', verts=12, rot=(math.pi/2,0,a+math.pi/2)))
+            objs.append(cyl(0.022, 0.08, gp(a, R-0.04, -0.33, 1.56), M_STEEL, 'spout', verts=12))
+            objs.append(cube((0.03, 0.12, 0.02), gp(a, R+0.22, -0.24, 1.52), M_STEEL, 'taplever', rot=(0,0,rr)))
+            objs.append(cyl(0.05, 0.16, gp(a, R+0.18, 0.55, 1.31), mat('soap', C(110,200,170), 0.0, 0.3), 'soap', verts=12))
         if k == 1:
-            for q in (-0.35, 0.35): objs.append(cyl(0.15, 0.02, (x+math.cos(rr)*q, y+math.sin(rr)*q, 1.28), M_DARK(), 'hob', verts=16))
+            # induction hob: black glass, four rings (one switched on), knobs on the front
+            objs.append(cube((0.78, 0.56, 0.015), gp(a, R, 0, 1.232), M_HOBG, 'hob', rot=(0,0,rr)))
+            for j, (q, rd) in enumerate(((-0.2, -0.13), (0.2, -0.13), (-0.2, 0.13), (0.2, 0.13))):
+                x0, y0, _ = gp(a, R+rd, q, 0)
+                objs.append(torus(0.1 if j%2 else 0.08, 0.008, (x0, y0, 1.242), M_RING if j == 0 else M_RINGO, 'hobring', maj=24, mnr=4))
+            for j in range(4):
+                objs.append(cyl(0.03, 0.03, gp(a, R-0.355, -0.3+j*0.2, 1.1), M_DARK(), 'knob', verts=12, rot=(math.pi/2,0,rr)))
+            # oven under the hob: steel door with a window and a bar handle
+            objs.append(cube((0.66, 0.02, 0.5), gp(a, R-0.335, 0, 0.72), M_STEEL, 'ovendoor', rot=(0,0,rr), bevel=0.01))
+            objs.append(cube((0.46, 0.012, 0.24), gp(a, R-0.348, 0, 0.7), mat('oven_glass', C(20,20,26), 0.3, 0.1, emit=C(255,140,60), estr=0.25), 'ovenwin', rot=(0,0,rr)))
+            objs.append(cyl(0.015, 0.5, gp(a, R-0.38, 0, 0.92), M_STEEL, 'ovenbar', verts=8, rot=(0,math.pi/2,rr)))
+            # extractor hood with a light
+            objs.append(cube((0.85, 0.48, 0.12), gp(a, R+0.12, 0, 1.92), M_STEEL, 'hood', rot=(0,0,rr), bevel=0.02))
+            objs.append(cube((0.6, 0.02, 0.02), gp(a, R-0.05, 0, 1.855), M_LIGHT(), 'hoodlight', rot=(0,0,rr)))
+            objs.append(cyl(0.12, 0.08, gp(a, R+0.12, 0.25, 1.29), M_DARK(), 'pot', verts=18))
         if k == 2:
-            objs.append(cube((0.55, 0.4, 0.35), (math.cos(a)*9.5, math.sin(a)*9.5, 1.45), M_DARK(), 'oven', rot=(0,0,rr), bevel=0.03))
-            objs.append(cube((0.3, 0.02, 0.2), (math.cos(a)*9.29, math.sin(a)*9.29, 1.45), M_SCREEN(), 'ovenwin', rot=(0,0,rr)))
+            # food prep: rehydration station, cutting board, kettle and a food warmer
+            objs.append(cube((0.55, 0.4, 0.35), gp(a, R+0.12, 0.45, 1.4), M_DARK(), 'oven', rot=(0,0,rr), bevel=0.03))
+            objs.append(cube((0.3, 0.02, 0.2), gp(a, R-0.09, 0.45, 1.42), M_SCREEN(), 'ovenwin2', rot=(0,0,rr)))
+            objs.append(cube((0.4, 0.28, 0.02), gp(a, R-0.05, -0.35, 1.235), M_WOOD(), 'board', rot=(0,0,rr), bevel=0.01))
+            objs.append(cyl(0.08, 0.2, gp(a, R+0.15, -0.05, 1.33), M_STEEL, 'kettle', verts=16))
+            objs.append(cube((0.25, 0.25, 0.32), gp(a, R+0.15, -0.65, 1.39), M_WHITE(), 'rehydrator', rot=(0,0,rr), bevel=0.02))
     a = math.radians(-41); tx, ty = math.cos(a)*7.2, math.sin(a)*7.2
     objs.append(cyl(0.75, 0.06, (tx, ty, 1.05), M_WOOD(), 'table', verts=32))
     objs.append(cyl(0.08, 0.75, (tx, ty, 0.67), M_METAL(), 'tleg', verts=10))
@@ -307,7 +350,6 @@ def build_hab():
         objs.append(cube((0.92, 0.02, 0.52), (mx-ux*0.03, my-uy*0.03, 1.68), M_SCREEN(), 'monitor', rot=(0,0,rot)))
         objs.append(cube((0.55, 0.18, 0.025), (x-ux*0.12, y-uy*0.12, 1.09), M_DARK(), 'keyboard', rot=(0,0,rot)))
         objs.append(cube((0.08, 0.12, 0.03), (x-ux*0.1-uy*0.45, y-uy*0.1+ux*0.45, 1.09), M_DARK(), 'mouse', rot=(0,0,rot)))
-        objs.append(torus(0.09, 0.015, (x+ux*0.15+uy*0.6, y+uy*0.15-ux*0.6, 1.17), M_DARK(), 'headset', rot=(math.pi/2,0,rot), maj=14, mnr=4))
         # swivel chair facing the desk
         cx2, cy2 = x - ux*1.05, y - uy*1.05
         objs.append(cyl(0.27, 0.09, (cx2, cy2, 0.78), M_BLUE(), 'chairseat', verts=18))

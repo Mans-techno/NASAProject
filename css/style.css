@@ -514,3 +514,20 @@ body:has(.modal.start) #app,body:has(.modal.start) .hud,body:has(.modal.start) #
 .modal.start .st3 .st-panel>*{animation:stIn .35s cubic-bezier(.2,.8,.2,1) both}
 @media (max-width:880px){.st3 .st-main{grid-template-columns:1fr}.st3 .nav{max-width:none}.st3 .st-panel{min-height:0}}
 @media (max-width:560px){.st3 .st-panel .st-go{grid-template-columns:1fr}.st3 .nv{font-size:16px;padding:12px 14px}}
+
+/* ---------- space weather chip + modal (v16) ---------- */
+.hud-wx{display:grid;grid-template-columns:auto 1fr;grid-template-rows:auto auto;column-gap:8px;align-items:center;width:100%;margin:4px 0 2px;padding:6px 8px;border-radius:10px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.04);color:#fff;text-align:left;cursor:pointer;font:inherit;pointer-events:auto}
+.hud-wx:hover,.hud-wx:focus-visible{background:rgba(255,255,255,.09);outline:none}
+.hud-wx i{grid-row:1/3;font:700 11px var(--f-mono,monospace);font-style:normal;min-width:30px;height:30px;display:grid;place-items:center;border-radius:8px;background:#2a8f5a;color:#fff}
+.hud-wx span{font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted,#9aa6c0)}
+.hud-wx b{font-size:12.5px;font-weight:700}
+.hud-wx.warn i{background:#c98a1c} .hud-wx.bad i{background:#d0453f;animation:wxPulse 1.4s ease-in-out infinite}
+@keyframes wxPulse{50%{box-shadow:0 0 0 5px rgba(208,69,63,.25)}}
+@media (prefers-reduced-motion:reduce){.hud-wx.bad i{animation:none}}
+.wx-h.ok{color:#7fe0a5}.wx-h.warn{color:#ffc95a}.wx-h.bad{color:#ff7d74}
+.wx-tbl{width:100%;border-collapse:collapse;margin-top:12px;font-size:14px}
+.wx-tbl th{text-align:left;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted,#9aa6c0);padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.1)}
+.wx-tbl td{padding:8px;border-bottom:1px solid rgba(255,255,255,.06)}
+.wx-real{margin-top:14px;padding:12px 14px;border-radius:12px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08)}
+.wx-real p{margin:6px 0}.wx-real small{color:var(--muted,#9aa6c0)}
+@media (max-height:500px){.hud-wx{padding:3px 6px}.hud-wx i{min-width:24px;height:24px}.hud-wx span{display:none}}

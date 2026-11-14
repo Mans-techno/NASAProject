@@ -46,6 +46,7 @@ document.addEventListener('click', e=>{
     case 'menu': case 'start': showStart(); break;
     case 'science': showScience(); break;
     case 'live-check': loadLive(); break;
+    case 'spacewx': showSpaceWx(); break;
     case 'tut-next': TUT++; if(TUT>=tutSteps().length) tutDone(); else renderTutorial(); break;
     case 'tut-skip': tutDone(); break;
     case 'lang': {
