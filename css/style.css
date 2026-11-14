@@ -547,3 +547,10 @@ body:has(.modal.start) #app,body:has(.modal.start) .hud,body:has(.modal.start) #
   .modal.start .st3 .st-panel{height:min(640px,calc(100dvh - 2*clamp(14px,2.6vh,34px) - 110px));min-height:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin}
   .modal.start .st3 .st-panel .pcard img{height:clamp(160px,calc(100dvh - 470px),310px)}
 }
+/* cards fill the panel down to its bottom edge (v17b) */
+@media (min-width:881px) and (min-height:540px){
+  .modal.start .st3 .st-panel:has(.st-go){display:flex;flex-direction:column;overflow:hidden}
+  .modal.start .st3 .st-panel .st-go{flex:1;min-height:0;align-items:stretch}
+  .modal.start .st3 .st-panel .pcard{height:100%;min-height:0}
+  .modal.start .st3 .st-panel .pcard img{flex:1;min-height:0;height:auto;width:100%;object-fit:cover}
+}
