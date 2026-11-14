@@ -20,6 +20,12 @@ When a mission starts, you are the commander standing inside the habitat dome.
 ## Models
 All base models were built in **Blender 5.3** with a Python script (`bpy`) and exported as glTF (.glb). They are stored in `js/models.js`, gzip-compressed (about 0.6 MB), and loaded with Three.js GLTFLoader. Models: habitat dome with furnished interior, lab, geodesic greenhouse, grow beds, lettuce, tomato and wheat plants, three tunnels, solar panel, battery, fission reactor, radio dish, rover, cargo lander, drill rig, excavator, crates, path lights, an EVA astronaut and crew members with jointed arms and legs.
 
+**Real NASA models and imagery** (from [NASA 3D Resources](https://github.com/nasa/NASA-3D-Resources), public domain), simplified for the browser with glTF-Transform and meshoptimizer:
+- **RASSOR**, NASA Kennedy's regolith-mining robot, drives between the quarry pile and the hopper (Moon and Mars).
+- **Viking 2** stands near Utopia Base on Mars, where the real lander touched down on 3 Sep 1976.
+- **LRO** crosses the Moon's sky and **MRO** crosses Mars' sky.
+- Earth (seen from the Moon), Phobos and Deimos use NASA surface maps. The moons of Mars are drawn larger than life so they are visible.
+
 ## The trade-off loop
 Each day the player:
 1. **Splits limited power** between oxygen (water electrolysis), heating and the radio link to Earth. Engineer mode adds water recycling and greenhouses. Any surplus charges the battery. When there isn't enough power, every system browns out together.
@@ -37,8 +43,10 @@ Each day the player:
 | Earth–Mars light time for today's date | Radio delay shown in game. On Mars the onboard computer gives advice, because Earth is too far away to help in time | JPL approximate Keplerian elements |
 | 40 kW fission reactor | Reactor build | NASA Fission Surface Power |
 | Plant and crew-health experiments | Basis for greenhouses and recovery | NASA OSDR |
+| Shackleton rim lit 80–90% of the time | Moon "mountain shadow" days | LRO/LOLA illumination maps (Mazarico et al., Icarus 2011) |
+| 2018 global dust storm: τ≈10.8, Opportunity power ~645 → ~22 Wh/sol | Mars dust-storm sols (gentler in the game) | NASA/JPL |
 
-The **Наука в игре / The science** screen shows all of this inside the game: the full event table, what is real and what is simplified, and 13 linked sources.
+The **Наука в игре / The science** screen shows all of this inside the game: the full event table, what is real and what is simplified, and 16 linked sources.
 
 **Simplifications:** the game picks a dose for each storm level (S0 ≈ 1, S3 ≈ 45–50, S4 ≈ 70–85 mSv with no shielding). These numbers are an order-of-magnitude choice for the game. A live DONKI proton event counts as S1, because DONKI does not report the S-level. The game's dose limit is 100 mSv per mission (NASA's real limit is 600 mSv over a whole career). Energy is counted in kWh per day.
 

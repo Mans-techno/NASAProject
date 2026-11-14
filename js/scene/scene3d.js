@@ -142,7 +142,7 @@ const G3 = (()=>{
   (async()=>{
     try{
       const src = window.__GLB || {}; const loader = new T.GLTFLoader();
-      for(const name of Object.keys(src)){
+      for(const name of Object.keys(src)){ if(name.startsWith('tex_')) continue;
         const bin = Uint8Array.from(atob(src[name]), c=>c.charCodeAt(0));
         const buf = await new Response(new Blob([bin]).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer();
         const g = await new Promise((res, rej)=>loader.parse(buf, '', res, rej));
@@ -155,6 +155,12 @@ const G3 = (()=>{
     if(pending){ const [s,o] = pending; pending = null; sync(s,o); }
     whenReady.splice(0).forEach(f=>{ try{ f(); }catch(e){} });
   })();
+  // real NASA imagery (NASA 3D Resources, public domain), embedded as JPEG
+  const NTEX = {};
+  function nasaTex(k){ if(NTEX[k]) return NTEX[k]; const b = (window.__GLB||{})['tex_'+k]; if(!b) return null; const t = new T.TextureLoader().load('data:image/jpeg;base64,'+b); t.encoding = T.sRGBEncoding; t.anisotropy = 4; return NTEX[k] = t; }
+  // a NASA model scaled to a real size in metres along its longest side
+  function nasaModel(name, metres){ const o = inst('nasa_'+name); const b = new T.Box3().setFromObject(o), sz = b.getSize(new T.Vector3()); const k = metres/Math.max(sz.x,sz.y,sz.z||1); o.scale.setScalar(k);
+    o.traverse(m=>{ if(m.isMesh){ m.castShadow = true; m.receiveShadow = true; (Array.isArray(m.material)?m.material:[m.material]).forEach(q=>{ if(q && q.metalness>0.6) q.metalness = 0.6; }); } }); return o; }
   function inst(name){ const s = ASSET[name]; return s ? s.clone(true) : new T.Group(); }
   function find(root, name){ let r = null; root.traverse(o=>{ if(!r && o.name===name) r = o; }); return r; }
   const PARTS = ['torso','head','armL','armR','legL','legR'];
@@ -343,6 +349,7 @@ const G3 = (()=>{
     if(w.reactor.visible) SOLID.push([SLOT.reactor().x, SLOT.reactor().z, 5.6]);
     SOLID.push([SLOT.dish().x, SLOT.dish().z, 1.2],[SLOT.quarry().x, SLOT.quarry().z, 3.8],[31.2,-20.8,2.2],[25.2,-21.4,1.0],[22.4,-19.2,0.9],
       [SLOT.drill(w.pid).x, SLOT.drill(w.pid).z, 1.0],[27,5,0.25]);
+    if(w.viking) SOLID.push([w.viking.position.x, w.viking.position.z, 1.9]);
     w.crates.forEach(c=>SOLID.push([c[0],c[1],0.75]));
     w.roverSolid = [drv.on ? 1e6 : w.rover.position.x, w.rover.position.z, 1.7]; SOLID.push(w.roverSolid);
   }
@@ -387,12 +394,21 @@ const G3 = (()=>{
     w.stars = stars(mars?600:6000, 2600, mars?1.2:1.6, mars?0.25:0.95); group.add(w.stars);
     w.meteors = meteorShower(T, group, { n:5, rate:0.18, w:0.005, dist:1700 });
     if(mars){ w.sky = skyDome(0x5a3a2c, 0xd59a68); group.add(w.sky); scene.fog = new T.Fog(0xc98b5c, 120, 700); scene.background = new T.Color(0x3a261d);
-      const ph = mesh(new T.SphereGeometry(10,16,12), M({color:0x6b625a, roughness:1, map:grainTex}),false,false); ph.position.set(700,560,-1200); group.add(ph); }
+      // Phobos and Deimos with real NASA surface maps (shown larger than life so they read on screen)
+      const ph = mesh(new T.SphereGeometry(7,32,20), M({color:0xffffff, roughness:1, map:nasaTex('phobos')||grainTex}),false,false); ph.scale.set(1.3,1,1.1); ph.position.set(700,560,-1200); group.add(ph); w.phobos = ph;
+      const de = mesh(new T.SphereGeometry(2.6,24,16), M({color:0xffffff, roughness:1, map:nasaTex('deimos')||grainTex}),false,false); de.position.set(-900,700,-900); group.add(de); }
     else { scene.fog = null; scene.background = new T.Color(0x000002);
-      const earth = new T.Mesh(new T.SphereGeometry(40,48,32), M({map:earthTex, roughness:0.7, metalness:0, emissive:0x0a1a40, emissiveIntensity:0.25})); earth.position.set(-400,380,-1400); earth.rotation.z = 0.4; group.add(earth); w.earth = earth;
+      const earth = new T.Mesh(new T.SphereGeometry(40,48,32), M({map:nasaTex('earth')||earthTex, roughness:0.7, metalness:0, emissive:0x0a1a40, emissiveIntensity:0.25})); earth.position.set(-400,380,-1400); earth.rotation.z = 0.4; group.add(earth); w.earth = earth;
       const atm = new T.Sprite(new T.SpriteMaterial({map:glowTex, color:0x6fa8ff, blending:T.AdditiveBlending, opacity:0.55, depthWrite:false})); atm.scale.set(125,125,1); atm.position.copy(earth.position); group.add(atm); }
     // pressurised modules (Blender models)
     w.hab = put(inst('hab'), 0,0,0);
+    // ---- real NASA hardware (NASA 3D Resources, public domain) ----
+    // RASSOR: NASA Kennedy's regolith-mining robot, shuttles between the pit and the hopper
+    w.rassor = put(nasaModel('rassor', 2.0), 25, ground(25,-30.5), -30.5, 0); w.rassor.userData = { x0:23.5, x1:33, t:0 };
+    // an orbiter crossing the sky: LRO over the Moon, MRO over Mars
+    w.orbiter = nasaModel(mars ? 'mro' : 'lro', mars ? 14 : 8); group.add(w.orbiter); w.orbiter.userData.ph = 0;
+    if(mars){ // Viking 2 really landed in Utopia Planitia on 3 Sep 1976
+      w.viking = put(nasaModel('viking', 3.3), -62, ground(-62,-8), -8, 0.6); }
     put(inst('corr_air'), 10.8,0,0);
     put(inst('corr_gh'), -10.8,0,0, Math.PI);
     put(inst('corr_lab'), 0,0,-10.8, Math.PI/2);
@@ -871,6 +887,12 @@ const G3 = (()=>{
     w.beacon.scale.setScalar(0.7+bl*0.6);
     if(w.dishHead) w.dishHead.rotation.z = Math.sin(tNow*0.25)*0.3;
     if(w.meteors) w.meteors.step(dt, camera, w.stars.visible !== false && w.stars.material.opacity > 0.2 && !reduce);
+    if(w.rassor){ const r = w.rassor, u = r.userData; u.t += dt*0.09; const q = (1-Math.cos(u.t*Math.PI*2))/2, x = u.x0 + (u.x1-u.x0)*q, z = r.position.z;
+      r.position.set(x, ground(x,z), z); r.rotation.y = Math.sin(u.t*Math.PI*2) >= 0 ? -Math.PI/2 : Math.PI/2; }
+    if(w.orbiter){ const o = w.orbiter; o.userData.ph = (o.userData.ph + dt/90) % 1; const a = -1.2 + o.userData.ph*2.4; o.position.set(Math.sin(a)*420, 260 + Math.cos(a)*120, -260 + Math.cos(a)*60); o.rotation.set(0.3, a*0.5, 0.2); o.visible = w.stars.material.opacity > 0.2; }
+    if(walking){ w.told = w.told || {}; const near = (o,r)=> o && Math.hypot(pl.x-o.position.x, pl.z-o.position.z) < r;
+      if(!w.told.v && near(w.viking, 7)){ w.told.v = 1; toast(L('Это «Викинг-2» NASA: настоящий аппарат сел здесь, на равнине Утопия, 3 сентября 1976 года. Модель из NASA 3D Resources.','This is NASA\'s Viking 2: the real lander touched down here in Utopia Planitia on 3 Sep 1976. Model from NASA 3D Resources.')); }
+      else if(!w.told.r && near(w.rassor, 5)){ w.told.r = 1; toast(L('RASSOR: робот-копатель реголита, его создали в Космическом центре Кеннеди NASA. Модель из NASA 3D Resources.','RASSOR: a regolith-digging robot designed at NASA Kennedy Space Center. Model from NASA 3D Resources.')); } }
     if(w.bagger){ const g = w.bagger, on = Math.sin(tNow*5) > 0.2; g.beacon.material.emissiveIntensity = on ? 2.4 : 0.2; if(g.bl) g.bl.intensity = on ? 1.6 : 0; if(g.fill){ const f = (tNow*0.08)%1; const sy = 0.35+0.65*f; g.fill.scale.set(1, sy, 1); g.fill.position.y = 0.09+0.31*sy; } }
     if(w.earth) w.earth.rotation.y += dt*0.02;
     if(w.dust.visible){ const p = w.dust.geometry.attributes.position; const ox = mode==='walk'?pl.x:0, oz = mode==='walk'?pl.z:0; w.dust.position.set(ox, pl.y, oz); for(let i=0;i<p.count;i++){ let x = p.getX(i)+dt*(18+ (i%7)*3); if(x>100) x-=200; p.setX(i,x); p.setY(i, (p.getY(i)+dt*((i%5)-2)*0.6+30)%30); } p.needsUpdate = true; }

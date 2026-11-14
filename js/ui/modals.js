@@ -179,6 +179,7 @@ function showScience(){
   const back = S ? (S.over ? 'final' : 'close') : 'start';
   const rows = SOLAR.map(f=>`<tr><td class="n">${f.date}</td><td class="n">${esc(f.cls)}</td><td class="n">${esc(S_NAME(f.s))}</td><td class="n">${esc(f.pfu)}</td><td>${esc(f.src)}</td><td class="n">${fmt(f.dose*PLANETS.moon.flareMul,0)} / ${fmt(f.dose*PLANETS.mars.flareMul,0)}</td></tr>`).join('');
   const row = (a,b,c)=>`<tr><td>${a}</td><td class="n">${b}</td><td>${c}</td></tr>`;
+  const row2 = (a,b)=>`<tr><td>${a}</td><td>${b}</td></tr>`;
   openModal(`
     <div class="toprow"><div class="eyebrow">${L('Наука в игре','The science in the game')}</div>${langBtn()}</div>
     <h2>${L('Откуда взяты числа','Where the numbers come from')}</h2>
@@ -206,7 +207,18 @@ function showScience(){
         ${row(L('Лимит дозы','Dose limit'), L('100 мЗв за миссию','100 mSv per mission'), L('NASA: 600 мЗв за всю карьеру астронавта. Для игры лимит снижен','NASA: 600 mSv over a whole career. Lowered for the game'))}
         ${row(L('Защита реголитом','Regolith shielding'), L('×0,7 за первый слой','×0.7 for the first layer'), L('около 0,5 м грунта заметно ослабляет протоны бури. Точный эффект зависит от энергии частиц','about 0.5 m of soil noticeably weakens storm protons. The exact effect depends on particle energy'))}
         ${row(L('Реактор','Reactor'), L('40 кВт·ч/день','40 kWh/day'), L('Fission Surface Power: около 40 кВт. В игре взято меньше для баланса','Fission Surface Power: about 40 kW. Less in the game for balance'))}
+        ${row(L('Тень от гор (Луна)','Mountain shadow (Moon)'), L('2 дня подряд, панели дают 15%','2 days in a row, panels give 15%'), L('по картам освещённости LRO/LOLA точки на гребне Шеклтона освещены 80–90% времени (Mazarico и др., 2011)','LRO/LOLA illumination maps: points on the Shackleton rim are lit 80–90% of the time (Mazarico et al., 2011)'))}
+        ${row(L('Пылевая буря (Марс)','Dust storm (Mars)'), L('5 солов, панели дают 30%','5 sols, panels give 30%'), L('буря 2018 года: прозрачность неба упала до τ≈10,8, энергия Opportunity — с ~645 до ~22 Вт·ч за сол. В игре мягче','2018 storm: sky opacity reached τ≈10.8, Opportunity’s power fell from ~645 to ~22 Wh per sol. Gentler in the game'))}
         ${row(L('Перелёт до Луны / Марса','Trip to Moon / Mars'), L('грузы на 7 и 14 день / нет','cargo on days 7 and 14 / none'), L('около 3 дней / 6–9 месяцев, окно старта к Марсу раз в 26 месяцев','about 3 days / 6–9 months, Mars launch window every 26 months'))}
+      </tbody></table></div>
+    <h3>${L('4. Настоящие 3D-модели и снимки NASA','4. Real NASA 3D models and imagery')}</h3>
+    <div class="tblwrap"><table class="data">
+      <thead><tr><th>${L('Что в игре','In the game')}</th><th>${L('Что это','What it is')}</th></tr></thead>
+      <tbody>
+        ${row2(L('Робот у карьера','Robot at the quarry'), L('RASSOR — робот-копатель реголита, создан в Космическом центре Кеннеди NASA','RASSOR, a regolith-mining robot built at NASA Kennedy Space Center'))}
+        ${row2(L('Аппарат на Марсе','Lander on Mars'), L('«Викинг-2» — сел на равнине Утопия 3 сентября 1976 года','Viking 2, landed in Utopia Planitia on 3 Sep 1976'))}
+        ${row2(L('Спутник в небе','Satellite in the sky'), L('над Луной — LRO (снимает Луну с 2009 года), над Марсом — MRO (нашёл лёд под Утопией)','over the Moon: LRO (mapping it since 2009); over Mars: MRO (found the ice under Utopia)'))}
+        ${row2(L('Земля, Фобос и Деймос','Earth, Phobos and Deimos'), L('настоящие карты поверхности NASA. Спутники Марса показаны крупнее, чтобы их было видно','real NASA surface maps. The moons of Mars are drawn larger so you can see them'))}
       </tbody></table></div>
     <h3>${L('Источники','Sources')}</h3>
     <ol class="src">
@@ -222,6 +234,9 @@ function showScience(){
       <li>NASA, <a href="https://www.nasa.gov/space-technology-mission-directorate/tdm/fission-surface-power/" target="_blank" rel="noopener">Fission Surface Power</a> <span>— ${L('малый реактор для Луны.','a small reactor for the Moon.')}</span></li>
       <li>NASA, <a href="https://science.nasa.gov/mission/mer-opportunity/" target="_blank" rel="noopener">Opportunity</a> <span>— ${L('миссия завершилась после пылевой бури 2018 года.','the mission ended after the 2018 dust storm.')}</span></li>
       <li>NASA, <a href="https://www.nasa.gov/humans-in-space/artemis/" target="_blank" rel="noopener">Artemis</a> <span>— ${L('возвращение людей на Луну, район южного полюса.','returning people to the Moon, south-pole region.')}</span></li>
+      <li>NASA, <a href="https://github.com/nasa/NASA-3D-Resources" target="_blank" rel="noopener">NASA 3D Resources</a> <span>— ${L('модели RASSOR, «Викинг», LRO, MRO и карты Земли, Фобоса, Деймоса (общественное достояние).','RASSOR, Viking, LRO and MRO models; Earth, Phobos and Deimos maps (public domain).')}</span></li>
+      <li>Mazarico E. et al., <a href="https://doi.org/10.1016/j.icarus.2010.10.030" target="_blank" rel="noopener">Illumination conditions of the lunar polar regions using LOLA topography</a> <span>— Icarus, 2011 (NASA GSFC).</span></li>
+      <li>NASA/JPL, <a href="https://www.jpl.nasa.gov/news/nasas-opportunity-rover-mission-on-mars-comes-to-end/" target="_blank" rel="noopener">${L('Конец миссии Opportunity','Opportunity mission ends')}</a> <span>— ${L('пылевая буря 2018 года.','the 2018 dust storm.')}</span></li>
       <li>NASA/JPL, <a href="https://www.jpl.nasa.gov/news/mars-ice-deposit-holds-as-much-water-as-lake-superior/" target="_blank" rel="noopener">${L('Лёд под равниной Утопия','Ice under Utopia Planitia')}</a> <span>— MRO, 2016.</span></li>
     </ol>
     <div class="row-btns"><button class="btn primary" type="button" data-cmd="${back}" data-focus>${L('Вернуться','Back')}</button></div>`, L('Наука в игре','The science'), showScience);
