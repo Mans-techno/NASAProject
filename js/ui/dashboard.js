@@ -72,22 +72,22 @@ function histHTML(s){
   ];
   const pts = f => H.map(h=>`${x(h.day).toFixed(1)},${y(f(h)).toFixed(1)}`).join(' ');
   const defs = series.map(se=>`<linearGradient id="hg-${se.k}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${se.c}" stop-opacity=".28"/><stop offset="1" stop-color="${se.c}" stop-opacity="0"/></linearGradient>`).join('');
-  const areas = H.length > 1 ? series.map(se=>`<polygon fill="url(#hg-${se.k})" points="${x(0)},${y(0)} ${pts(se.f)} ${now},${y(0)}"/>`).join('') : '';
-  const lines = series.map(se=>`<polyline fill="none" stroke="${se.c}" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" points="${pts(se.f)}"/>`).join('');
-  const dots = series.map(se=>H.map((h,i)=>`<circle cx="${x(h.day)}" cy="${y(se.f(h))}" r="${i===H.length-1?4.5:2.2}" fill="${i===H.length-1?'var(--bg,#0b1020)':se.c}" stroke="${se.c}" stroke-width="${i===H.length-1?2.4:0}"><title>${L('День','Day')} ${h.day}: ${se.name} ${se.val(h)}</title></circle>`).join('')).join('');
-  const grid = [0,0.25,0.5,0.75,1].map(v=>`<line x1="${L0}" x2="${W-R0}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)" stroke-width="1" ${v%0.5?'stroke-dasharray="2 4"':''}/>${v%0.5?'':`<text x="${L0-6}" y="${y(v)+4}" text-anchor="end" class="ax">${v*100}%</text>`}`).join('');
+  const areas = '';
+  const lines = series.map(se=>`<polyline fill="none" stroke="${se.c}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" points="${pts(se.f)}"/>`).join('');
+  const dots = series.map(se=>H.map((h,i)=>`<circle cx="${x(h.day)}" cy="${y(se.f(h))}" r="${i===H.length-1?4:0}" fill="${i===H.length-1?'var(--bg,#0b1020)':se.c}" stroke="${se.c}" stroke-width="${i===H.length-1?2:0}"><title>${L('День','Day')} ${h.day}: ${se.name} ${se.val(h)}</title></circle>`).join('')).join('');
+  const grid = [0,0.5,1].map(v=>`<line x1="${L0}" x2="${W-R0}" y1="${y(v)}" y2="${y(v)}" stroke="rgba(255,255,255,${v?0.06:0.12})" stroke-width="1"/><text x="${L0-8}" y="${y(v)+3.5}" text-anchor="end" class="ax">${v*100}%</text>`).join('');
   const ticks = [1,5,10,15,20].filter(d=>d<=P.days).map(d=>`<text x="${x(d)}" y="${Ht-8}" text-anchor="middle" class="ax">${d}</text>`).join('') + `<text x="${L0}" y="${Ht-8}" text-anchor="start" class="ax">${tr(P.dayName).toLowerCase()}</text>`;
-  const future = last.day < P.days ? `<rect x="${now}" y="${T0}" width="${x(P.days)-now}" height="${Ht-T0-B0}" fill="url(#hg-fut)"/><text x="${(now+x(P.days))/2}" y="${T0+16}" text-anchor="middle" class="ax fut">${L('впереди','ahead')} · ${P.days-last.day} ${L('дн.','days')}</text>` : '';
-  const darks = s.sched.dark.map((st,i)=>{ const e = Math.min(st+darkLenAt(s,i)-1, s.day-1); return e>=st ? `<rect x="${x(st-0.5)}" y="${T0}" width="${x(e+0.5)-x(st-0.5)}" height="${Ht-T0-B0}" fill="var(--muted)" opacity=".14"><title>${tr(P.darkName)}</title></rect>` : ''; }).join('');
-  const marks = s.sched.flares.filter(d=>d<s.day).map(d=>`<line x1="${x(d)}" x2="${x(d)}" y1="${T0}" y2="${Ht-B0}" stroke="var(--rad)" stroke-dasharray="3 3" opacity=".75"/><g transform="translate(${x(d)},${T0})"><circle r="8" fill="var(--rad)"/><path d="M1.5-5 -3 1h3l-1.5 4.5L4-1H1z" fill="#0b1020"/><title>${L('Вспышка, день','Flare, day')} ${d}</title></g>`).join('');
-  const limit = `<text x="${W-R0-2}" y="${y(1)-4}" text-anchor="end" class="ax lim">${L('лимит дозы','dose limit')} ${DOSE_LIMIT} ${L('мЗв','mSv')}</text>`;
+  const future = last.day < P.days ? `<line x1="${now}" x2="${now}" y1="${T0}" y2="${Ht-B0}" stroke="rgba(255,255,255,.18)" stroke-dasharray="2 3"/>` : '';
+  const darks = s.sched.dark.map((st,i)=>{ const e = Math.min(st+darkLenAt(s,i)-1, s.day-1); return e>=st ? `<rect x="${x(st-0.5)}" y="${T0}" width="${x(e+0.5)-x(st-0.5)}" height="${Ht-T0-B0}" fill="#fff" opacity=".04"><title>${tr(P.darkName)}</title></rect>` : ''; }).join('');
+  const marks = s.sched.flares.filter(d=>d<s.day).map(d=>`<line x1="${x(d)}" x2="${x(d)}" y1="${T0+6}" y2="${Ht-B0}" stroke="var(--rad)" stroke-opacity=".35"/><g transform="translate(${x(d)},${T0+2})"><circle r="3.5" fill="var(--rad)"/><title>${L('Вспышка, день','Flare, day')} ${d}</title></g>`).join('');
+  const limit = '';
   const tiles = series.map(se=>{ const dv = se.d(last) - se.d(prev), up = dv > 0.05, dn = dv < -0.05, ok = (up && se.good>0) || (dn && se.good<0);
-    return `<div class="ht" style="--c:${se.c}"><span class="hn"><i></i>${se.name}</span><b>${se.val(last)}</b><span class="hd ${up||dn ? (ok?'ok':'bad') : ''}">${up?'▲':dn?'▼':'■'} ${up||dn ? (dv>0?'+':'')+fmt(dv,1)+' '+se.unit : L('без изменений','no change')}</span></div>`; }).join('');
+    return `<div class="ht" style="--c:${se.c}"><span class="hn"><i></i>${se.name}</span><b>${se.val(last)}</b><span class="hd ${up||dn ? (ok?'ok':'bad') : ''}">${up||dn ? (dv>0?'+':'−')+fmt(Math.abs(dv),1)+' '+L('за день','today') : '—'}</span></div>`; }).join('');
   return `<div class="card hist" id="c-hist"><h2>${L('Журнал миссии','Mission log')} <span class="hint">${L('день','day')} ${last.day} / ${P.days}</span></h2>
     <div class="htiles">${tiles}</div>
     <svg viewBox="0 0 ${W} ${Ht}" role="img" aria-label="${L('График запасов по дням','Supplies by day')}"><defs>${defs}<linearGradient id="hg-fut" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#8fb8ff" stop-opacity=".07"/><stop offset="1" stop-color="#8fb8ff" stop-opacity="0"/></linearGradient></defs>
       ${grid}${future}${darks}${areas}${marks}${lines}${dots}${limit}${ticks}</svg>
-    <div class="lg"><span><i style="background:var(--o2)"></i>${L('Кислород, % от бака','Oxygen, % of tank')}</span><span><i style="background:var(--power)"></i>${L('Батарея, % заряда','Battery, % charge')}</span><span><i style="background:var(--rad)"></i>${L('Доза, % от лимита','Dose, % of limit')}</span><span><i class="fl"></i>${L('вспышка на Солнце','solar flare')}</span><span><i style="background:var(--muted);opacity:.5"></i>${tr(P.darkName)}</span></div></div>`;
+    <div class="lg"><span>${L('Шкала: % от бака, заряда и лимита дозы','Scale: % of tank, charge and dose limit')}</span><span><i class="fl"></i>${L('вспышка','flare')}</span><span><i style="background:#fff;opacity:.15;height:8px"></i>${tr(P.darkName)}</span></div></div>`;
 }
 
 const ACT_ICON = { rest:'bed', science:'flask', ice:'ice', shield:'mound', panel:'sun', battery:'battery', greenhouse:'leaf', reactor:'atom', repair:'wrench', clean:'broom' };

@@ -39,41 +39,30 @@ function liveBoxHTML(){
   return `${sum}<label class="chk"><input type="checkbox" id="useLive" ${useLive?'checked':''}> ${L(`Добавить в миссию настоящую вспышку ${esc(f.cls)} от ${solarDate(f.date)}`,`Add the real ${esc(f.cls)} flare from ${solarDate(f.date)} to the mission`)}</label>`;
 }
 function showStart(){
-  openModal(`<div class="st">
-    <header class="st-top"><div class="st-brand"><span class="st-logo">${ic('star')}</span><span><b>${L('Юный астронавт: База','Junior Astronaut: Base')}</b><small>NASA Space Apps · ${L('тренажёр для детей 7–12 лет','a trainer for kids aged 7–12')}</small></span></div>${langBtn()}</header>
+  openModal(`<div class="st st2">
+    <header class="st-top"><div class="st-brand"><i class="st-dot" aria-hidden="true"></i><b>${L('Юный астронавт','Junior Astronaut')}</b><span>${L('База','Outpost')}</span></div>${langBtn()}</header>
     <div class="st-main">
       <section class="st-hero">
-        <h1>${L('Построй базу и продержись <em>20 дней</em>','Build a base and survive <em>20 days</em>')}</h1>
-        <p class="lead">${L('Ты командир базы, где живут четыре астронавта. Энергии на всё не хватает: каждый день решай, что важнее — воздух, тепло, связь с Землёй или защита от радиации. Солнечные бури настоящие, из архивов NASA и NOAA.','You command a base where four astronauts live. There is never enough power: each day decide what matters most — air, heat, the link to Earth or radiation shielding. The solar storms are real, from NASA and NOAA records.')}</p>
-        <ol class="st-steps"><li><b>1</b>${L('Раздай энергию','Share the power')}</li><li><b>2</b>${L('Дай задание','Give a task')}</li><li><b>3</b>${L('Заверши день','End the day')}</li></ol>
-        <div class="st-facts"><span><b>4</b>${L('астронавта','astronauts')}</span><span><b>20</b>${L('дней миссии','mission days')}</span><span><b>NASA</b>${L('настоящие данные','real data')}</span></div>
-        <div class="st-label">${L('Уровень','Level')}</div>
-    <div class="modes" role="group" aria-label="${L('Уровень сложности','Difficulty')}">
-      <button type="button" class="mode" data-mode="cadet" aria-pressed="${chosenMode==='cadet'}"><b>${L('Кадет · 7–9 лет','Cadet · ages 7–9')}</b><span>${L('Энергия, кислород и радиация. Три главных ресурса.','Power, oxygen and radiation. Three core resources.')}</span></button>
-      <button type="button" class="mode" data-mode="engineer" aria-pressed="${chosenMode==='engineer'}"><b>${L('Инженер · 10–12 лет и старше','Engineer · ages 10–12+')}</b><span>${L('Плюс вода, еда, теплицы и поломки. Как у настоящих планировщиков миссий.','Plus water, food, greenhouses and breakdowns, like real mission planners.')}</span></button>
-    </div>
+        <span class="eyebrow">NASA Space Apps · ${L('для детей 7–12 лет','for kids aged 7–12')}</span>
+        <h1>${L('Построй базу и продержись <em>20&nbsp;дней</em>','Build a base and survive <em>20&nbsp;days</em>')}</h1>
+        <p class="lead">${L('Четыре астронавта, мало энергии и настоящие солнечные бури из архивов NASA. Каждый день решай, что важнее: воздух, тепло, связь или защита.','Four astronauts, too little power and real solar storms from NASA archives. Every day, decide what matters most: air, heat, radio or shielding.')}</p>
+        <div class="seg" role="group" aria-label="${L('Уровень сложности','Difficulty')}">
+          <button type="button" class="mode" data-mode="cadet" aria-pressed="${chosenMode==='cadet'}"><b>${L('Кадет','Cadet')}</b><span>${L('7–9 лет · энергия, O₂, радиация','ages 7–9 · power, O₂, radiation')}</span></button>
+          <button type="button" class="mode" data-mode="engineer" aria-pressed="${chosenMode==='engineer'}"><b>${L('Инженер','Engineer')}</b><span>${L('10–12 лет · + вода, еда, теплицы','ages 10–12 · + water, food, farms')}</span></button>
+        </div>
       </section>
-      <section class="st-go">
-        <div class="st-label">${L('Выбери, где строить базу','Choose where to build')}</div>
-    <div class="planets">
-      <button class="pcard" type="button" data-start="moon" style="--pc:${PLANETS.moon.accent}" data-focus>${planetPreview('moon')}<div class="pb">
-        <span class="pn">${L('Луна · кратер Шеклтон','Moon · Shackleton crater')}</span>
-        <ul><li>${L('Связь с Землёй почти мгновенная: 1,3 секунды','Talking to Earth is almost instant: 1.3 seconds')}</li><li>${L('Радиация в 2 раза сильнее, чем на Марсе','Radiation is twice as strong as on Mars')}</li><li>${L('Бывают дни в тени гор','Some days are in mountain shadow')}</li></ul>
-        <span class="go">${L('Лететь на Луну','Fly to the Moon')} <i aria-hidden="true">→</i></span></div></button>
-      <button class="pcard" type="button" data-start="mars" style="--pc:${PLANETS.mars.accent}">${planetPreview('mars')}<div class="pb">
-        <span class="pn">${L('Марс · равнина Утопия','Mars · Utopia Planitia')}</span>
-        <ul><li>${L(`Сигнал до Земли идёт ${delayText('mars')} (сегодняшнее расстояние), помощь не успеет`,`A signal to Earth takes ${delayText('mars')} (today’s distance), so help can’t arrive in time`)}</li><li>${L('Пылевые бури и пыль на панелях','Dust storms and dusty panels')}</li><li>${L('Тонкая атмосфера немного защищает от радиации','Thin air gives a little radiation protection')}</li></ul>
-        <span class="go">${L('Лететь на Марс','Fly to Mars')} <i aria-hidden="true">→</i></span></div></button>
-    </div>
+      <section class="st-go" aria-label="${L('Выбери, где строить базу','Choose where to build')}">
+        <button class="pcard" type="button" data-start="moon" style="--pc:${PLANETS.moon.accent}" data-focus>${planetPreview('moon')}<div class="pb">
+          <span class="pn">${L('Луна','Moon')}</span><span class="pf">${L('Кратер Шеклтон · сигнал 1,3 с','Shackleton crater · 1.3 s signal')}</span><span class="go" aria-hidden="true">→</span></div></button>
+        <button class="pcard" type="button" data-start="mars" style="--pc:${PLANETS.mars.accent}">${planetPreview('mars')}<div class="pb">
+          <span class="pn">${L('Марс','Mars')}</span><span class="pf">${L(`Равнина Утопия · сигнал ${delayText('mars')}`,`Utopia Planitia · ${delayText('mars')} signal`)}</span><span class="go" aria-hidden="true">→</span></div></button>
       </section>
     </div>
-    <div class="st-extra">
-      <div class="st-card"><div class="st-label">${L('Космическая погода','Space weather')}</div>
-    <div class="live" id="liveStart">${liveBoxHTML()}</div>
-      </div>
-      <div class="st-card">
-    <form class="codebox" id="codeForm"><label for="mcode">${L('Есть код миссии от учителя?','Have a mission code from your teacher?')}</label><input id="mcode" name="mcode" placeholder="M-1234" autocomplete="off" maxlength="7"><button class="btn" type="submit">${L('Начать по коду','Start with code')}</button><span id="codeErr" role="alert"></span></form>
-    <details class="gloss"><summary>${L('Словарик: что значат трудные слова','Glossary: tricky words explained')}</summary>
+    <footer class="st-foot">
+      <div class="live" id="liveStart">${liveBoxHTML()}</div>
+      <form class="codebox" id="codeForm"><label for="mcode">${L('Код миссии','Mission code')}</label><input id="mcode" name="mcode" placeholder="M-1234" autocomplete="off" maxlength="7"><button class="btn" type="submit">${L('Начать','Start')}</button><span id="codeErr" role="alert"></span></form>
+      <button class="lnk" type="button" data-cmd="science">${L('Данные NASA в игре','NASA data in the game')}</button>
+    <details class="gloss"><summary>${L('Словарик','Glossary')}</summary>
       <dl>
         <dt>${L('Сол','Sol')}</dt><dd>${L('Марсианские сутки. Они длиннее земных на 40 минут.','A Martian day. It is 40 minutes longer than an Earth day.')}</dd>
         <dt>${L('кВт·ч (киловатт-час)','kWh (kilowatt-hour)')}</dt><dd>${L('Количество энергии. Чайник тратит примерно 0,1 кВт·ч, чтобы вскипятить воду.','An amount of energy. A kettle uses about 0.1 kWh to boil water.')}</dd>
@@ -84,8 +73,7 @@ function showStart(){
         <dt>${L('Протонная буря (шкала S1–S5)','Proton storm (S1–S5 scale)')}</dt><dd>${L('Поток быстрых протонов после выброса с Солнца. Именно он опасен для астронавтов. NOAA оценивает бури от S1 (слабая) до S5 (экстремальная).','A flood of fast protons after a solar eruption. This is what is dangerous to astronauts. NOAA rates storms from S1 (minor) to S5 (extreme).')}</dd>
         <dt>${L('Задержка связи','Signal delay')}</dt><dd>${L('Радиосигнал летит со скоростью света. До Луны чуть больше секунды, до Марса от 3 до 22 минут.','Radio travels at the speed of light: just over a second to the Moon, 3 to 22 minutes to Mars.')}</dd>
       </dl></details>
-    <div class="row-btns"><button class="btn" type="button" data-cmd="science">${L('Какие данные NASA использованы','Which NASA data is used')}</button></div>      </div>
-    </div></div>`, L('Начало миссии','Mission start'), showStart, 'start');
+    </footer></div>`, L('Начало миссии','Mission start'), showStart, 'start');
   requestAnimationFrame(paintPreviews); SKY.wake && SKY.wake();
 }
 
