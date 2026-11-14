@@ -422,13 +422,14 @@ def build_hab():
         cx, cy = off(x, y, a, 0.32, side*0.42)
         objs.append(cyl(0.11, 1.2, (cx, cy, 0.95), M_WHITE(), 'canister', verts=16))
         objs.append(cyl(0.12, 0.06, (cx, cy, 1.56), M_METAL(), 'canistercap', verts=16))
-        ax, ay = off(x, y, a, 0.05, side*0.42)
-        objs.append(cube((0.6, 0.06, 0.06), (ax, ay, 1.45), M_METAL(), 'aredarm', rot=(0,0.35,a)))
-    bx, by = off(x, y, a, -0.22, 0)
-    objs.append(cyl(0.025, 1.15, (bx, by, 1.36), M_METAL(), 'aredbar', verts=8, rot=(math.pi/2,0,a)))
+        # cable from the canister top down to the bar, so the bar hangs on something real
+        objs.append(cyl(0.012, 0.3, (cx, cy, 1.4), M_DARK(), 'aredcable', verts=6))
+    # lifting bar runs straight through both canisters (it is held by them, not floating)
+    bx, by = off(x, y, a, 0.32, 0)
+    objs.append(cyl(0.025, 1.1, (bx, by, 1.25), M_METAL(), 'aredbar', verts=8, rot=(math.pi/2,0,a)))
     for side in (-1, 1):
-        gx, gy = off(x, y, a, -0.22, side*0.36)
-        objs.append(cyl(0.035, 0.16, (gx, gy, 1.36), M_RUBBER(), 'aredgrip', verts=10, rot=(math.pi/2,0,a)))
+        gx, gy = off(x, y, a, 0.32, side*0.2)
+        objs.append(cyl(0.035, 0.16, (gx, gy, 1.25), M_RUBBER(), 'aredgrip', verts=10, rot=(math.pi/2,0,a)))
     # dumbbell rack: two shelves with dumbbells that have heads
     x, y, a = rad(10.0, 156)
     objs.append(cube((0.4, 1.1, 0.06), (x, y, 0.75), M_DARK(), 'rackshelf', rot=(0,0,a)))
@@ -444,9 +445,12 @@ def build_hab():
                 ex, ey = off(dx, dy, a, e, 0)
                 objs.append(cyl(0.055 + 0.01*k, 0.05, (ex, ey, h), M_RUBBER(), 'dbhead', verts=12, rot=(0,math.pi/2,a)))
     # wall screen with the workout plan, above the rack
-    x, y, a = rad(10.28, 160)
-    objs.append(cube((0.04, 1.3, 0.7), (x, y, 2.05), M_DARK(), 'gymscreenframe', rot=(0,0,a)))
-    objs.append(cube((0.02, 1.2, 0.6), (x-math.cos(a)*0.025, y-math.sin(a)*0.025, 2.05), M_SCREEN(), 'gymscreen', rot=(0,0,a)))
+    # sits flat on the dome wall, tilted back like the wall, with a bracket behind it
+    zc = 1.95; rw = math.sqrt(10.48**2 - zc*zc); tilt = math.asin(zc/10.48)
+    x, y, a = rad(rw - 0.06, 160)
+    objs.append(cube((0.2, 0.5, 0.3), (math.cos(a)*(rw+0.12), math.sin(a)*(rw+0.12), zc), M_METAL(), 'gymscreenmount', rot=(0,tilt,a)))
+    objs.append(cube((0.05, 1.3, 0.72), (x, y, zc), M_DARK(), 'gymscreenframe', rot=(0,tilt,a), bevel=0.02))
+    objs.append(cube((0.02, 1.2, 0.62), (x-math.cos(a)*0.03, y-math.sin(a)*0.03, zc), M_SCREEN(), 'gymscreen', rot=(0,tilt,a)))
     # galley extras: fridge and wall shelf
     x, y, rr = tang(9.3, -57); objs.append(cube((0.9, 0.75, 2.0), (x, y, 1.3), M_WHITE(), 'fridge', rot=(0,0,rr), bevel=0.05))
     objs.append(cube((0.05, 0.05, 0.9), (x+math.cos(rr)*0.3-math.cos(rr-math.pi/2)*0.4, y+math.sin(rr)*0.3-math.sin(rr-math.pi/2)*0.4, 1.4), M_METAL(), 'handle', rot=(0,0,rr)))

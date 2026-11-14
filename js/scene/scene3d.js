@@ -462,7 +462,7 @@ const G3 = (()=>{
     const bc = mesh(new T.SphereGeometry(0.3,12,8), mat.amber,false,false); bc.position.set(0,11.15,0); group.add(bc); w.beacon = bc;
     // interior lights
     const lamp = (x,y,z,c,i,d)=>{ const l = new T.PointLight(c,i,d,1.2); l.position.set(x,y,z); group.add(l); return l; };
-    w.lamps = [lamp(0,6.4,0,0xfff1dd,0.62,24), lamp(0,5.6,LAB.z,0xe8f4ff,1.3,18), lamp(17,2.6,0,0xfff1dd,0.8,10), lamp(-17,2.6,0,0xfff1dd,0.8,10), lamp(0,2.6,-16,0xfff1dd,0.8,10)];
+    w.lamps = [lamp(0,6.4,0,0xfff1dd,0.42,24), lamp(0,5.6,LAB.z,0xe8f4ff,0.9,18), lamp(17,2.6,0,0xfff1dd,0.55,10), lamp(-17,2.6,0,0xfff1dd,0.55,10), lamp(0,2.6,-16,0xfff1dd,0.55,10)];
     w.ghLamp = lamp(GH.x,5.5,GH.z,0xff8fe0,1.0,20); w.ghLamp2 = lamp(GH.x,3,GH.z,0xfff4e0,0.5,14);
     const dl = new T.PointLight(0xffe0a0, 1.2, 16); dl.position.set(26.5,3,0); group.add(dl);
     // outdoor kit
@@ -745,6 +745,8 @@ const G3 = (()=>{
     sun.target.position.set(pl.x, 0, pl.z); sun.position.copy(world.sunDir).multiplyScalar(200).add(sun.target.position);
     Object.assign(sun.shadow.camera, {left:-40,right:40,top:40,bottom:-40}); sun.shadow.camera.updateProjectionMatrix();
     hemi.intensity = (built==='mars' ? 0.5 : 0.3) + (pl.indoor ? 0.04 : 0);
+    // softer light inside the base: the white walls looked blown out, so expose less while indoors
+    { const ex = pl.indoor ? 0.72 : 1.05; renderer.toneMappingExposure += (ex - renderer.toneMappingExposure)*0.08; }
     // what is close enough to use?
     let best = null, bd = 2.6;
     for(const mk of markers){ const on = mk.st.in==='both' || mk.st.in===pl.indoor || (!mk.st.in && !pl.indoor); mk.grp.visible = on; if(!on) continue;
@@ -981,7 +983,7 @@ const G3 = (()=>{
           if(act==='clean'){ world.panels.forEach(p=>sparks(p.position.clone().add(new T.Vector3(0,2.4,0)), 0xbfe0ff)); }
           if(act==='repair'){ sparks(new T.Vector3(19,2.2,-1)); sparks(new T.Vector3(20,2.4,-1.2)); }
           if(act==='science'||act==='ice'){ const bit = world.drillBit || world.drill; const y0 = bit.position.y; tween(1.4, q=>{ bit.rotation.y = q*40; if(world.drillBit) bit.position.y = y0 - q*0.8; }, ()=>{ if(world.drillBit) bit.position.y = y0; }); puff(world.drill.position.clone()); }
-          if(act==='rest'){ const L0 = world.lamps[0]; tween(1.4, q=>{ L0.intensity = 1.6 + Math.sin(q*Math.PI)*3; }); }
+          if(act==='rest'){ const L0 = world.lamps[0], i0 = 0.42; tween(1.4, q=>{ L0.intensity = i0 + Math.sin(q*Math.PI)*1.2; }); }
           if(act==='shield' && world.berm && !added.includes(world.berm)) puff(new T.Vector3(16,0.5,-9));
         }
         if(eva && phase===1) animPerson(a, t*6, 0, true);
