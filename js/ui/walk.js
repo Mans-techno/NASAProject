@@ -230,15 +230,17 @@ function chatBubbles(k){
   const tips = fresh ? `<div class="ctips">${CHAT_TIPS[k].map(t=>`<button type="button" class="ctip" data-tip="${esc(L(t[0],t[1]))}">${esc(L(t[0],t[1]))}</button>`).join('')}</div>` : '';
   return rows + tips;
 }
-function showCrew(k){
+const CHAT_SID = [0,0,0];
+function showCrew(k, keep){
   const c = CREW_INFO[k]; if(!c) return; const [a,b] = crewLine(k);
+  if(!keep){ CHAT[k] = []; CHAT_SID[k]++; CHAT_BUSY[k] = false; }
   if(!CHAT[k].length) CHAT[k].push({role:'assistant', content:`${L('Чем могу помочь, командир?','How can I help, commander?')} ${a}${b?' '+b:''}`, intro:true});
   const v = CREW_LOOK[k]||CREW_LOOK[0];
   openModal(`<div class="crewchat" data-k="${k}" style="--cc:${v.c}">
     <div class="chead">${crewAvatar(k)}<div class="cwho"><b>${esc(c.name())}</b><span><i class="cdot"></i>${esc(c.role())} · ${L('на связи','online')}</span></div><button class="btn cclose" type="button" data-cmd="close" aria-label="${L('Закрыть','Close')}">${ic('close')}</button></div>
     <div class="clog" aria-live="polite">${chatBubbles(k)}</div>
     <form class="cform" autocomplete="off"><label class="sr" for="cin">${L('Вопрос','Question')}</label><input id="cin" name="q" maxlength="400" placeholder="${L('Чем могу помочь, командир?','How can I help, commander?')}" data-focus><button class="csend" type="submit" aria-label="${L('Отправить','Send')}">${SEND_SVG}</button></form>
-    <p class="cnote">${L('Отвечает ИИ в роли члена экипажа. Он может ошибаться.','An AI answers in the role of a crew member. It can make mistakes.')}</p></div>`, c.name(), ()=>showCrew(k), 'chatm');
+    <p class="cnote">${L('Отвечает ИИ в роли члена экипажа. Он может ошибаться.','An AI answers in the role of a crew member. It can make mistakes.')}</p></div>`, c.name(), ()=>showCrew(k, true), 'chatm');
   const form = modalRoot.querySelector('.cform'), log = modalRoot.querySelector('.clog'); log.scrollTop = log.scrollHeight;
   form.addEventListener('submit', e=>{ e.preventDefault(); const q = form.q.value.trim(); if(!q || CHAT_BUSY[k]) return; form.q.value = ''; askCrew(k, q); });
   log.addEventListener('click', e=>{ const t = e.target.closest('.ctip'); if(t && !CHAT_BUSY[k]){ askCrew(k, t.dataset.tip); form.q.focus({preventScroll:true}); } });
@@ -266,7 +268,7 @@ function crewState(){
   return { planet:s.pid, mode:s.mode, day:s.day, days:PLANETS[s.pid].days, o2:Math.round(s.o2), battery:Math.round(s.battery), batCap:Math.round(s.batCap), water:Math.round(s.water||0), food:Math.round(s.food||0), health:Math.round(s.health), dose:Math.round(s.dose), science:Math.round(s.science), panels:s.panels, reactor:!!s.reactor, storm:!!flareOn(s, s.day) };
 }
 async function askCrew(k, q){
-  CHAT_BUSY[k] = true;
+  CHAT_BUSY[k] = true; const sid = CHAT_SID[k];
   CHAT[k].push({role:'user', content:q}); const wait = {role:'assistant', content:'', pending:true}; CHAT[k].push(wait); chatRefresh(k);
   const hist = CHAT[k].filter(m=>!m.pending && !m.intro).slice(-12).map(m=>({role:m.role, content:m.content}));
   let text = null;
@@ -276,6 +278,7 @@ async function askCrew(k, q){
     clearTimeout(tm);
     if(r.ok){ const j = await r.json(); if(j && typeof j.text==='string' && j.text.trim()) text = j.text.trim(); }
   }catch(e){}
+  if(sid !== CHAT_SID[k]) return;
   let offline = false;
   if(!text){ offline = true; const m = mathAnswer(q); const c = CREW_INFO[k];
     text = m!==null ? L(`Это ${m}. Считать надо уметь: на базе каждый килограмм на счету!`,`That’s ${m}. Counting matters here: every kilogram on the base counts!`)
