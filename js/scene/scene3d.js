@@ -1058,11 +1058,11 @@ const G3 = (()=>{
     const dt = Math.min(0.25, (t - (last||t))/1000); last = t; tNow += dt;
     perf.n++; if(perf.n > 30){ perf.sum += dt; perf.k++; }   // skip the first frames (shader compile, loading)
     if(perf.k >= 90){ const avg = perf.sum/perf.k; perf.sum = 0; perf.k = 0;
-      // step quality down while the game runs slower than ~35 fps: cheaper shadows, then no shadows and a smaller canvas
+      // step quality down while the game runs slower than ~35 fps: cheaper shadows, then smaller shadow map and canvas (shadows stay on)
       if(avg > 0.028 && perf.tier < 3){ perf.tier++;
         const dpr = window.devicePixelRatio||1;
         if(perf.tier===1){ renderer.setPixelRatio(Math.min(1.25, dpr)); renderer.shadowMap.type = T.PCFShadowMap; sun.shadow.mapSize.set(1024,1024); if(sun.shadow.map){ sun.shadow.map.dispose(); sun.shadow.map = null; } }
-        if(perf.tier===2){ renderer.setPixelRatio(Math.min(1, dpr)); renderer.shadowMap.enabled = false; perf.low = true; }
+        if(perf.tier===2){ renderer.setPixelRatio(Math.min(1, dpr)); sun.shadow.mapSize.set(512,512); if(sun.shadow.map){ sun.shadow.map.dispose(); sun.shadow.map = null; } perf.low = true; }   /* keep sun shadows: only make them cheaper */
         if(perf.tier===3){ renderer.setPixelRatio(Math.min(0.75, dpr)); }
         scene.traverse(o=>{ if(o.material){ (Array.isArray(o.material)?o.material:[o.material]).forEach(m=>m.needsUpdate=true); } }); renderer.setSize(1,1,false); } }
     if(!resize()) return;
@@ -1107,7 +1107,7 @@ const G3 = (()=>{
     if(cine) cine.step(dt);
     renderer.render(scene, camera);
     const alive = mode==='walk' || !reduce || tweens.length || cine || drag || Math.abs(camGoal.az-cam.az)>0.001 || Math.abs(camGoal.r-cam.r)>0.01 || (w.crew && w.crew.length);
-    if(alive) raf = requestAnimationFrame(loop);
+    if(alive && !raf) raf = requestAnimationFrame(loop);   /* kick() may already have queued a frame during this one: never run two loops */
   }
   document.addEventListener('visibilitychange', kick);
   window.addEventListener('resize', kick);
