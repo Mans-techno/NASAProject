@@ -128,6 +128,8 @@ const G3 = (()=>{
   const fill = new T.DirectionalLight(0x9fb6ff, 0.4); fill.position.set(-120,80,-200); scene.add(fill);
   const sunSprite = new T.Sprite(new T.SpriteMaterial({map:glowTex, color:0xfff2d8, blending:T.AdditiveBlending, depthWrite:false, fog:false}));
   sunSprite.scale.set(240,240,1); scene.add(sunSprite);
+  const sunCore = new T.Sprite(new T.SpriteMaterial({map:canvasTex(64,64,(c,w,h)=>{ const g=c.createRadialGradient(w/2,h/2,0,w/2,h/2,w/2); g.addColorStop(0,'rgba(255,255,255,1)'); g.addColorStop(0.62,'rgba(255,255,255,1)'); g.addColorStop(0.8,'rgba(255,250,235,0.35)'); g.addColorStop(1,'rgba(255,250,235,0)'); c.fillStyle=g; c.fillRect(0,0,w,h); }), color:0xffffff, depthWrite:false, fog:false}));
+  sunSprite.add(sunCore); sunCore.scale.set(0.3,0.3,1);   // the disc itself, inside the glow
   const M = (o)=> new T.MeshStandardMaterial(o);
   const mat = {
     metal: M({color:0xa8b0bd, roughness:0.4, metalness:0.35}),
@@ -245,13 +247,69 @@ const G3 = (()=>{
     const m = M({vertexColors:true, map:grainTex, roughness:1, metalness:0, bumpMap:grainTex, bumpScale:mars?0.25:0.15});
     const t = mesh(g, m, false, true); t.name='terrain'; return t;
   }
+
+  /* ---------- Mars only: the base is built differently from the Moon one ----------
+     - the habitat wears a 3D-printed regolith shell (the idea from NASA's 3D-Printed Habitat Challenge):
+       rust-red, with the printer's horizontal layers, openings left for the three tunnels
+     - an oxygen plant that makes O2 from the CO2 air (like the MOXIE test on Perseverance)
+     - a small scout helicopter on its pad (like Ingenuity)
+     - a sand fence against dust storms */
+  function marsBase(w, group){
+    const layerTex = canvasTex(64, 256, (c,W,H)=>{ for(let y=0;y<H;y+=8){ const g=c.createLinearGradient(0,y,0,y+8); g.addColorStop(0,'#c47a52'); g.addColorStop(0.55,'#a65c3a'); g.addColorStop(1,'#7c3f26'); c.fillStyle=g; c.fillRect(0,y,W,8); } });
+    layerTex.wrapS = layerTex.wrapT = T.RepeatWrapping; layerTex.repeat.set(10, 1.3);
+    const shellM = M({color:0xffffff, map:layerTex, bumpMap:layerTex, bumpScale:0.6, roughness:0.95, metalness:0});
+    { // printed shell: a hemisphere a bit outside the dome; triangles in front of the tunnel doors are dropped
+      const R = 11.45, g = new T.SphereGeometry(R, 72, 22, 0, Math.PI*2, 0, Math.PI/2).toNonIndexed(), pa = g.attributes.position, ua = g.attributes.uv;
+      const keepP = [], keepU = [], doors = [0, Math.PI, -Math.PI/2];
+      for(let i=0;i<pa.count;i+=3){ let cx=0, cy=0, cz=0; for(let j=0;j<3;j++){ cx+=pa.getX(i+j); cy+=pa.getY(i+j); cz+=pa.getZ(i+j); } cx/=3; cy/=3; cz/=3;
+        const az = Math.atan2(cz, cx); const hole = doors.some(d=>{ const da = Math.atan2(Math.sin(az-d), Math.cos(az-d)); return Math.abs(da)*R < 2.7 && cy < 4.3; });
+        if(hole) continue; for(let j=0;j<3;j++){ keepP.push(pa.getX(i+j), pa.getY(i+j), pa.getZ(i+j)); keepU.push(ua.getX(i+j), ua.getY(i+j)); } }
+      const sg = new T.BufferGeometry(); sg.setAttribute('position', new T.Float32BufferAttribute(keepP,3)); sg.setAttribute('uv', new T.Float32BufferAttribute(keepU,2)); sg.computeVertexNormals();
+      const shell = mesh(sg, shellM, true, true); shell.name = 'marsShell'; group.add(shell); w.marsShell = shell;
+      // arched door frames where the tunnels pass through the shell
+      const frameM = M({color:0x8a4a2e, roughness:0.9, map:layerTex});
+      doors.forEach(d=>{ const f = mesh(new T.TorusGeometry(2.7, 0.35, 8, 24, Math.PI), frameM); f.position.set(Math.cos(d)*11.1, 0.4, Math.sin(d)*11.1); f.rotation.y = -d + Math.PI/2; f.scale.set(1, 1.45, 1); group.add(f); });
+      // a ring of small round windows high up
+      const winM = M({color:0x223040, emissive:0xffc070, emissiveIntensity:0.35, roughness:0.2, metalness:0.3});
+      for(let k=0;k<10;k++){ const a = (k+0.5)/10*Math.PI*2, el = 0.62; const wn = mesh(new T.CircleGeometry(0.55, 20), winM, false, false);
+        wn.position.set(Math.cos(a)*Math.cos(el)*(R+0.03), Math.sin(el)*(R+0.03), Math.sin(a)*Math.cos(el)*(R+0.03)); wn.lookAt(wn.position.clone().multiplyScalar(2)); group.add(wn); }
+    }
+    const metal = M({color:0xd5d8de, roughness:0.5, metalness:0.15}), white = M({color:0xf1efe9, roughness:0.6}), dark = M({color:0x30343c, roughness:0.6, metalness:0.3}), orange = M({color:0xe8752a, roughness:0.6});
+    const gy = (x,z)=>groundAt(x,z);
+    { // oxygen plant (CO2 in, O2 out) with two tanks and a pipe to the habitat
+      const ox = -22, oz = -24, g = new T.Group(); g.position.set(ox, gy(ox,oz), oz); group.add(g);
+      const box = mesh(new T.BoxGeometry(4.2, 2.4, 2.6), white); box.position.y = 1.2; g.add(box);
+      const band = mesh(new T.BoxGeometry(4.25, 0.25, 2.65), orange); band.position.y = 1.9; g.add(band);
+      for(let k=0;k<3;k++){ const fan = mesh(new T.CylinderGeometry(0.45,0.45,0.12,20), dark); fan.position.set(-1.3+k*1.3, 2.46, 0); g.add(fan); }
+      [[-1.2,2.4],[1.2,2.4]].forEach(([x,z])=>{ const t = mesh(new T.CylinderGeometry(0.75,0.75,2.6,24), metal); t.position.set(x,1.3,z); g.add(t);
+        const cap = mesh(new T.SphereGeometry(0.75,24,10,0,Math.PI*2,0,Math.PI/2), metal); cap.position.set(x,2.6,z); g.add(cap);
+        const lab = mesh(new T.BoxGeometry(0.02,0.5,0.9), M({color:0x3c8dde})); lab.position.set(x+0.76,1.4,z); g.add(lab); });
+      const pipe = mesh(new T.CylinderGeometry(0.12,0.12,1,10), metal); const a = new T.Vector3(ox+2.1, 0.5, oz), b = new T.Vector3(-8.6, 0.5, -12.8);
+      pipe.scale.y = a.distanceTo(b); pipe.position.copy(a).add(b).multiplyScalar(0.5); pipe.position.y = gy(pipe.position.x, pipe.position.z) + 0.25; pipe.lookAt(b.x, pipe.position.y, b.z); pipe.rotateX(Math.PI/2); group.add(pipe);
+      w.marsO2 = g; }
+    { // scout helicopter on a landing pad
+      const hx = 12, hz = 30, g = new T.Group(); g.position.set(hx, gy(hx,hz)+0.05, hz); group.add(g);
+      const pad = mesh(new T.CylinderGeometry(2.4,2.4,0.08,40), M({color:0x5e3a2a, roughness:1}), false, true); g.add(pad);
+      const ring = mesh(new T.RingGeometry(1.7,1.95,40), M({color:0xf2f2f2, roughness:0.8}), false, false); ring.rotation.x = -Math.PI/2; ring.position.y = 0.05; g.add(ring);
+      const body = mesh(new T.BoxGeometry(0.45,0.4,0.45), M({color:0xd9c79b, roughness:0.5, metalness:0.4})); body.position.y = 0.75; g.add(body);
+      for(let k=0;k<4;k++){ const a = k*Math.PI/2+Math.PI/4, leg = mesh(new T.CylinderGeometry(0.02,0.02,0.85,6), metal); leg.position.set(Math.cos(a)*0.35, 0.4, Math.sin(a)*0.35); leg.rotation.set(Math.sin(a)*0.5, 0, -Math.cos(a)*0.5); g.add(leg); }
+      const mast = mesh(new T.CylinderGeometry(0.03,0.03,0.7,8), metal); mast.position.y = 1.3; g.add(mast);
+      const panel = mesh(new T.BoxGeometry(0.55,0.03,0.4), M({color:0x1b2a55, roughness:0.3, metalness:0.5})); panel.position.y = 1.67; g.add(panel);
+      const rotors = new T.Group(); [1.05,1.25].forEach((y,i)=>{ const r = mesh(new T.BoxGeometry(2.4,0.02,0.12), dark); r.position.y = y; r.rotation.y = i*0.8; rotors.add(r); }); g.add(rotors);
+      w.heli = g; w.heliRotors = rotors; }
+    { // sand fence on the windward side: posts with a mesh screen
+      const fm = M({color:0x6b6f78, roughness:0.8, metalness:0.4}), net = M({color:0xd0b48c, roughness:1, transparent:true, opacity:0.55, side:T.DoubleSide});
+      for(let k=0;k<9;k++){ const a = -2.2 + k*0.12, r = 48, x = Math.cos(a)*r, z = Math.sin(a)*r, y = gy(x,z);
+        const post = mesh(new T.CylinderGeometry(0.06,0.06,2.2,8), fm); post.position.set(x, y+1.1, z); group.add(post);
+        if(k<8){ const a2 = a+0.06, nx = Math.cos(a2)*r, nz = Math.sin(a2)*r; const n = mesh(new T.PlaneGeometry(r*0.12, 1.6), net, false, false); n.position.set(nx, gy(nx,nz)+1.2, nz); n.rotation.y = -a2; group.add(n); } } }
+  }
   function rocks(pid, group){
     const mars = pid==='mars', r = mulberry32(mars?5:6);
     const geo = new T.DodecahedronGeometry(1,1); const pos = geo.attributes.position;
     for(let i=0;i<pos.count;i++){ const x=pos.getX(i), y=pos.getY(i), z=pos.getZ(i); const k = 0.8+0.35*hash(Math.round(x*97)+Math.round(z*53)*131, Math.round(y*89), 9); pos.setXYZ(i,x*k,y*k*0.7,z*k); } geo.computeVertexNormals();
     const m = M({color: mars?0x7a3a22:0x6d6f74, roughness:0.95, map:grainTex});
     const n = 520, inst = new T.InstancedMesh(geo, m, n); inst.castShadow = inst.receiveShadow = true;
-    const o = new T.Object3D(); const keep = [...FOOT.map(f=>[f[0],f[1],f[2]+4]), [24,24,5],[34,8,5],[40,30,6],[36,34,6],[28,-24,8],[54,-42,9],[-28,23,16], [0,0,bermDims(4).rf+3]];   // no rocks where the regolith berm can grow (they would float on its slope)
+    const o = new T.Object3D(); const keep = [...FOOT.map(f=>[f[0],f[1],f[2]+4]), [24,24,5],[34,8,5],[40,30,6],[36,34,6],[28,-24,8],[54,-42,9],[-28,23,16], [0,0,bermDims(4).rf+3],[-22,-24,6],[12,30,4]];   // no rocks where the regolith berm can grow (they would float on its slope)
     for(let k=0;k<n;k++){ let x,z,ok; do{ x=(r()-0.5)*760; z=(r()-0.5)*760; ok = !keep.some(([cx,cz,R])=>Math.hypot(x-cx,z-cz)<R); }while(!ok);
       const s=0.25+Math.pow(r(),3)*2.6*(Math.hypot(x,z)>120?1.8:1); o.position.set(x, heightFn(x,z)+s*0.2, z); o.rotation.set(r()*3,r()*3,r()*3); o.scale.setScalar(s); o.updateMatrix(); inst.setMatrixAt(k,o.matrix); }
     group.add(inst);
@@ -353,6 +411,8 @@ const G3 = (()=>{
     if(w.reactor.visible) SOLID.push([SLOT.reactor().x, SLOT.reactor().z, 5.6]);
     SOLID.push([SLOT.dish().x, SLOT.dish().z, 1.2],[SLOT.quarry().x, SLOT.quarry().z, 3.8],[33.4,-18.6,2.2],[25.2,-21.4,1.0],[22.4,-19.2,0.9],
       [SLOT.drill(w.pid).x, SLOT.drill(w.pid).z, 1.0],[27,5,0.25]);
+    if(w.marsO2) SOLID.push([-23.2,-24,1.6],[-20.8,-24,1.6],[-23.2,-21.6,0.9],[-20.8,-21.6,0.9]);
+    if(w.heli) SOLID.push([12,30,0.6]);
     if(w.viking) SOLID.push([w.viking.position.x, w.viking.position.z, 1.9]);
     w.crates.forEach(c=>SOLID.push([c[0],c[1],0.75]));
     w.roverSolid = [drv.on ? 1e6 : w.rover.position.x, w.rover.position.z, 1.7]; SOLID.push(w.roverSolid);
@@ -418,6 +478,7 @@ const G3 = (()=>{
     put(inst('corr_lab'), 0,0,-10.8, Math.PI/2);
     put(inst('greenhouse'), GH.x,0,GH.z);
     put(inst('lab'), 0,0,LAB.z);
+    if(mars) marsBase(w, group);
     // portal collars: seal the arched tunnels into the round modules (no light gaps, no ground showing)
     { const shapeOf = hw => { const sh = new T.Shape(); sh.moveTo(-hw,-0.1); sh.lineTo(-1.6,-0.1); sh.lineTo(-1.6,1.4); sh.absarc(0,1.4,1.6,Math.PI,0,true); sh.lineTo(1.6,-0.1); sh.lineTo(hw,-0.1); sh.lineTo(hw,3.7); sh.quadraticCurveTo(hw,4.05,hw-0.35,4.05); sh.lineTo(-hw+0.35,4.05); sh.quadraticCurveTo(-hw,4.05,-hw,3.7); sh.lineTo(-hw,-0.1); return sh; };
       const sh = shapeOf(2.4);
@@ -574,7 +635,7 @@ const G3 = (()=>{
     w.protons = dustParticles(1200, 0xd38bff, 160); w.protons.material.size = 0.3; w.protons.material.blending = T.AdditiveBlending; w.protons.visible = false; group.add(w.protons);
     w.astro = person('astronaut'); w.astro.visible = false; group.add(w.astro);
     buildWalk(w); buildCrew(w);
-    const el = mars ? 32 : 9, az = mars ? 215 : 250;
+    const el = mars ? 34 : 24, az = mars ? 215 : 250;   // high enough to clear the ring of mountains, so the Sun is in the sky
     const d = new T.Vector3(Math.cos(el*Math.PI/180)*Math.cos(az*Math.PI/180), Math.sin(el*Math.PI/180), Math.cos(el*Math.PI/180)*Math.sin(az*Math.PI/180));
     w.sunDir = d;
     sunSprite.position.copy(d).multiplyScalar(2400); sunSprite.scale.setScalar(mars?180:280);
@@ -623,7 +684,7 @@ const G3 = (()=>{
     sun.intensity = (mars ? 2.6 : 3.4) * sunK; LIT.sun = sun.intensity;
     sun.color.set(flare ? 0xffd2c0 : (mars ? 0xffe2c4 : 0xfff6ea));
     hemi.intensity = mars ? (dark?0.55:0.45) : (dark?0.22:0.3); fill.intensity = mars ? 0.15 : (dark?0.35:0.45); LIT.hemi = hemi.intensity; LIT.fill = fill.intensity;
-    sunSprite.material.opacity = dark ? (mars?0.15:0) : 1;
+    sunSprite.material.opacity = dark ? (mars?0.15:0) : 1; sunCore.material.opacity = sunSprite.material.opacity;
     sunSprite.material.color.set(flare ? 0xffb0a0 : 0xfff2d8);
     if(mars){ scene.fog.near = dark ? 8 : 120; scene.fog.far = dark ? 110 : 700; scene.fog.color.set(dark?0x9a6440:0xc98b5c); w.sky.material.color.set(dark?0x9a7060:0xffffff); }
     w.stars.material.opacity = mars ? (dark?0:0.25) : 0.95;
@@ -931,10 +992,14 @@ const G3 = (()=>{
     if(w.meteors) w.meteors.step(dt, camera, w.stars.visible !== false && w.stars.material.opacity > 0.2 && !reduce);
     if(w.rassor){ const r = w.rassor, u = r.userData; u.t += dt*0.09; const q = (1-Math.cos(u.t*Math.PI*2))/2, x = u.x0 + (u.x1-u.x0)*q, z = r.position.z;
       r.position.set(x, ground(x,z), z); r.rotation.y = Math.sin(u.t*Math.PI*2) >= 0 ? -Math.PI/2 : Math.PI/2; }
+    if(w.heliRotors){ w.heliRotors.children[0].rotation.y += dt*0.6; w.heliRotors.children[1].rotation.y -= dt*0.6; }
     if(w.orbiter){ const o = w.orbiter; o.userData.ph = (o.userData.ph + dt/90) % 1; const a = -1.2 + o.userData.ph*2.4; o.position.set(Math.sin(a)*420, 260 + Math.cos(a)*120, -260 + Math.cos(a)*60); o.rotation.set(0.3, a*0.5, 0.2); o.visible = w.stars.material.opacity > 0.2; }
     if(walking){ w.told = w.told || {}; const near = (o,r)=> o && Math.hypot(pl.x-o.position.x, pl.z-o.position.z) < r;
       if(!w.told.v && near(w.viking, 7)){ w.told.v = 1; toast(L('Это «Викинг-2» NASA: настоящий аппарат сел здесь, на равнине Утопия, 3 сентября 1976 года. Модель из NASA 3D Resources.','This is NASA\'s Viking 2: the real lander touched down here in Utopia Planitia on 3 Sep 1976. Model from NASA 3D Resources.')); }
       else if(!w.told.r && near(w.rassor, 5)){ w.told.r = 1; toast(L('RASSOR: робот-копатель реголита, его создали в Космическом центре Кеннеди NASA. Модель из NASA 3D Resources.','RASSOR: a regolith-digging robot designed at NASA Kennedy Space Center. Model from NASA 3D Resources.')); } }
+      else if(!w.told.o && near(w.marsO2, 6)){ w.told.o = 1; toast(L('Кислородная установка: берёт углекислый газ из воздуха Марса и делает из него кислород. Так работал опыт MOXIE на марсоходе Perseverance NASA, он сделал 122 г кислорода.','Oxygen plant: it takes carbon dioxide from the Martian air and makes oxygen. NASA’s MOXIE experiment on the Perseverance rover did this and made 122 g of oxygen.')); }
+      else if(!w.told.h && near(w.heli, 5)){ w.told.h = 1; toast(L('Вертолёт-разведчик. Настоящий вертолёт NASA Ingenuity совершил на Марсе 72 полёта, хотя воздух там в 100 раз реже земного.','Scout helicopter. NASA’s real Ingenuity helicopter made 72 flights on Mars, even though the air there is 100 times thinner than on Earth.')); }
+      else if(!w.told.s && w.marsShell && Math.hypot(pl.x, pl.z) < 17 && Math.hypot(pl.x, pl.z) > 12){ w.told.s = 1; toast(L('На Марсе купол накрыт оболочкой, напечатанной 3D-принтером из марсианского грунта. NASA проводило конкурс таких домов (3D-Printed Habitat Challenge). Оболочка защищает от радиации и холода.','On Mars the dome is covered by a shell 3D-printed from Martian soil. NASA ran a contest for such homes (the 3D-Printed Habitat Challenge). The shell protects from radiation and cold.')); }
     if(w.bagger){ const g = w.bagger, on = Math.sin(tNow*5) > 0.2; g.beacon.material.emissiveIntensity = on ? 2.4 : 0.2; if(g.bl) g.bl.intensity = on ? 1.6 : 0; if(g.fill){ const f = (tNow*0.08)%1; const sy = 0.35+0.65*f; g.fill.scale.set(1, sy, 1); g.fill.position.y = 0.09+0.31*sy; } }
     if(w.earth) w.earth.rotation.y += dt*0.02;
     if(w.dust.visible){ const p = w.dust.geometry.attributes.position; const ox = mode==='walk'?pl.x:0, oz = mode==='walk'?pl.z:0; w.dust.position.set(ox, pl.y, oz); for(let i=0;i<p.count;i++){ let x = p.getX(i)+dt*(18+ (i%7)*3); if(x>100) x-=200; p.setX(i,x); p.setY(i, (p.getY(i)+dt*((i%5)-2)*0.6+30)%30); } p.needsUpdate = true; }
