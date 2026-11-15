@@ -1,10 +1,30 @@
 // Crew chat for "Junior Astronaut: Outpost".
 // The browser sends the crew member, language, a few base numbers and the chat so far;
-// this function asks Claude to answer in that crew member's role. The API key stays here
-// (Vercel env var ANTHROPIC_API_KEY) and never reaches the page.
+// this function asks an AI model to answer in that crew member's role. Keys stay here and never reach the page:
+// GROQ_API_KEY (free tier, Llama on Groq; model in GROQ_MODEL) is used when set, otherwise ANTHROPIC_API_KEY (Claude).
 import Anthropic from "@anthropic-ai/sdk";
 
-const client = new Anthropic();
+const client = process.env.ANTHROPIC_API_KEY ? new Anthropic() : null;
+const GROQ_MODEL = process.env.GROQ_MODEL || "llama-3.3-70b-versatile";
+
+async function askGroq(system, messages) {
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), 25_000);
+  try {
+    const r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      signal: ctl.signal,
+      headers: { "Content-Type": "application/json", Authorization: "Bearer " + process.env.GROQ_API_KEY },
+      body: JSON.stringify({ model: GROQ_MODEL, max_tokens: 400, temperature: 0.5, messages: [{ role: "system", content: system }, ...messages] }),
+    });
+    if (!r.ok) return { status: r.status === 429 ? 429 : r.status === 401 ? 503 : 502, error: "groq " + r.status };
+    const j = await r.json();
+    const text = String(j?.choices?.[0]?.message?.content || "").trim();
+    return text ? { text } : { status: 502, error: "empty" };
+  } catch {
+    return { status: 504, error: "timeout" };
+  } finally { clearTimeout(timer); }
+}
 
 const CREW = [
   { ru: "Аня, бортинженер", en: "Anya, the flight engineer", job: "power, solar panels, batteries, the reactor, repairs, the rover and spacesuits" },
@@ -49,13 +69,13 @@ How to answer:
 - Reply in ${ru ? "Russian" : "English"}, in 1 to 4 short, friendly sentences a 9-year-old understands.
 - Answer every question, including ones that have nothing to do with space: arithmetic (for "2+2" say "4"), homework, animals, everyday things. Get facts and sums right; if you are not sure, say so.
 - When it fits, connect the answer to life on the base or real NASA science (Artemis, the ISS, Mars rovers), and give a useful tip from the numbers above.
-- Stay in your role; never say you are an AI model unless asked directly.
+- Stay in your role; never say you are an AI model unless asked directly.\n- Write plain text only, no Markdown.
 - Keep it safe for children: no scary, violent or adult content, no personal data. If asked for something unsuitable, kindly change the subject.`;
 }
 
 export default async function handler(req, res) {
   if (req.method !== "POST") { res.setHeader("Allow", "POST"); return res.status(405).json({ error: "POST only" }); }
-  if (!process.env.ANTHROPIC_API_KEY) return res.status(503).json({ error: "not configured" });
+  if (!process.env.GROQ_API_KEY && !process.env.ANTHROPIC_API_KEY) return res.status(503).json({ error: "not configured" });
   const ip = String(req.headers["x-forwarded-for"] || "").split(",")[0].trim() || "?";
   if (limited(ip)) return res.status(429).json({ error: "too many requests" });
 
@@ -75,6 +95,11 @@ export default async function handler(req, res) {
     .map((m) => ({ role: m.role, content: m.content.slice(0, 500) }));
   while (messages.length && messages[0].role !== "user") messages.shift();
   if (!messages.length || messages[messages.length - 1].role !== "user") return res.status(400).json({ error: "no question" });
+
+  if (process.env.GROQ_API_KEY) {
+    const out = await askGroq(systemPrompt(k, lang, st), messages);
+    return out.text ? res.status(200).json({ text: out.text }) : res.status(out.status).json({ error: out.error });
+  }
 
   try {
     const response = await client.beta.messages.create({

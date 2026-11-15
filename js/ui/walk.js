@@ -208,7 +208,7 @@ function crewLine(k){
   ];
   return lines[k] || ['',''];
 }
-/* ---------- chat with a crew member (Claude through the site's /api/chat; offline answers as a fallback) ---------- */
+/* ---------- chat with a crew member (AI through the site's /api/chat; offline answers as a fallback) ---------- */
 const CHAT = [[],[],[]];
 const CHAT_API = '/api/chat';
 function chatBubbles(k){
@@ -220,7 +220,7 @@ function showCrew(k){
   openModal(`<div class="crewchat" data-k="${k}"><div class="toprow"><div class="eyebrow">${ic('crew')} ${esc(c.name())} · ${esc(c.role())}</div><button class="btn" type="button" data-cmd="close" aria-label="${L('Закрыть','Close')}">${ic('close')}</button></div>
     <div class="clog" aria-live="polite">${chatBubbles(k)}</div>
     <form class="cform" autocomplete="off"><label class="sr" for="cin">${L('Вопрос','Question')}</label><input id="cin" name="q" maxlength="400" placeholder="${L('Спроси о чём угодно, хоть 2+2','Ask anything, even 2+2')}" data-focus><button class="btn primary" type="submit">${L('Спросить','Ask')}</button></form>
-    <p class="cnote">${L('Отвечает ИИ Claude в роли члена экипажа. Он может ошибаться.','Claude AI answers in the role of a crew member. It can make mistakes.')}</p></div>`, c.name(), ()=>showCrew(k));
+    <p class="cnote">${L('Отвечает ИИ в роли члена экипажа. Он может ошибаться.','An AI answers in the role of a crew member. It can make mistakes.')}</p></div>`, c.name(), ()=>showCrew(k));
   const form = modalRoot.querySelector('.cform'), log = modalRoot.querySelector('.clog'); log.scrollTop = log.scrollHeight;
   form.addEventListener('submit', e=>{ e.preventDefault(); const q = form.q.value.trim(); if(!q) return; form.q.value = ''; askCrew(k, q); });
 }
