@@ -336,6 +336,12 @@ const G3 = (()=>{
       [-0.75,0.75].forEach(z=>{ add(new T.CylinderGeometry(0.05,0.05,0.3,8), steel, 3.27, 0.95, z, 0, 0, Math.PI/2); add(new T.CylinderGeometry(0.08,0.08,0.06,12), steel, 3.15, 0.95, z, 0, 0, Math.PI/2); });
       add(new T.CylinderGeometry(0.06,0.06,1.6,8), steel, 3.42, 0.95, 0, Math.PI/2, 0, 0);
       add(new T.TorusGeometry(0.1, 0.02, 6, 16), M({color:0xe0453a, roughness:0.5}), 3.42, 1.1, 0, Math.PI/2, 0, 0);
+      [-0.8,0.8].forEach(z=>add(new T.SphereGeometry(0.075, 12, 8), steel, 3.42, 0.95, z));   /* rounded end caps on the header */
+      { const tl = canvasTex(256, 96, (c,W,H)=>{ c.fillStyle='#f4f2ec'; c.fillRect(0,0,W,H); c.fillStyle='#2f6fb3'; c.fillRect(0,0,18,H); c.fillStyle='#1d2430'; c.font='bold 52px sans-serif'; c.fillText('O₂', 34, 56); c.font='18px sans-serif'; c.fillText('OXYGEN · 200 bar', 34, 84); });
+        const tlM = M({map:tl, roughness:0.6});
+        [-0.75,0.75].forEach(z=>{ const sg = Math.sign(z); add(new T.PlaneGeometry(1.0, 0.38), tlM, 1.6, 0.95, z+sg*0.556, 0, sg>0?0:Math.PI, 0);
+          add(new T.CylinderGeometry(0.04,0.04,0.25,8), steel, 2.3, 1.6, z); add(new T.CylinderGeometry(0.07,0.07,0.08,10), M({color:0xe0453a, roughness:0.5}), 2.3, 1.75, z);
+          [0.8, 2.4].forEach(x=>{ add(new T.BoxGeometry(0.08, 0.06, 1.16), steel, x, 1.5, z); [-1,1].forEach(q=>add(new T.CylinderGeometry(0.03,0.03,0.1,8), steel, x, 1.5, z+q*0.56)); }); }); }
       add(new T.CylinderGeometry(0.015,0.015,0.9,6), steel, -0.5, 3.1, -1.0); add(new T.SphereGeometry(0.05, 8, 6), M({color:0xe0453a, emissive:0xe0453a, emissiveIntensity:1}), -0.5, 3.56, -1.0);
       // dust drifted against the skid
       g.userData.lamp = lamp;
@@ -757,7 +763,7 @@ const G3 = (()=>{
     const sunK = dark ? (mars ? 0.25 : 0.04) : 1;
     sun.intensity = (mars ? 1.75 : 2.2) * sunK; LIT.sun = sun.intensity; LIT.exp = mars ? 0.8 : 0.72;   /* outdoor exposure: the Moon's grey dust and Mars sand were glaring */
     sun.color.set(flare ? 0xffd2c0 : (mars ? 0xffe2c4 : 0xfff6ea));
-    hemi.intensity = mars ? (dark?0.45:0.32) : (dark?0.16:0.2); fill.intensity = mars ? 0.1 : (dark?0.25:0.3); LIT.hemi = hemi.intensity; LIT.fill = fill.intensity;
+    hemi.intensity = mars ? (dark?0.55:0.55) : (dark?0.2:0.26); fill.intensity = mars ? 0.18 : (dark?0.25:0.3); LIT.hemi = hemi.intensity; LIT.fill = fill.intensity;
     sunSprite.material.opacity = dark ? (mars?0.15:0) : 1; sunCore.material.opacity = sunSprite.material.opacity;
     sunSprite.material.color.set(flare ? 0xffb0a0 : 0xfff2d8);
     if(mars){ scene.fog.near = dark ? 8 : 120; scene.fog.far = dark ? 110 : 700; scene.fog.color.set(dark?0x9a6440:0xc98b5c); w.sky.material.color.set(dark?0x9a7060:0xffffff); }

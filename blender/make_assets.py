@@ -184,6 +184,58 @@ def tunnel(length, width=3.2, height=3.0, ribs=True, name='tunnel', floor=True, 
         objs.append(cube((length*0.96, 0.25, 0.05), (length/2, 0, height-0.05), M_LIGHT(), 'strip'))
     return join(objs, name)
 
+def tube(p0, p1, r, m, name='tube', verts=10, r2=None):
+    a, b = Vector(p0), Vector(p1); d = b - a
+    o = cyl(r, d.length, tuple((a+b)/2), m, name, verts=verts, r2=r2)
+    o.rotation_mode = 'QUATERNION'; o.rotation_quaternion = Vector((0,0,1)).rotation_difference(d.normalized())
+    bpy.ops.object.transform_apply(rotation=True)
+    return o
+
+def cut_sphere(o, keep):
+    bm = bmesh.new(); bm.from_mesh(o.data)
+    bmesh.ops.delete(bm, geom=[v for v in bm.verts if not keep(v.co)], context='VERTS'); bm.to_mesh(o.data); bm.free()
+    return o
+
+def rack_suit(x, wall_y, front, stripe=False):
+    """EMU-style spacesuit hanging on a wall rack. front = +1/-1 (direction from the wall into the room)."""
+    o = []; f = front
+    y = lambda d: wall_y + f*d
+    o.append(cube((0.72, 0.05, 1.5), (x, y(0.03), 1.05), M_DARK(), 'rackplate', bevel=0.01))
+    for z in (0.5, 1.6): o.append(cube((0.8, 0.08, 0.06), (x, y(0.07), z), M_METAL(), 'rackbar'))
+    o.append(cube((0.5, 0.2, 0.62), (x, y(0.18), 1.4), M_PANEL(), 'plss', bevel=0.05))
+    o.append(cube((0.36, 0.04, 0.12), (x, y(0.29), 1.68), M_DARK(), 'plsstop', bevel=0.01))
+    o.append(sphere(0.26, (x, y(0.42), 1.42), M_WHITE(), 'hut', seg=20, ring=12, scale=(1.05,0.72,1.08)))
+    o.append(cube((0.3, 0.08, 0.15), (x, y(0.62), 1.33), M_PANEL(), 'dcm', bevel=0.02))
+    o.append(cube((0.24, 0.02, 0.06), (x, y(0.665), 1.36), M_DARK(), 'dcmface'))
+    for k,mm in enumerate((M_RED(), M_LIGHT(), M_GROW())): o.append(cube((0.03,0.02,0.03), (x-0.07+k*0.07, y(0.675), 1.3), mm, 'dcmled'))
+    o.append(cyl(0.15, 0.06, (x, y(0.42), 1.72), M_METAL(), 'neckring', verts=20))
+    helm = sphere(0.205, (x, y(0.42), 1.9), M_WHITE(), 'helm', seg=20, ring=12)
+    o.append(helm)
+    vis = sphere(0.21, (x, y(0.44), 1.9), M_VISOR(), 'visor', seg=20, ring=12)
+    cut_sphere(vis, lambda c: c.y*f > 0.05 and -0.12 < c.z < 0.13); o.append(vis)
+    for sx in (-1,1):
+        o.append(cube((0.05,0.07,0.06), (x+sx*0.2, y(0.46), 1.98), M_LIGHT() if sx>0 else M_DARK(), 'helmlamp', bevel=0.01))
+        sh = (x+sx*0.3, y(0.42), 1.53); el = (x+sx*0.34, y(0.47), 1.2); wr = (x+sx*0.32, y(0.52), 0.94)
+        o.append(cyl(0.085, 0.05, sh, M_METAL(), 'shbearing', verts=16, rot=(0, math.pi/2, 0)))
+        o.append(smooth(tube(sh, el, 0.08, M_WHITE(), 'upperarm', verts=14, r2=0.07)))
+        o.append(sphere(0.07, el, M_WHITE(), 'elbow', seg=10, ring=8))
+        o.append(smooth(tube(el, wr, 0.068, M_WHITE(), 'forearm', verts=14, r2=0.058)))
+        o.append(cyl(0.065, 0.04, (wr[0], wr[1], wr[2]-0.01), M_METAL(), 'wristring', verts=14))
+        o.append(sphere(0.06, (wr[0], wr[1], wr[2]-0.09), M_PANEL(), 'glove', seg=10, ring=8, scale=(0.8,0.7,1.35)))
+        hx = x+sx*0.11; hip=(hx, y(0.42), 1.02); kn=(hx+sx*0.01, y(0.45), 0.6); an=(hx, y(0.44), 0.32)
+        o.append(smooth(tube(hip, kn, 0.1, M_WHITE(), 'thigh', verts=14, r2=0.085)))
+        o.append(sphere(0.085, kn, M_WHITE(), 'knee', seg=10, ring=8))
+        o.append(smooth(tube(kn, an, 0.08, M_WHITE(), 'shin', verts=14, r2=0.072)))
+        o.append(cyl(0.085, 0.04, an, M_METAL(), 'bootring', verts=14))
+        o.append(cube((0.15, 0.3, 0.12), (hx, y(0.5), 0.25), M_PANEL(), 'boot', bevel=0.04))
+        if stripe:
+            o.append(cyl(0.102, 0.06, (hx, y(0.43), 0.82), M_ORANGE(), 'cdrstripe', verts=14))
+            o.append(cyl(0.083, 0.05, (sh[0]+sx*0.0, y(0.45), 1.36), M_ORANGE(), 'armstripe', verts=12))
+    o.append(cyl(0.22, 0.2, (x, y(0.42), 1.1), M_WHITE(), 'brief', verts=20, r2=0.24))
+    o.append(torus(0.215, 0.025, (x, y(0.42), 1.19), M_METAL(), 'waistring', maj=24, mnr=6))
+    o.append(cube((0.16, 0.02, 0.08), (x+0.12, y(0.66), 1.52), M_BLUE(), 'flag'))
+    return o
+
 # ------------------------------------------------------------------ HABITAT
 def build_hab():
     reset()
@@ -530,13 +582,24 @@ def build_corridors():
             for x in (0.6, L-0.2):
                 objs.append(cube((0.25, 3.6, 0.4), (x, 0, 3.0), M_YELLOW(), 'doorhead'))
             objs.append(cube((0.25, 0.3, 0.3), (L+0.2, 1.3, 3.0), M_RED(), 'beacon'))
-            # suit rack
+            # suit rack: three EMU-style suits hanging on wall mounts
             for k in range(3):
-                # kept inside the arch: before, the helmets stuck out through the tunnel roof
-                objs.append(cube((0.6, 0.15, 1.35), (4+k*1.0, -1.15, 1.15), M_WHITE(), 'suit', bevel=0.08))
-                objs.append(sphere(0.21, (4+k*1.0, -1.15, 2.02), M_WHITE(), 'helm', seg=12, ring=8))
-            objs.append(cube((1.2, 0.28, 1.5), (9.5, 1.42, 1.15), M_ORANGE(), 'repairlocker', bevel=0.03))
-            objs.append(cube((0.04, 0.02, 0.5), (9.5, 1.27, 1.2), M_METAL(), 'lockerhandle'))
+                objs += rack_suit(4+k*1.0, -1.52, 1, stripe=(k==0))
+            objs.append(cube((3.2, 0.1, 0.06), (5, -1.44, 1.62), M_YELLOW(), 'rackrail'))
+            # tool locker: grey body, two orange doors with vents, handles, label and a plinth
+            lx, ly = 9.5, 1.42
+            objs.append(cube((1.24, 0.32, 0.1), (lx, ly, 0.25), M_DARK(), 'plinth'))
+            objs.append(cube((1.2, 0.3, 1.5), (lx, ly, 1.05), M_PANEL(), 'lockerbody', bevel=0.03))
+            for q in (-1, 1):
+                dx = lx + q*0.295
+                objs.append(cube((0.56, 0.03, 1.38), (dx, ly-0.16, 1.05), M_ORANGE(), 'lockerdoor', bevel=0.012))
+                for v in range(5): objs.append(cube((0.36, 0.012, 0.025), (dx, ly-0.178, 1.55+v*0.05), M_DARK(), 'vent'))
+                objs.append(cube((0.03, 0.03, 0.34), (lx + q*0.06, ly-0.19, 1.05), M_METAL(), 'lockerhandle', bevel=0.008))
+                for z in (0.55, 1.55): objs.append(cube((0.04, 0.02, 0.1), (lx + q*0.58, ly-0.17, z), M_DARK(), 'hinge'))
+            objs.append(cube((0.3, 0.012, 0.12), (lx-0.3, ly-0.18, 1.3), M_WHITE(), 'label'))
+            objs.append(cube((0.16, 0.012, 0.03), (lx-0.3, ly-0.19, 1.3), M_DARK(), 'labeltext'))
+            objs.append(cube((1.18, 0.012, 0.06), (lx, ly-0.18, 0.42), M_YELLOW(), 'kickstripe'))
+            objs.append(cube((0.07, 0.02, 0.07), (lx+0.45, ly-0.18, 1.62), mat('green_led', C(90,255,140),0,0.3,emit=C(60,255,120),estr=3), 'lockled'))
             t = join(objs, name)
         export(name)
 
@@ -562,6 +625,22 @@ def build_lab():
         objs.append(cube((0.06, 2.0, 1.0), (s*(L/2-0.22), 0, 2.35), M_SCREEN(), 'endscreen'))
         for y in (-1.9, 1.9): objs.append(cube((0.12, 0.5, 2.2), (s*(L/2-0.2), y, 1.75), M_WHITE(), 'endcab', bevel=0.03))
         for z in (1.0, 5.6): objs.append(cyl(0.06, 4.0, (s*(L/2-0.22), 0, z), M_METAL(), 'pipe', verts=8, rot=(math.pi/2,0,0)))
+        # outside: tapered end cone, berthing ring, hatch with handwheel, handrails, lights and a stripe
+        ex = s*(L/2+0.125)
+        objs.append(cyl(r+0.06, 0.7, (ex + s*0.35, 0, r), M_WHITE(), 'endcone', verts=40, r2=r*0.6, rot=(0, s*math.pi/2, 0)))
+        objs.append(torus(r+0.02, 0.1, (ex + s*0.02, 0, r), M_METAL(), 'endring', rot=(0,math.pi/2,0), maj=40, mnr=8))
+        objs.append(cyl(r*0.6, 0.12, (ex + s*0.76, 0, r), M_PANEL(), 'berthplate', verts=32, rot=(0,math.pi/2,0)))
+        objs.append(torus(r*0.58, 0.08, (ex + s*0.8, 0, r), M_DARK(), 'berthring', rot=(0,math.pi/2,0), maj=32, mnr=8))
+        objs.append(cyl(0.85, 0.08, (ex + s*0.84, 0, r-0.2), M_WHITE(), 'hatch', verts=28, rot=(0,math.pi/2,0)))
+        objs.append(torus(0.85, 0.05, (ex + s*0.87, 0, r-0.2), M_METAL(), 'hatchrim', rot=(0,math.pi/2,0), maj=28, mnr=6))
+        objs.append(torus(0.25, 0.03, (ex + s*0.92, 0, r-0.2), M_YELLOW(), 'handwheel', rot=(0,math.pi/2,0), maj=20, mnr=6))
+        for k in range(3): objs.append(cube((0.03, 0.5, 0.03), (ex + s*0.92, 0, r-0.2), M_YELLOW(), 'spokeh', rot=(k*math.pi/3, 0, 0)))
+        objs.append(cyl(0.18, 0.04, (ex + s*0.89, 0, r+0.5), M_GLASS(), 'hatchwindow', verts=16, rot=(0,math.pi/2,0)))
+        for q in (-1, 1):
+            objs.append(cube((0.06, 0.06, 1.2), (ex + s*0.88, q*1.15, r-0.2), M_YELLOW(), 'handrail'))
+            objs.append(cube((0.08, 0.3, 0.3), (ex + s*0.86, q*1.45, r+1.2), M_DARK(), 'lamphead', bevel=0.02))
+            objs.append(cube((0.02, 0.24, 0.2), (ex + s*0.91, q*1.45, r+1.2), M_LIGHT(), 'lamp'))
+        objs.append(cube((0.04, 2.0, 0.12), (ex + s*0.86, 0, r+1.15), M_ORANGE(), 'endstripe'))
     for k in range(9):
         x = -L/2 + k*L/8
         if abs(x) < 2.0: continue   # no rib across the doorway
@@ -724,17 +803,44 @@ def build_plants():
 def build_solar():
     reset(); objs = []
     W, H = 4.2, 2.4
-    # cell grid: 8 x 4 cells as slightly inset tiles on a frame
-    objs.append(cube((W+0.12, H+0.12, 0.06), (0,0,0), M_METAL(), 'frame'))
-    for i in range(8):
-        for j in range(4):
-            objs.append(cube((W/8-0.05, H/4-0.05, 0.03), (-W/2+W/16+i*W/8, -H/2+H/8+j*H/4, 0.035), M_CELL(), 'cell'))
+    M_FR = mat('solar_frame', C(190,196,206), 0.8, 0.3)
+    # aluminium frame with a raised lip, 10 x 5 cells with silver busbars, a white backsheet and a rear truss
+    objs.append(cube((W+0.14, H+0.14, 0.05), (0,0,0), M_FR, 'frame', bevel=0.01))
+    for sx in (-1,1): objs.append(cube((0.06, H+0.14, 0.09), (sx*(W/2+0.04),0,0.02), M_FR, 'lip'))
+    for sy in (-1,1): objs.append(cube((W+0.14, 0.06, 0.09), (0,sy*(H/2+0.04),0.02), M_FR, 'lip'))
+    objs.append(cube((W, H, 0.01), (0,0,0.028), M_WHITE(), 'backsheet'))
+    nx, ny = 10, 5
+    for i in range(nx):
+        for j in range(ny):
+            objs.append(cube((W/nx-0.035, H/ny-0.035, 0.02), (-W/2+W/nx/2+i*W/nx, -H/2+H/ny/2+j*H/ny, 0.04), M_CELL(), 'cell'))
+    for j in range(ny):
+        for q in (-0.12, 0.12):
+            objs.append(cube((W-0.04, 0.008, 0.004), (0, -H/2+H/ny/2+j*H/ny+q*H/ny*1.6, 0.052), M_METAL(), 'busbar'))
+    objs.append(cube((W*0.9, 0.08, 0.08), (0,-H*0.3,-0.07), M_FR, 'purlin'))
+    objs.append(cube((W*0.9, 0.08, 0.08), (0,H*0.3,-0.07), M_FR, 'purlin'))
+    for x in (-1.6, -0.55, 0.55, 1.6): objs.append(cube((0.06, H*0.85, 0.06), (x,0,-0.05), M_FR, 'rib'))
+    objs.append(tube((-W*0.42,0,-0.14), (W*0.42,0,-0.14), 0.06, M_METAL(), 'torque'))
+    objs.append(cube((0.3, 0.18, 0.1), (0.9,-H*0.38,-0.1), M_DARK(), 'jbox', bevel=0.015))
     arr = join(objs, 'array')
     arr.location = (0,0,2.4)
-    post = cyl(0.1, 2.3, (0,0,1.15), M_METAL(), 'post', verts=12)
-    motor = cube((0.4,0.4,0.3), (0,0,2.25), M_DARK(), 'motor', bevel=0.03)
-    base = cyl(0.45, 0.15, (0,0,0.075), M_DARK(), 'foot', verts=16)
-    stand = join([post, motor, base], 'stand')
+    st = []
+    st.append(cyl(0.11, 2.15, (0,0,1.1), M_METAL(), 'post', verts=14))
+    st.append(cyl(0.2, 0.22, (0,0,2.12), M_DARK(), 'slew', verts=20))
+    for sx in (-1,1):
+        st.append(cube((0.08, 0.2, 0.35), (sx*0.28,0,2.3), M_FR, 'yoke'))
+        st.append(cyl(0.08, 0.06, (sx*0.33,0,2.26), M_DARK(), 'bearing', verts=12, rot=(0,math.pi/2,0)))
+    st.append(cube((0.7, 0.24, 0.06), (0,0,2.2), M_FR, 'yokebase'))
+    st.append(cube((0.25,0.15,0.2), (0.22,0,1.95), M_DARK(), 'motor', bevel=0.02))
+    st.append(cube((1.1, 1.1, 0.12), (0,0,0.06), M_DARK(), 'foot', bevel=0.02))
+    for sx in (-1,1):
+        for sy in (-1,1): st.append(cyl(0.035, 0.05, (sx*0.42, sy*0.42, 0.14), M_METAL(), 'bolt', verts=8))
+    for k in range(4):
+        a2 = k*math.pi/2
+        st.append(tube((math.cos(a2)*0.48, math.sin(a2)*0.48, 0.12), (math.cos(a2)*0.1, math.sin(a2)*0.1, 0.9), 0.03, M_FR, 'gusset'))
+    st.append(tube((0.12,0.05,1.9), (0.12,0.05,0.2), 0.02, M_RUBBER(), 'cable', verts=6))
+    st.append(tube((0.12,0.05,0.2), (0.6,0.05,0.02), 0.02, M_RUBBER(), 'cable', verts=6))
+    st.append(cube((0.3,0.04,0.2), (0,-0.13,1.2), M_YELLOW(), 'tag'))
+    join(st, 'stand')
     export('solar')
 
 def build_battery():
@@ -746,18 +852,51 @@ def build_battery():
     join(objs,'battery'); export('battery')
 
 def build_reactor():
+    # Fission-surface-power style reactor: core vessel and shield cone on a plinth, four radiator wings
+    # with coolant pipes and headers, a top hat, a power conversion ring, warning signs and a cable trench.
     reset(); objs = []
-    objs.append(cyl(1.3, 5.0, (0,0,2.5), M_PANEL(), 'core', verts=32))
-    objs.append(cyl(1.3, 1.2, (0,0,5.6), M_METAL(), 'top', verts=32, r2=0.6))
-    objs.append(cyl(1.8, 0.6, (0,0,0.3), M_DARK(), 'base', verts=32))
+    M_RAD = mat('radiator_panel', C(206,210,216), 0.45, 0.4)
+    M_RADP = mat('radiator_pipe', C(168,120,72), 0.8, 0.35)
+    objs.append(cube((5.0, 5.0, 0.35), (0,0,0.175), mat('concrete', C(150,146,140), 0.0, 0.9), 'plinth', bevel=0.04))
+    for k in range(4):
+        a = k*math.pi/2
+        objs.append(cube((1.2, 0.08, 0.35), (math.cos(a)*2.5, math.sin(a)*2.5, 0.175), M_YELLOW(), 'edge', rot=(0,0,a+math.pi/2)))
+    objs.append(cyl(1.9, 0.5, (0,0,0.6), M_DARK(), 'base', verts=40))
+    objs.append(cyl(1.5, 1.6, (0,0,1.65), mat('shield', C(120,126,136), 0.6, 0.45), 'shieldcone', verts=40, r2=1.25))
+    objs.append(torus(1.52, 0.06, (0,0,1.0), M_YELLOW(), 'shieldband', maj=40, mnr=6))
+    objs.append(cyl(1.15, 3.2, (0,0,4.05), M_PANEL(), 'core', verts=40))
+    for z in (2.7, 3.6, 4.5, 5.4): objs.append(torus(1.17, 0.045, (0,0,z), M_METAL(), 'hoop', maj=40, mnr=6))
+    objs.append(cyl(1.35, 0.5, (0,0,3.1), M_DARK(), 'pcu', verts=24))
+    for k in range(8):
+        a = k*math.pi/4
+        objs.append(cube((0.25, 0.12, 0.3), (math.cos(a)*1.4, math.sin(a)*1.4, 3.1), M_METAL(), 'stirling', rot=(0,0,a)))
+    objs.append(cyl(1.15, 0.9, (0,0,6.1), M_METAL(), 'top', verts=40, r2=0.55))
+    objs.append(cyl(0.55, 0.25, (0,0,6.67), M_DARK(), 'cap', verts=24))
+    objs.append(sphere(0.18, (0,0,6.9), mat('green_light', C(90,255,140),0,0.3,emit=C(60,255,120),estr=4), 'light', seg=10, ring=6))
     for k in range(4):
         a = k*math.pi/2 + math.pi/4
-        panel = cube((5.5, 0.08, 3.6), (math.cos(a)*4.2, math.sin(a)*4.2, 3.2), M_DARK(), 'radiator', rot=(0,0,a))
-        objs.append(panel)
-        for q in range(6): objs.append(cube((5.5,0.1,0.05), (math.cos(a)*4.2, math.sin(a)*4.2, 1.6+q*0.6), M_METAL(), 'pipe', rot=(0,0,a)))
-        objs.append(cube((1.5,0.2,0.2), (math.cos(a)*1.9, math.sin(a)*1.9, 3.2), M_METAL(), 'boom', rot=(0,0,a)))
-    objs.append(sphere(0.2, (0,0,6.3), mat('green_light', C(90,255,140),0,0.3,emit=C(60,255,120),estr=4), 'light', seg=10, ring=6))
-    objs.append(cube((2.6,0.06,0.5), (0,-1.35,1.2), M_YELLOW(), 'warn'))
+        ca, sa = math.cos(a), math.sin(a)
+        cx, cy = ca*4.3, sa*4.3
+        objs.append(cube((5.2, 0.06, 3.4), (cx, cy, 3.8), M_RAD, 'radiator', rot=(0,0,a)))
+        objs.append(cube((5.3, 0.12, 0.12), (cx, cy, 5.5), M_METAL(), 'radframe', rot=(0,0,a)))
+        objs.append(cube((5.3, 0.12, 0.12), (cx, cy, 2.1), M_METAL(), 'radframe', rot=(0,0,a)))
+        for side in (-1, 1):
+            for q in range(9):
+                objs.append(cube((0.05, 0.1, 3.3), (cx + ca*(-2.35+q*0.6), cy + sa*(-2.35+q*0.6), 3.8), M_RADP, 'riser', rot=(0,0,a)))
+        objs.append(cube((0.16, 0.16, 3.5), (ca*1.65, sa*1.65, 3.8), M_RADP, 'header', rot=(0,0,a)))
+        objs.append(cube((1.1, 0.3, 0.3), (ca*1.5, sa*1.5, 5.2), M_METAL(), 'boom', rot=(0,0,a)))
+        objs.append(cube((1.1, 0.3, 0.3), (ca*1.5, sa*1.5, 2.4), M_METAL(), 'boom', rot=(0,0,a)))
+        objs.append(tube((ca*6.6, sa*6.6, 2.1), (ca*6.6, sa*6.6, 0.0), 0.06, M_METAL(), 'radleg'))
+        objs.append(cyl(0.25, 0.08, (ca*6.6, sa*6.6, 0.04), M_DARK(), 'radfoot', verts=12))
+    # warning signs on the shield (yellow triangle with a black dot) and a cable trench to the base
+    for k in range(4):
+        a = k*math.pi/2
+        ca, sa = math.cos(a), math.sin(a)
+        objs.append(cube((0.6, 0.04, 0.5), (ca*1.42, sa*1.42, 1.75), M_YELLOW(), 'sign', rot=(0.0, 0, a+math.pi/2)))
+        objs.append(cyl(0.09, 0.05, (ca*1.45, sa*1.45, 1.75), M_DARK(), 'trefoil', verts=12, rot=(math.pi/2, 0, a+math.pi/2)))
+    objs.append(tube((0, -1.9, 0.6), (0, -2.6, 0.36), 0.07, M_RUBBER(), 'powercable'))
+    objs.append(cube((0.8, 0.6, 1.0), (1.2, -3.3, 0.5), M_PANEL(), 'switchbox', bevel=0.04))
+    objs.append(cube((0.5, 0.02, 0.3), (1.2, -3.61, 0.65), M_SCREEN(), 'switchscreen'))
     join(objs,'reactor'); export('reactor')
 
 def build_dish():
@@ -821,44 +960,109 @@ def build_dish():
     export('dish')
 
 def build_rover():
-    # Two-seat open rover in the spirit of the Apollo LRV: low frame, four mesh wheels with fenders,
-    # side-by-side seats, a console between them, a dish antenna and a camera mast.
+    # Two-seat open rover in the spirit of the Apollo LRV: tubular chassis, wishbone suspension, mesh wheels
+    # with chevron treads and curved fenders, two seats with belts, a T-handle controller and display,
+    # an umbrella high-gain antenna, a camera, a low-gain antenna and a rear tool pallet.
     # Wheels are separate nodes (wFL, wFR, wRL, wRR) with the origin at the hub so the game can spin and steer them.
     reset(); objs = []
-    objs.append(cube((3.0,1.5,0.16), (0,0,0.62), M_METAL(), 'frame', bevel=0.03))
-    objs.append(cube((2.7,1.3,0.2), (0,0,0.78), M_PANEL(), 'deck', bevel=0.04))
-    objs.append(cube((0.7,1.5,0.35), (1.25,0,0.95), M_GOLD(), 'nosebox', bevel=0.05))
-    objs.append(cube((0.8,1.5,0.4), (-1.2,0,0.98), M_WHITE(), 'cargo', bevel=0.05))
-    for y in (-0.42,0.42):
-        objs.append(cube((0.55,0.55,0.08), (-0.1,y,1.08), M_BLUE(), 'seat', bevel=0.03))
-        objs.append(cube((0.08,0.55,0.55), (-0.38,y,1.36), M_BLUE(), 'seatback', bevel=0.03))
-        for x in (-0.3,0.12): objs.append(cyl(0.02, 0.3, (x,y,0.95), M_METAL(), 'seatleg', verts=6))
-        objs.append(cyl(0.02, 0.5, (0.05,y+(0.27 if y>0 else -0.27),1.18), M_METAL(), 'armrest', verts=6, rot=(0,math.pi/2,0)))
-    objs.append(cube((0.3,0.22,0.55), (0.55,0,1.15), M_DARK(), 'console', bevel=0.04))
-    objs.append(cube((0.03,0.18,0.14), (0.4,0,1.38), M_SCREEN(), 'cscreen'))
-    objs.append(cyl(0.03, 0.4, (0.35,-0.15,1.05), M_DARK(), 'stick', verts=8, rot=(0,-0.35,0)))
-    objs.append(sphere(0.05, (0.28,-0.15,1.24), M_RED(), 'knob', seg=8, ring=6))
-    objs.append(cyl(0.025, 1.1, (-1.35,-0.5,1.6), M_METAL(), 'mast', verts=6))
-    objs.append(cyl(0.38, 0.06, (-1.35,-0.5,2.2), M_WHITE(), 'dish', verts=20, r2=0.05, rot=(0,-0.5,0)))
-    objs.append(cyl(0.02, 0.7, (1.25,-0.45,1.45), M_METAL(), 'cammast', verts=6))
-    objs.append(cube((0.2,0.14,0.14), (1.3,-0.45,1.82), M_DARK(), 'camera', bevel=0.02))
-    objs.append(cyl(0.012, 0.9, (-1.4,0.6,1.6), M_METAL(), 'whip', verts=4))
-    for y in (-0.45,0.45): objs.append(cube((0.04,0.22,0.1), (1.61,y,0.95), M_LIGHT(), 'headlight'))
-    for x in (-1.05,1.05):
-        for y in (-0.88,0.88):
-            objs.append(cube((0.95,0.32,0.04), (x,y,1.12), M_ORANGE(), 'fender', bevel=0.02))
-            objs.append(cube((0.1,0.1,0.42), (x, y*0.85, 0.75), M_METAL(), 'strut'))
+    M_FRAME = mat('rover_frame', C(178,184,194), 0.75, 0.3)
+    M_FENDER = mat('rover_fender', C(70,108,170), 0.2, 0.45)
+    M_FOIL = mat('rover_foil', C(214,206,190), 0.6, 0.35)
+    # chassis: two side rails, cross members, floor pan
+    for y in (-0.62, 0.62): objs.append(tube((-1.5,y,0.68), (1.5,y,0.68), 0.045, M_FRAME, 'rail'))
+    for x in (-1.45, -0.75, 0.0, 0.75, 1.45): objs.append(tube((x,-0.62,0.68), (x,0.62,0.68), 0.035, M_FRAME, 'cross'))
+    objs.append(cube((2.9, 1.2, 0.03), (0,0,0.7), M_METAL(), 'floorpan'))
+    objs.append(cube((1.0, 1.1, 0.03), (0.15,0,0.73), mat('mat_dark', C(60,66,78), 0.1, 0.9), 'floormat'))
+    # suspension: upper and lower wishbones and a damper per wheel
+    for x in (-1.05, 1.05):
+        for y in (-1, 1):
+            hub = (x, y*0.74, 0.41)
+            for dx in (-0.22, 0.22):
+                objs.append(tube((x+dx, y*0.6, 0.66), (x, y*0.72, 0.5), 0.022, M_FRAME, 'armU'))
+                objs.append(tube((x+dx, y*0.6, 0.6), (x, y*0.72, 0.33), 0.022, M_FRAME, 'armL'))
+            objs.append(tube((x-0.05*(1 if x>0 else -1), y*0.6, 0.85), (x, y*0.7, 0.45), 0.03, M_DARK(), 'damper'))
+            # curved fender over the wheel (top arc only)
+            bpy.ops.mesh.primitive_cylinder_add(vertices=28, radius=0.5, depth=0.34, location=(x, y*0.88, 0.41), rotation=(math.pi/2,0,0), end_fill_type='NOTHING')
+            fd = active(); bpy.context.view_layer.update(); mw = fd.matrix_world
+            cut_sphere(fd, lambda c, mw=mw: (mw @ c).z > 0.62)
+            fd.modifiers.new('sol','SOLIDIFY').thickness = 0.025
+            setmat(fd, M_FENDER); smooth(fd); objs.append(fd)
+            objs.append(cube((0.5, 0.36, 0.02), (x + (0.42 if x>0 else -0.42), y*0.88, 0.72), M_FENDER, 'fenderext', bevel=0.005))
+    # front avionics bay: foil-wrapped box, dust-cover lids, radiator mirror on top
+    objs.append(cube((0.65, 1.2, 0.36), (1.25,0,0.9), M_FOIL, 'avionics', bevel=0.03))
+    objs.append(cube((0.5, 0.5, 0.02), (1.25,-0.3,1.09), mat('mirror', C(220,230,240), 1.0, 0.05), 'radiator'))
+    objs.append(cube((0.5, 0.5, 0.02), (1.25,0.3,1.09), M_WHITE(), 'dustcover', bevel=0.005))
+    for y in (-0.45, 0.45):
+        objs.append(cyl(0.06, 0.05, (1.58,y,0.92), M_LIGHT(), 'headlight', verts=14, rot=(0,math.pi/2,0)))
+        objs.append(cyl(0.075, 0.04, (1.565,y,0.92), M_DARK(), 'headlightrim', verts=14, rot=(0,math.pi/2,0)))
+    objs.append(cube((0.02, 0.9, 0.05), (1.585,0,0.78), M_YELLOW(), 'bumperstripe'))
+    # batteries under the seats
+    for y in (-0.38, 0.38): objs.append(cube((0.5, 0.36, 0.18), (0.05,y,0.82), M_DARK(), 'battery', bevel=0.02))
+    # seats: tube frame, fabric pan and back, belts, armrests, footrest
+    for y in (-0.36, 0.36):
+        objs.append(cube((0.52, 0.5, 0.06), (-0.05,y,1.0), M_BLUE(), 'seat', bevel=0.025))
+        objs.append(cube((0.07, 0.5, 0.58), (-0.33,y,1.3), M_BLUE(), 'seatback', bevel=0.025, rot=(0,-0.18,0)))
+        for yy in (y-0.26, y+0.26):
+            objs.append(tube((0.22,yy,0.98), (-0.3,yy,0.98), 0.018, M_FRAME, 'seatframe'))
+            objs.append(tube((-0.3,yy,0.98), (-0.4,yy,1.6), 0.018, M_FRAME, 'seatframe'))
+            objs.append(tube((-0.15,yy,1.2), (0.18,yy,1.2), 0.016, M_FRAME, 'armrest'))
+            objs.append(tube((0.18,yy,1.2), (0.18,yy,0.98), 0.016, M_FRAME, 'armpost'))
+        objs.append(tube((-0.4,y-0.26,1.6), (-0.4,y+0.26,1.6), 0.018, M_FRAME, 'seattop'))
+        for sy in (-0.12, 0.12): objs.append(cube((0.02, 0.05, 0.5), (-0.28,y+sy,1.28), M_DARK(), 'belt', rot=(0,-0.18,0)))
+        objs.append(cube((0.3, 0.06, 0.02), (-0.03,y,1.04), M_DARK(), 'lapbelt'))
+        objs.append(cube((0.25, 0.45, 0.03), (0.55,y,0.8), M_METAL(), 'footrest', rot=(0,0.5,0)))
+    # control console: post, angled display with gauges, T-handle hand controller
+    objs.append(tube((0.45,0,0.72), (0.45,0,1.25), 0.04, M_FRAME, 'consolepost'))
+    objs.append(cube((0.12, 0.42, 0.3), (0.5,0,1.36), M_DARK(), 'console', bevel=0.02, rot=(0,-0.35,0)))
+    objs.append(cube((0.01, 0.36, 0.2), (0.44,0,1.38), M_SCREEN(), 'cscreen', rot=(0,-0.35,0)))
+    for k, mm in enumerate((M_RED(), M_LIGHT(), mat('green_led', C(90,255,140),0,0.3,emit=C(60,255,120),estr=3))):
+        objs.append(cube((0.02, 0.03, 0.03), (0.43,-0.12+k*0.12,1.24), mm, 'clight'))
+    objs.append(cube((0.16, 0.12, 0.08), (0.18,0,1.06), M_DARK(), 'tbase', bevel=0.01))
+    objs.append(tube((0.18,0,1.08), (0.18,0,1.28), 0.018, M_METAL(), 'tstick'))
+    objs.append(tube((0.18,-0.07,1.29), (0.18,0.07,1.29), 0.022, M_RUBBER(), 'thandle'))
+    # umbrella high-gain antenna on a mast at the front left
+    objs.append(tube((1.0,-0.55,0.95), (1.0,-0.55,2.0), 0.025, M_FRAME, 'hgamast'))
+    objs.append(cyl(0.5, 0.18, (1.0,-0.55,2.12), mat('hga_mesh', C(232,232,226), 0.3, 0.5), 'hga', verts=16, r2=0.06, rot=(0,-0.35,0)))
+    for k in range(8):
+        a2 = k*math.pi/4
+        objs.append(tube((1.0,-0.55,2.04), (1.0+math.cos(a2)*0.47*0.94, -0.55+math.sin(a2)*0.47, 2.04+0.1+math.cos(a2)*0.16), 0.008, M_FRAME, 'hgarib', verts=5))
+    objs.append(tube((1.0,-0.55,2.12), (1.08,-0.55,2.4), 0.012, M_METAL(), 'feed', verts=6))
+    # low-gain helical antenna and TV camera
+    objs.append(tube((1.0,0.55,0.95), (1.0,0.55,1.7), 0.02, M_FRAME, 'lgamast'))
+    objs.append(cyl(0.05, 0.45, (1.0,0.55,1.92), M_WHITE(), 'lga', verts=10, r2=0.02))
+    objs.append(tube((1.45,-0.2,1.1), (1.45,-0.2,1.55), 0.025, M_FRAME, 'cammast'))
+    objs.append(cube((0.22, 0.14, 0.14), (1.47,-0.2,1.63), M_WHITE(), 'camera', bevel=0.02))
+    objs.append(cyl(0.05, 0.12, (1.62,-0.2,1.63), M_DARK(), 'lens', verts=14, rot=(0,math.pi/2,0)))
+    objs.append(cyl(0.035, 0.01, (1.685,-0.2,1.63), M_GLASS(), 'lensglass', verts=14, rot=(0,math.pi/2,0)))
+    # rear pallet: toolbox, sample bags, a rake and a scoop, a whip antenna and tail lights
+    objs.append(cube((0.8, 1.2, 0.05), (-1.25,0,0.75), M_METAL(), 'pallet'))
+    for x in (-1.6, -0.9):
+        for y in (-0.6, 0.6): objs.append(tube((x,y,0.75), (x,y,1.25), 0.018, M_FRAME, 'palletpost'))
+    for x in (-1.6, -0.9): objs.append(tube((x,-0.6,1.25), (x,0.6,1.25), 0.018, M_FRAME, 'palletrail'))
+    objs.append(cube((0.55, 0.5, 0.3), (-1.25,-0.3,0.93), M_WHITE(), 'toolbox', bevel=0.03))
+    objs.append(cube((0.56, 0.02, 0.05), (-1.25,-0.56,0.98), M_ORANGE(), 'toolstripe'))
+    for k in range(3): objs.append(cube((0.16, 0.14, 0.2), (-1.45+k*0.2, 0.32, 0.88), mat('bag', C(230,225,210), 0.0, 0.9), 'samplebag', bevel=0.03))
+    objs.append(tube((-1.62,0.45,0.85), (-0.95,0.45,1.45), 0.015, M_METAL(), 'rakehandle'))
+    objs.append(cube((0.04, 0.3, 0.1), (-0.93,0.45,1.47), M_METAL(), 'rakehead'))
+    objs.append(tube((-1.62,0.15,0.85), (-0.95,0.15,1.4), 0.015, M_METAL(), 'scoophandle'))
+    objs.append(cyl(0.012, 1.0, (-1.55,-0.55,1.75), M_METAL(), 'whip', verts=4))
+    for y in (-0.5, 0.5): objs.append(cube((0.03, 0.12, 0.06), (-1.66,y,0.82), M_RED(), 'taillight'))
+    objs.append(cube((0.02, 0.9, 0.05), (-1.66,0,0.72), M_YELLOW(), 'rearstripe'))
     join(objs,'body')
     for nm, x, y in (('wFL',1.05,0.88),('wFR',1.05,-0.88),('wRL',-1.05,0.88),('wRR',-1.05,-0.88)):
-        t = cyl(0.41, 0.24, (x,y,0.41), M_RUBBER(), nm, verts=28, rot=(math.pi/2,0,0))
+        t = cyl(0.4, 0.23, (x,y,0.41), mat('wire_mesh', C(120,124,130), 0.8, 0.5), nm, verts=32, rot=(math.pi/2,0,0))
         parts = [t]
-        parts.append(cyl(0.18, 0.28, (x,y,0.41), M_METAL(), 'hub', verts=12, rot=(math.pi/2,0,0)))
-        for k in range(6):
-            a = k*math.pi/3
-            parts.append(cube((0.05,0.26,0.36), (x+math.cos(a)*0.2, y, 0.41+math.sin(a)*0.2), M_METAL(), 'spoke', rot=(0,-a,0)))
-        for k in range(14):
-            a = k*2*math.pi/14
-            parts.append(cube((0.07,0.25,0.03), (x+math.cos(a)*0.41, y, 0.41+math.sin(a)*0.41), M_GOLD(), 'chevron', rot=(0,-a+math.pi/2,0)))
+        for sy in (-0.115, 0.115): parts.append(torus(0.385, 0.025, (x,y+sy,0.41), M_METAL(), 'bead', rot=(math.pi/2,0,0), maj=32, mnr=6))
+        parts.append(cyl(0.3, 0.25, (x,y,0.41), M_DARK(), 'innerrim', verts=24, rot=(math.pi/2,0,0)))
+        parts.append(cyl(0.12, 0.29, (x,y,0.41), M_METAL(), 'hub', verts=16, rot=(math.pi/2,0,0)))
+        parts.append(cyl(0.06, 0.31, (x,y,0.41), M_GOLD(), 'hubcap', verts=12, rot=(math.pi/2,0,0)))
+        for k in range(8):
+            a = k*math.pi/4
+            parts.append(cube((0.035,0.26,0.2), (x+math.cos(a)*0.2, y, 0.41+math.sin(a)*0.2), M_METAL(), 'spoke', rot=(0,-a,0)))
+        for k in range(18):
+            a = k*2*math.pi/18
+            for sy in (-0.06, 0.06):
+                parts.append(cube((0.05,0.1,0.03), (x+math.cos(a)*0.405, y+sy, 0.41+math.sin(a)*0.405), M_GOLD(), 'chevron', rot=(0,-a+math.pi/2,0)))
         w = join(parts, nm); w.name = nm
         bpy.ops.object.select_all(action='DESELECT'); w.select_set(True); bpy.context.view_layer.objects.active = w
         bpy.ops.object.transform_apply(location=False, rotation=True, scale=True)
