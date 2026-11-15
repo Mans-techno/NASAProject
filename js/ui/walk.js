@@ -72,6 +72,7 @@ function stationLabel(id){ if(!id) return ''; if(id.startsWith('npc')){ const c 
 function stationPrompt(id){
   const el = document.getElementById('hudPrompt'); if(!el) return;
   if(!id || !S){ el.hidden = true; return; }
+  if(id.startsWith('seat')){ el.hidden = false; el.innerHTML = `<kbd>E</kbd> ${G3 && G3.sitting!=null ? L('Встать','Stand up') : L('Сесть','Sit down')}`; return; }
   el.hidden = false; el.innerHTML = id==='rover' ? `<kbd>E</kbd> ${G3 && G3.driving ? L('Выйти из ровера','Get out of the rover') : L('Сесть в ровер','Drive the rover')}` : `<kbd>E</kbd> ${id.startsWith('npc')?L('Поговорить: ','Talk: '):''}${esc(stationLabel(id))}`;
 }
 let hudT = 0, mapT = 0;
@@ -169,6 +170,7 @@ const STATION_FACT = {
 function showStation(id){
   if(!S || S.over) return;
   if(id==='rover'){ toggleDrive(); return; }
+  if(id.startsWith('seat')){ if(G3.sitting!=null) G3.stand(); else G3.sit(+id.slice(4)); stationPrompt(id); return; }
   if(id.startsWith('npc')){ showCrew(+id.slice(3)); return; }
   if(id==='radio' || id==='comms'){ showPower('radio'); return; }
   const dn = tr(PLANETS[S.pid].dayName).toLowerCase(), eng = S.mode!=='cadet';

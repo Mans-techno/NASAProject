@@ -297,7 +297,8 @@ const G3 = (()=>{
       const lamp = add(new T.SphereGeometry(0.1, 12, 8), M({color:0x2bd36b, emissive:0x2bd36b, emissiveIntensity:1.6}), -0.4, 2.3, 1.0);
       // two O2 tanks lying in cradles
       [-0.75, 0.75].forEach(z=>{ const t = add(new T.CylinderGeometry(0.55, 0.55, 2.6, 24), tankM, 1.6, 0.95, z, 0, 0, Math.PI/2);
-        [0.3, 2.9].forEach(x=>add(new T.SphereGeometry(0.55, 20, 12), tankM, x, 0.95, z));
+        [[0.3,-1],[2.9,1]].forEach(([x,sg])=>{ const hd = add(new T.SphereGeometry(0.55, 24, 12, 0, Math.PI*2, 0, Math.PI/2), tankM, x, 0.95, z, 0, 0, -sg*Math.PI/2); hd.scale.set(1, 0.42, 1); });   // 2:1 elliptical tank heads
+        [0.55, 1.6, 2.65].forEach(x=>add(new T.TorusGeometry(0.555, 0.025, 6, 32), steel, x, 0.95, z, 0, Math.PI/2, 0));   // weld seams / straps
         [0.8, 2.4].forEach(x=>add(new T.BoxGeometry(0.16, 0.5, 1.0), steel, x, 0.45, z));
         add(new T.BoxGeometry(1.2, 0.02, 0.55), blue, 1.6, 1.51, z);       // O2 label band on top
         add(new T.CylinderGeometry(0.05,0.05,0.5,8), steel, 0.05, 1.2, z, 0, 0, Math.PI/2); });   // tank valve
@@ -331,10 +332,12 @@ const G3 = (()=>{
         add(new T.CircleGeometry(0.09, 16), M({color:0xffffff, roughness:0.4}), -0.23, 1.42, z, 0, -Math.PI/2, 0);
         add(new T.TorusGeometry(0.12, 0.02, 6, 16), M({color:0xe0453a, roughness:0.5}), 0.0, 1.2, z, 0, Math.PI/2, 0); });
       // flanges on the outgoing pipe and a small antenna
-      [0.1, 0.9].forEach(x=>add(new T.CylinderGeometry(0.11,0.11,0.06,12), steel, 2.9+x, 0.95, 0, 0, 0, Math.PI/2));
+      // outlet manifold: both tanks feed one header pipe that runs to the habitat line
+      [-0.75,0.75].forEach(z=>{ add(new T.CylinderGeometry(0.05,0.05,0.3,8), steel, 3.27, 0.95, z, 0, 0, Math.PI/2); add(new T.CylinderGeometry(0.08,0.08,0.06,12), steel, 3.15, 0.95, z, 0, 0, Math.PI/2); });
+      add(new T.CylinderGeometry(0.06,0.06,1.6,8), steel, 3.42, 0.95, 0, Math.PI/2, 0, 0);
+      add(new T.TorusGeometry(0.1, 0.02, 6, 16), M({color:0xe0453a, roughness:0.5}), 3.42, 1.1, 0, Math.PI/2, 0, 0);
       add(new T.CylinderGeometry(0.015,0.015,0.9,6), steel, -0.5, 3.1, -1.0); add(new T.SphereGeometry(0.05, 8, 6), M({color:0xe0453a, emissive:0xe0453a, emissiveIntensity:1}), -0.5, 3.56, -1.0);
       // dust drifted against the skid
-      add(new T.SphereGeometry(1, 16, 6, 0, Math.PI*2, 0, Math.PI/2), M({color:0xb97a52, roughness:1}), 0.4, 0, -1.9, 0, 0, 0).scale.set(2.6, 0.22, 0.5);
       g.userData.lamp = lamp;
       // supply line to the habitat on short stands, so it is not lying across the sand
       const a = new T.Vector3(ox+1.5, 0, oz+2.0), b = new T.Vector3(-8.2, 0, -13.2), n = 7;
@@ -344,15 +347,34 @@ const G3 = (()=>{
       for(let k=0;k<=n;k++){ const q = k/n, x = a.x+(b.x-a.x)*q, z = a.z+(b.z-a.z)*q, y0 = gy(x,z); const st = mesh(new T.CylinderGeometry(0.04,0.04,hy-y0,6), steel); st.position.set(x, (hy+y0)/2, z); group.add(st);
         const ft = mesh(new T.BoxGeometry(0.3,0.05,0.3), steel); ft.position.set(x, y0+0.025, z); group.add(ft); }
       w.marsO2 = g; }
-    { // scout helicopter on a landing pad
+    { // scout helicopter on a landing pad, modelled after NASA's Ingenuity: a small box fuselage wrapped in
+      // insulation, four splayed carbon legs with feet, a mast with two counter-rotating two-blade rotors and a
+      // solar panel on top
       const hx = 12, hz = 30, g = new T.Group(); g.position.set(hx, gy(hx,hz)+0.05, hz); group.add(g);
-      const pad = mesh(new T.CylinderGeometry(2.4,2.4,0.08,40), M({color:0x5e3a2a, roughness:1}), false, true); g.add(pad);
-      const ring = mesh(new T.RingGeometry(1.7,1.95,40), M({color:0xf2f2f2, roughness:0.8}), false, false); ring.rotation.x = -Math.PI/2; ring.position.y = 0.05; g.add(ring);
-      const body = mesh(new T.BoxGeometry(0.45,0.4,0.45), M({color:0xd9c79b, roughness:0.5, metalness:0.4})); body.position.y = 0.75; g.add(body);
-      for(let k=0;k<4;k++){ const a = k*Math.PI/2+Math.PI/4, leg = mesh(new T.CylinderGeometry(0.02,0.02,0.85,6), metal); leg.position.set(Math.cos(a)*0.35, 0.4, Math.sin(a)*0.35); leg.rotation.set(Math.sin(a)*0.5, 0, -Math.cos(a)*0.5); g.add(leg); }
-      const mast = mesh(new T.CylinderGeometry(0.03,0.03,0.7,8), metal); mast.position.y = 1.3; g.add(mast);
-      const panel = mesh(new T.BoxGeometry(0.55,0.03,0.4), M({color:0x1b2a55, roughness:0.3, metalness:0.5})); panel.position.y = 1.67; g.add(panel);
-      const rotors = new T.Group(); [1.05,1.25].forEach((y,i)=>{ const r = mesh(new T.BoxGeometry(2.4,0.02,0.12), dark); r.position.y = y; r.rotation.y = i*0.8; rotors.add(r); }); g.add(rotors);
+      const padM = M({color:0x6a4634, roughness:1}), paint = M({color:0xe9e4da, roughness:0.8});
+      const pad = mesh(new T.CylinderGeometry(2.2,2.35,0.1,48), padM, false, true); g.add(pad);
+      const ring = mesh(new T.RingGeometry(1.75,1.95,48), paint, false, false); ring.rotation.x = -Math.PI/2; ring.position.y = 0.06; g.add(ring);
+      [[-0.35,0,0.12,0.9],[0.35,0,0.12,0.9],[0,0,0.7,0.12]].forEach(([x,z,w2,d2])=>{ const b = mesh(new T.PlaneGeometry(w2,d2), paint, false, false); b.rotation.x = -Math.PI/2; b.position.set(x,0.061,z); g.add(b); });   // "H"
+      for(let k=0;k<8;k++){ const a = k/8*Math.PI*2, lt = mesh(new T.CylinderGeometry(0.05,0.05,0.04,10), M({color:0xffc04a, emissive:0xffa020, emissiveIntensity:1.2}), false, false); lt.position.set(Math.cos(a)*2.1, 0.08, Math.sin(a)*2.1); g.add(lt); }
+      const H = new T.Group(); H.position.y = 0.06; g.add(H);
+      const foil = M({color:0xd8b45a, roughness:0.35, metalness:0.75}), carbon = M({color:0x23262c, roughness:0.5, metalness:0.2}), grey = M({color:0x9aa0a8, roughness:0.5, metalness:0.4});
+      const add = (geo,m,x,y,z,rx=0,ry=0,rz=0)=>{ const o = mesh(geo,m); o.position.set(x,y,z); o.rotation.set(rx,ry,rz); H.add(o); return o; };
+      add(new T.BoxGeometry(0.42,0.34,0.42), foil, 0, 0.62, 0);                       // fuselage in gold insulation
+      add(new T.BoxGeometry(0.44,0.05,0.44), grey, 0, 0.8, 0);                         // top deck
+      add(new T.CylinderGeometry(0.04,0.04,0.06,12), M({color:0x111111}), 0.1, 0.48, 0.2, Math.PI/2, 0, 0);   // camera
+      for(let k=0;k<4;k++){ const a = k*Math.PI/2 + Math.PI/4, ca = Math.cos(a), sa = Math.sin(a);
+        const top = new T.Vector3(ca*0.18, 0.55, sa*0.18), foot = new T.Vector3(ca*0.62, 0.03, sa*0.62), mid = top.clone().add(foot).multiplyScalar(0.5);
+        const leg = add(new T.CylinderGeometry(0.018,0.018,top.distanceTo(foot),8), carbon, mid.x, mid.y, mid.z); leg.quaternion.setFromUnitVectors(new T.Vector3(0,1,0), top.clone().sub(foot).normalize());
+        add(new T.CylinderGeometry(0.06,0.07,0.025,12), carbon, foot.x, 0.0125, foot.z); }
+      add(new T.CylinderGeometry(0.03,0.03,0.75,10), grey, 0, 1.18, 0);              // mast
+      add(new T.CylinderGeometry(0.07,0.07,0.08,14), grey, 0, 0.92, 0);              // lower rotor hub
+      add(new T.CylinderGeometry(0.07,0.07,0.08,14), grey, 0, 1.12, 0);              // upper rotor hub
+      add(new T.BoxGeometry(0.42,0.025,0.16), M({color:0x1b2a55, roughness:0.3, metalness:0.5}), 0, 1.57, 0);   // solar panel
+      add(new T.BoxGeometry(0.44,0.012,0.18), grey, 0, 1.555, 0);
+      const blade = ()=>{ const sh = new T.Shape(); sh.moveTo(0,-0.04); sh.lineTo(0.55,-0.07); sh.quadraticCurveTo(0.6,0,0.55,0.03); sh.lineTo(0,0.04); sh.lineTo(-0.55,0.07); sh.quadraticCurveTo(-0.6,0,-0.55,-0.03); sh.closePath();
+        const geo = new T.ExtrudeGeometry(sh, {depth:0.012, bevelEnabled:false}); geo.rotateX(Math.PI/2); return geo; };
+      const rotors = new T.Group(); H.add(rotors);
+      [0.95, 1.15].forEach((y,i)=>{ const r = new T.Group(); r.position.y = y; const bl = mesh(blade(), M({color:i?0x2b2f36:0x3a3f47, roughness:0.4, metalness:0.2})); bl.scale.set(1.9,1,1); r.add(bl); r.rotation.y = i*1.2; rotors.add(r); });
       w.heli = g; w.heliRotors = rotors; }
   }
   function rocks(pid, group){
@@ -813,7 +835,14 @@ const G3 = (()=>{
   /* ---------- walk mode: first or third person ---------- */
   let mode = 'orbit', view = 'tp';
   const input = { keys:{}, jx:0, jy:0, run:false, jump:false };
-  const pl = { x:6.5, z:0, y:0.3, vy:0, yaw:Math.PI/2, phase:0, near:null, ground:true, indoor:true, air:0 };
+  const pl = { x:6.5, z:0, y:0.3, vy:0, yaw:Math.PI/2, phase:0, near:null, ground:true, indoor:true, air:0, sit:null };
+  // chairs and stools you can sit on: [x, z, seat height, facing yaw] (same places as in the Blender models)
+  const SEATS = [[5.688,3.705,0.815,-0.245],[4.641,4.035,0.815,0.855],[4.461,5.117,0.815,1.955],          // galley table
+                 [-4.417,-6.307,0.825,-2.531],[-5.722,-5.152,0.825,-2.304],[-6.735,-3.733,0.825,-2.077],   // comms desks
+                 [4.757,-5.669,0.85,2.443],                                                               // med bay stool
+                 [3.4,-22.65,1.04,3.142],[4.6,-22.65,1.04,3.142]];                                        // lab island
+  function sitDown(i){ const st = SEATS[i]; if(!st) return false; pl.sit = i; pl.x = st[0]; pl.z = st[1]; pl.yaw = look.yaw = st[3]; look.pitch = -0.12; pl.vy = 0; kick(); return true; }
+  function standUp(){ if(pl.sit==null) return; const st = SEATS[pl.sit]; pl.sit = null; pl.x = st[0] - Math.sin(st[3])*0.55; pl.z = st[1] - Math.cos(st[3])*0.55; kick(); }
   const look = { yaw:Math.PI/2, pitch:-0.05 };
   let playerMesh = null, markers = [], hooks = { near:null, tick:null, jump:null, land:null };
   function buildWalk(w){
@@ -839,6 +868,14 @@ const G3 = (()=>{
   function stepWalk(dt){
     if(drv.on){ stepDrive(dt); return; }
     const k = input.keys, G = built==='mars' ? 3.71 : 1.62;
+    if(pl.sit != null){   // sitting: any move key or jump gets you up
+      const moving = k.KeyW||k.KeyA||k.KeyS||k.KeyD||k.ArrowUp||k.ArrowDown||k.ArrowLeft||k.ArrowRight||Math.abs(input.jx)>0.3||Math.abs(input.jy)>0.3;
+      if(moving || input.jump){ input.jump = false; standUp(); }
+      else { const st = SEATS[pl.sit]; pl.x = st[0]; pl.z = st[1]; pl.y = floorY(pl.x, pl.z); if(view==='fp') pl.yaw = look.yaw;
+        playerMesh.position.set(pl.x, st[2] - 0.86, pl.z); playerMesh.rotation.y = pl.yaw; playerMesh.visible = view==='tp';
+        const q = playerMesh.userData.parts; if(q.legL){ q.legL.rotation.x = -1.45; q.legR.rotation.x = -1.45; } if(q.armL){ q.armL.rotation.x = -0.5; q.armR.rotation.x = -0.5; }
+        if(pl.near !== 'seat'+pl.sit){ pl.near = 'seat'+pl.sit; hooks.near && hooks.near(pl.near); }
+        hooks.tick && hooks.tick(dt, { indoor: true, ground: true }); return; } }
     let ix = (k.KeyD||k.ArrowRight?1:0) - (k.KeyA||k.ArrowLeft?1:0) + input.jx;
     let iy = (k.KeyW||k.ArrowUp?1:0) - (k.KeyS||k.ArrowDown?1:0) + input.jy;
     const m = Math.hypot(ix,iy); if(m>1){ ix/=m; iy/=m; }
@@ -881,6 +918,7 @@ const G3 = (()=>{
       // indoor stations: no floating round icons (the E prompt and the minimap show them); only a faint floor ring when near
       if(mk.st.in===true){ mk.icon.visible = false; mk.ring.material.opacity = d < 3.5 ? 0.18 + 0.1*Math.sin(tNow*3) : 0; } }
     for(const n of world.crew){ const d = Math.hypot(n.x-pl.x, n.z-pl.z); if(d < 2.0 && d < bd){ bd = d; best = 'npc'+n.k; } }
+    if(pl.indoor) SEATS.forEach((st,i)=>{ const d = Math.hypot(st[0]-pl.x, st[1]-pl.z); if(d < 1.25 && d < bd){ bd = d; best = 'seat'+i; } });
     if(!pl.indoor && world.rover){ const d = Math.hypot(world.rover.position.x-pl.x, world.rover.position.z-pl.z); if(d < 3.4 && d < bd + 1){ bd = d; best = 'rover'; } }
     if(best !== pl.near){ pl.near = best; hooks.near && hooks.near(best); }
     hooks.tick && hooks.tick(dt, { indoor: pl.indoor, ground: pl.ground });
@@ -960,7 +998,7 @@ const G3 = (()=>{
   }
   function setView(v){ view = v==='fp' ? 'fp' : 'tp'; if(view!=='fp') unlock(); if(view==='fp'){ look.yaw = pl.yaw; look.pitch = -0.05; } else { camGoal.az = behind(); cam.az = camGoal.az; } if(playerMesh) playerMesh.visible = mode==='walk' && view==='tp'; kick(); return view; }
   function behind(){ return Math.atan2(-Math.cos(pl.yaw), -Math.sin(pl.yaw)); }
-  function teleport(x, z, yaw){ if(drv.on && world){ drv.on = false; drv.v = 0; world.driver.visible = false; world.roverSolid[0] = world.rover.position.x; world.roverSolid[1] = world.rover.position.z; }
+  function teleport(x, z, yaw){ pl.sit = null; if(drv.on && world){ drv.on = false; drv.v = 0; world.driver.visible = false; world.roverSolid[0] = world.rover.position.x; world.roverSolid[1] = world.rover.position.z; }
     pl.x = x; pl.z = z; pl.vy = 0; pl.ground = true; pl.y = world ? floorY(x,z) : 0.3; if(yaw!=null){ pl.yaw = yaw; look.yaw = yaw; } camGoal.az = behind(); cam.az = camGoal.az; kick(); }
 
   /* ---------- camera ---------- */
@@ -984,9 +1022,9 @@ const G3 = (()=>{
     const hx = pl.x, hz = pl.z;
     if(view==='fp' && drv.on){ const v = world.rover.localToWorld(new T.Vector3(-0.12, 1.86, -0.42)); camera.position.copy(v);
       camera.lookAt(v.x + Math.sin(look.yaw)*Math.cos(look.pitch), v.y + Math.sin(look.pitch), v.z + Math.cos(look.yaw)*Math.cos(look.pitch)); return; }
-    if(view==='fp'){ const hy = pl.y + 1.72; camera.position.set(hx, hy, hz);
+    if(view==='fp'){ const hy = pl.sit != null ? SEATS[pl.sit][2] + 0.78 : pl.y + 1.72; camera.position.set(hx, hy, hz);
       camera.lookAt(hx + Math.sin(look.yaw)*Math.cos(look.pitch), hy + Math.sin(look.pitch), hz + Math.cos(look.yaw)*Math.cos(look.pitch)); return; }
-    const ty = pl.y + 1.6, R = pl.indoor ? Math.min(walkR, 4.6) : drv.on ? Math.max(walkR, 9) : walkR;
+    const ty = (pl.sit != null ? SEATS[pl.sit][2] + 0.7 : pl.y + 1.6), R = pl.indoor ? Math.min(walkR, 4.6) : drv.on ? Math.max(walkR, 9) : walkR;
     const ex = Math.cos(cam.az)*Math.cos(cam.el), ey = Math.sin(cam.el), ez = Math.sin(cam.az)*Math.cos(cam.el);
     let r = R;
     if(pl.indoor){ for(let i=1;i<=14;i++){ const q = R*i/14, x = hx+ex*q, y = ty+ey*q, z = hz+ez*q; if(!region(x,z) || y > ceilAt(x,z) - 0.25 || blocked(x,z) && i>2){ r = Math.max(0.6, q - R/14 - 0.2); break; } } }
@@ -1155,6 +1193,6 @@ const G3 = (()=>{
   function replay(entry){ if(!cur) return Promise.resolve(); const a = entry.act; const cap = document.getElementById('scap');
     const after = clone(cur); return play(after, after, a, [], cap ? `${tr(PLANETS[cur.pid].dayName)} ${entry.day} · ${esc(val(ACT[a].name, cur))}` : ''); }
   function mapData(){ if(!world) return null; return { pl:{x:pl.x, z:pl.z, yaw: view==='fp' ? look.yaw : pl.yaw}, st: markers.map(m=>({x:m.st.x, z:m.st.z, col:m.st.col, id:m.st.id})), crew: (world.crew||[]).map(n=>({x:n.x, z:n.z})), indoor: pl.indoor }; }
-  return { unlock:()=>unlock(), groundAt:(x,z)=>groundAt(x,z), _dbg:()=>({scene, camera, renderer, world, pl, look, blocked, floorY, region}), setMode, get mode(){ return mode; }, setView, get view(){ return view; }, input, teleport, hooks, get near(){ return pl.near; }, drive, get driving(){ return drv.on; }, get indoor(){ return pl.indoor; },
+  return { unlock:()=>unlock(), groundAt:(x,z)=>groundAt(x,z), _dbg:()=>({scene, camera, renderer, world, pl, look, blocked, floorY, region}), setMode, get mode(){ return mode; }, setView, get view(){ return view; }, input, teleport, hooks, get near(){ return pl.near; }, drive, get driving(){ return drv.on; }, sit:i=>sitDown(i), stand:()=>standUp(), get sitting(){ return pl.sit; }, get indoor(){ return pl.indoor; },
     sync, mount, play, snapshot, replay, mapData, get ready(){ return ready; }, onReady(f){ if(ready) f(); else whenReady.push(f); }, get busy(){ return !!cine; }, skip(){ if(cine) cine.skip = true; } };
 })();
