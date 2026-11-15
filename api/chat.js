@@ -1,11 +1,11 @@
 // Crew chat for "Junior Astronaut: Outpost".
 // The browser sends the crew member, language, a few base numbers and the chat so far;
 // this function asks an AI model to answer in that crew member's role. Keys stay here and never reach the page:
-// GROQ_API_KEY (free tier, Llama on Groq; model in GROQ_MODEL) is used when set, otherwise ANTHROPIC_API_KEY (Claude).
+// GROQ_API_KEY (free tier on Groq; model in GROQ_MODEL) is used when set, otherwise ANTHROPIC_API_KEY (Claude).
 import Anthropic from "@anthropic-ai/sdk";
 
 const client = process.env.ANTHROPIC_API_KEY ? new Anthropic() : null;
-const GROQ_MODEL = process.env.GROQ_MODEL || "llama-3.3-70b-versatile";
+const GROQ_MODEL = process.env.GROQ_MODEL || "openai/gpt-oss-120b";
 
 // Groq retires models from time to time; when the configured one is gone (404), pick a current chat model from /models.
 let groqModel = GROQ_MODEL;
@@ -38,6 +38,8 @@ async function askGroq(system, messages) {
       if (next && next !== groqModel) { console.log("groq model", groqModel, "->", next); groqModel = next; r = await groqCall(system, messages, ctl.signal); }
     }
     if (!r.ok) { console.log("groq error", r.status, groqModel, (await r.text()).slice(0, 300)); return { status: r.status === 429 ? 429 : r.status === 401 ? 503 : 502, error: "groq " + r.status }; }
+    const h = (n) => r.headers.get("x-ratelimit-" + n);
+    console.log("groq limits", groqModel, "requests", h("remaining-requests") + "/" + h("limit-requests"), "tokens", h("remaining-tokens") + "/" + h("limit-tokens"), "reset", h("reset-requests"));
     const j = await r.json();
     const text = String(j?.choices?.[0]?.message?.content || "").replace(/<think>[\s\S]*?<\/think>/g, "").trim();
     return text ? { text } : { status: 502, error: "empty" };

@@ -211,20 +211,51 @@ function crewLine(k){
 /* ---------- chat with a crew member (AI through the site's /api/chat; offline answers as a fallback) ---------- */
 const CHAT = [[],[],[]];
 const CHAT_API = '/api/chat';
+const CREW_LOOK = [{c:'#ffb070', i:'А', ie:'A'}, {c:'#7fd3ff', i:'Т', ie:'T'}, {c:'#8fe39a', i:'Л', ie:'L'}];
+const CHAT_TIPS = [
+  [['Хватит ли энергии на ночь?','Will our power last the night?'],['Как работает солнечная панель?','How does a solar panel work?'],['Сколько будет 12×7?','What is 12×7?']],
+  [['Какая у нас доза радиации?','What is our radiation dose?'],['Зачем космонавтам спорт?','Why do astronauts exercise?'],['Сколько будет 2+2?','What is 2+2?']],
+  [['Как растения дают кислород?','How do plants make oxygen?'],['Что посадить в теплице?','What should we grow?'],['Какое самое большое животное?','What is the biggest animal?']],
+];
+const SEND_SVG = '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M4 12l16-8-6 16-2.5-6.5L4 12z" fill="currentColor"/></svg>';
+function crewAvatar(k){ const v = CREW_LOOK[k]||CREW_LOOK[0]; return `<span class="cav" style="--cc:${v.c}" aria-hidden="true">${LANG==='en'?v.ie:v.i}</span>`; }
 function chatBubbles(k){
-  return CHAT[k].map(m=>`<div class="cmsg ${m.role==='user'?'me':'them'}${m.pending?' pending':''}">${esc(m.content)}</div>`).join('');
+  const n = CHAT[k].length;
+  const rows = CHAT[k].map((m,i)=>{ const f = (i===n-1 && !m.intro) ? ' fresh' : '';
+    if(m.pending) return `<div class="crow them${f}">${crewAvatar(k)}<div class="cmsg them typing" aria-label="${L('печатает','typing')}"><i></i><i></i><i></i></div></div>`;
+    if(m.role==='user') return `<div class="crow me${f}"><div class="cmsg me">${esc(m.content)}</div></div>`;
+    return `<div class="crow them${f}">${crewAvatar(k)}<div class="cmsg them${m.offline?' off':''}">${esc(m.shown!=null?m.content.slice(0,m.shown):m.content)}</div></div>`;
+  }).join('');
+  const fresh = !CHAT[k].some(m=>m.role==='user');
+  const tips = fresh ? `<div class="ctips">${CHAT_TIPS[k].map(t=>`<button type="button" class="ctip" data-tip="${esc(L(t[0],t[1]))}">${esc(L(t[0],t[1]))}</button>`).join('')}</div>` : '';
+  return rows + tips;
 }
 function showCrew(k){
   const c = CREW_INFO[k]; if(!c) return; const [a,b] = crewLine(k);
-  if(!CHAT[k].length) CHAT[k].push({role:'assistant', content:`${a}${b?' '+b:''}`, intro:true});
-  openModal(`<div class="crewchat" data-k="${k}"><div class="toprow"><div class="eyebrow">${ic('crew')} ${esc(c.name())} · ${esc(c.role())}</div><button class="btn" type="button" data-cmd="close" aria-label="${L('Закрыть','Close')}">${ic('close')}</button></div>
+  if(!CHAT[k].length) CHAT[k].push({role:'assistant', content:`${L('Чем могу помочь, командир?','How can I help, commander?')} ${a}${b?' '+b:''}`, intro:true});
+  const v = CREW_LOOK[k]||CREW_LOOK[0];
+  openModal(`<div class="crewchat" data-k="${k}" style="--cc:${v.c}">
+    <div class="chead">${crewAvatar(k)}<div class="cwho"><b>${esc(c.name())}</b><span><i class="cdot"></i>${esc(c.role())} · ${L('на связи','online')}</span></div><button class="btn cclose" type="button" data-cmd="close" aria-label="${L('Закрыть','Close')}">${ic('close')}</button></div>
     <div class="clog" aria-live="polite">${chatBubbles(k)}</div>
-    <form class="cform" autocomplete="off"><label class="sr" for="cin">${L('Вопрос','Question')}</label><input id="cin" name="q" maxlength="400" placeholder="${L('Спроси о чём угодно, хоть 2+2','Ask anything, even 2+2')}" data-focus><button class="btn primary" type="submit">${L('Спросить','Ask')}</button></form>
-    <p class="cnote">${L('Отвечает ИИ в роли члена экипажа. Он может ошибаться.','An AI answers in the role of a crew member. It can make mistakes.')}</p></div>`, c.name(), ()=>showCrew(k));
+    <form class="cform" autocomplete="off"><label class="sr" for="cin">${L('Вопрос','Question')}</label><input id="cin" name="q" maxlength="400" placeholder="${L('Чем могу помочь, командир?','How can I help, commander?')}" data-focus><button class="csend" type="submit" aria-label="${L('Отправить','Send')}">${SEND_SVG}</button></form>
+    <p class="cnote">${L('Отвечает ИИ в роли члена экипажа. Он может ошибаться.','An AI answers in the role of a crew member. It can make mistakes.')}</p></div>`, c.name(), ()=>showCrew(k), 'chatm');
   const form = modalRoot.querySelector('.cform'), log = modalRoot.querySelector('.clog'); log.scrollTop = log.scrollHeight;
-  form.addEventListener('submit', e=>{ e.preventDefault(); const q = form.q.value.trim(); if(!q) return; form.q.value = ''; askCrew(k, q); });
+  form.addEventListener('submit', e=>{ e.preventDefault(); const q = form.q.value.trim(); if(!q || CHAT_BUSY[k]) return; form.q.value = ''; askCrew(k, q); });
+  log.addEventListener('click', e=>{ const t = e.target.closest('.ctip'); if(t && !CHAT_BUSY[k]){ askCrew(k, t.dataset.tip); form.q.focus({preventScroll:true}); } });
 }
+const CHAT_BUSY = [false,false,false];
 function chatRefresh(k){ const box = modalRoot.querySelector(`.crewchat[data-k="${k}"] .clog`); if(box){ box.innerHTML = chatBubbles(k); box.scrollTop = box.scrollHeight; } }
+function typeOut(k, m){
+  const reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if(reduce || m.content.length < 4){ chatRefresh(k); return; }
+  m.shown = 0; const t0 = performance.now(), dur = Math.min(1600, 300 + m.content.length*12);
+  const tick = ()=>{ m.shown = Math.min(m.content.length, Math.ceil(m.content.length*(performance.now()-t0)/dur));
+    const box = modalRoot.querySelector(`.crewchat[data-k="${k}"] .clog`);
+    const all = box ? box.querySelectorAll('.crow.them .cmsg') : []; const last = all[all.length-1];
+    if(last && box){ last.textContent = m.content.slice(0, m.shown); box.scrollTop = box.scrollHeight; }
+    if(m.shown < m.content.length && last) setTimeout(tick, 30); else { delete m.shown; } };
+  chatRefresh(k); tick();
+}
 function mathAnswer(q){
   const t = q.toLowerCase().replace(/сколько будет|сколько|равно|what is|what's|=|\?/g,'').replace(/×|х|x/g,'*').replace(/÷|:/g,'/').replace(/,/g,'.').trim();
   if(!/^[\d\s.+\-*/()]+$/.test(t) || !/\d/.test(t) || !/[+\-*/]/.test(t)) return null;
@@ -235,7 +266,8 @@ function crewState(){
   return { planet:s.pid, mode:s.mode, day:s.day, days:PLANETS[s.pid].days, o2:Math.round(s.o2), battery:Math.round(s.battery), batCap:Math.round(s.batCap), water:Math.round(s.water||0), food:Math.round(s.food||0), health:Math.round(s.health), dose:Math.round(s.dose), science:Math.round(s.science), panels:s.panels, reactor:!!s.reactor, storm:!!flareOn(s, s.day) };
 }
 async function askCrew(k, q){
-  CHAT[k].push({role:'user', content:q}); const wait = {role:'assistant', content:L('…думает','…thinking'), pending:true}; CHAT[k].push(wait); chatRefresh(k);
+  CHAT_BUSY[k] = true;
+  CHAT[k].push({role:'user', content:q}); const wait = {role:'assistant', content:'', pending:true}; CHAT[k].push(wait); chatRefresh(k);
   const hist = CHAT[k].filter(m=>!m.pending && !m.intro).slice(-12).map(m=>({role:m.role, content:m.content}));
   let text = null;
   try{
@@ -244,11 +276,12 @@ async function askCrew(k, q){
     clearTimeout(tm);
     if(r.ok){ const j = await r.json(); if(j && typeof j.text==='string' && j.text.trim()) text = j.text.trim(); }
   }catch(e){}
-  if(!text){ const m = mathAnswer(q); const c = CREW_INFO[k];
+  let offline = false;
+  if(!text){ offline = true; const m = mathAnswer(q); const c = CREW_INFO[k];
     text = m!==null ? L(`Это ${m}. Считать надо уметь: на базе каждый килограмм на счету!`,`That’s ${m}. Counting matters here: every kilogram on the base counts!`)
       : L(`Связь с ИИ сейчас недоступна, поэтому отвечу коротко. ${crewLine(k).join(' ')}`,`The AI link is offline right now, so a short answer. ${crewLine(k).join(' ')}`); }
   const i = CHAT[k].indexOf(wait); if(i>=0) CHAT[k].splice(i,1);
-  CHAT[k].push({role:'assistant', content:text}); chatRefresh(k);
+  const msg = {role:'assistant', content:text, offline}; CHAT[k].push(msg); CHAT_BUSY[k] = false; typeOut(k, msg);
 }
 function showPower(focus){
   openModal(`<div class="toprow"><div class="eyebrow">${focus==='radio'?L('Связь с Землёй','Link to Earth'):L('Энергия на сегодня','Power for today')}</div><button class="btn" type="button" data-cmd="close" data-focus aria-label="${L('Закрыть','Close')}">${ic('close')}</button></div>
