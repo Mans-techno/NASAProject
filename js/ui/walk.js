@@ -208,11 +208,47 @@ function crewLine(k){
   ];
   return lines[k] || ['',''];
 }
+/* ---------- chat with a crew member (Claude through the site's /api/chat; offline answers as a fallback) ---------- */
+const CHAT = [[],[],[]];
+const CHAT_API = '/api/chat';
+function chatBubbles(k){
+  return CHAT[k].map(m=>`<div class="cmsg ${m.role==='user'?'me':'them'}${m.pending?' pending':''}">${esc(m.content)}</div>`).join('');
+}
 function showCrew(k){
   const c = CREW_INFO[k]; if(!c) return; const [a,b] = crewLine(k);
-  openModal(`<div class="toprow"><div class="eyebrow">${ic('crew')} ${esc(c.name())} · ${esc(c.role())}</div><button class="btn" type="button" data-cmd="close" aria-label="${L('Закрыть','Close')}">${ic('close')}</button></div>
-    <p class="lead">«${esc(a)}${b?' '+esc(b):''}»</p>
-    <div class="row-btns"><button class="btn primary" type="button" data-cmd="close" data-focus>${L('Спасибо!','Thanks!')}</button></div>`, c.name(), ()=>showCrew(k));
+  if(!CHAT[k].length) CHAT[k].push({role:'assistant', content:`${a}${b?' '+b:''}`, intro:true});
+  openModal(`<div class="crewchat" data-k="${k}"><div class="toprow"><div class="eyebrow">${ic('crew')} ${esc(c.name())} · ${esc(c.role())}</div><button class="btn" type="button" data-cmd="close" aria-label="${L('Закрыть','Close')}">${ic('close')}</button></div>
+    <div class="clog" aria-live="polite">${chatBubbles(k)}</div>
+    <form class="cform" autocomplete="off"><label class="sr" for="cin">${L('Вопрос','Question')}</label><input id="cin" name="q" maxlength="400" placeholder="${L('Спроси о чём угодно, хоть 2+2','Ask anything, even 2+2')}" data-focus><button class="btn primary" type="submit">${L('Спросить','Ask')}</button></form>
+    <p class="cnote">${L('Отвечает ИИ Claude в роли члена экипажа. Он может ошибаться.','Claude AI answers in the role of a crew member. It can make mistakes.')}</p></div>`, c.name(), ()=>showCrew(k));
+  const form = modalRoot.querySelector('.cform'), log = modalRoot.querySelector('.clog'); log.scrollTop = log.scrollHeight;
+  form.addEventListener('submit', e=>{ e.preventDefault(); const q = form.q.value.trim(); if(!q) return; form.q.value = ''; askCrew(k, q); });
+}
+function chatRefresh(k){ const box = modalRoot.querySelector(`.crewchat[data-k="${k}"] .clog`); if(box){ box.innerHTML = chatBubbles(k); box.scrollTop = box.scrollHeight; } }
+function mathAnswer(q){
+  const t = q.toLowerCase().replace(/сколько будет|сколько|равно|what is|what's|=|\?/g,'').replace(/×|х|x/g,'*').replace(/÷|:/g,'/').replace(/,/g,'.').trim();
+  if(!/^[\d\s.+\-*/()]+$/.test(t) || !/\d/.test(t) || !/[+\-*/]/.test(t)) return null;
+  try{ const v = Function('"use strict";return ('+t+')')(); if(typeof v!=='number' || !isFinite(v)) return null; return String(Math.round(v*1e6)/1e6); }catch(e){ return null; }
+}
+function crewState(){
+  const s = S; if(!s) return {};
+  return { planet:s.pid, mode:s.mode, day:s.day, days:PLANETS[s.pid].days, o2:Math.round(s.o2), battery:Math.round(s.battery), batCap:Math.round(s.batCap), water:Math.round(s.water||0), food:Math.round(s.food||0), health:Math.round(s.health), dose:Math.round(s.dose), science:Math.round(s.science), panels:s.panels, reactor:!!s.reactor, storm:!!flareOn(s, s.day) };
+}
+async function askCrew(k, q){
+  CHAT[k].push({role:'user', content:q}); const wait = {role:'assistant', content:L('…думает','…thinking'), pending:true}; CHAT[k].push(wait); chatRefresh(k);
+  const hist = CHAT[k].filter(m=>!m.pending && !m.intro).slice(-12).map(m=>({role:m.role, content:m.content}));
+  let text = null;
+  try{
+    const ctl = new AbortController(), tm = setTimeout(()=>ctl.abort(), 30000);
+    const r = await fetch(CHAT_API, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({crew:k, lang:LANG, state:crewState(), messages:hist}), signal:ctl.signal });
+    clearTimeout(tm);
+    if(r.ok){ const j = await r.json(); if(j && typeof j.text==='string' && j.text.trim()) text = j.text.trim(); }
+  }catch(e){}
+  if(!text){ const m = mathAnswer(q); const c = CREW_INFO[k];
+    text = m!==null ? L(`Это ${m}. Считать надо уметь: на базе каждый килограмм на счету!`,`That’s ${m}. Counting matters here: every kilogram on the base counts!`)
+      : L(`Связь с ИИ сейчас недоступна, поэтому отвечу коротко. ${crewLine(k).join(' ')}`,`The AI link is offline right now, so a short answer. ${crewLine(k).join(' ')}`); }
+  const i = CHAT[k].indexOf(wait); if(i>=0) CHAT[k].splice(i,1);
+  CHAT[k].push({role:'assistant', content:text}); chatRefresh(k);
 }
 function showPower(focus){
   openModal(`<div class="toprow"><div class="eyebrow">${focus==='radio'?L('Связь с Землёй','Link to Earth'):L('Энергия на сегодня','Power for today')}</div><button class="btn" type="button" data-cmd="close" data-focus aria-label="${L('Закрыть','Close')}">${ic('close')}</button></div>

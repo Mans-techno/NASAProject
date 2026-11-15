@@ -819,12 +819,21 @@ const G3 = (()=>{
   }
   function stepCrew(dt){
     if(!world || !world.crew) return;
+    const chat = document.querySelector('.crewchat'), talkK = chat ? +chat.dataset.k : -1;
     for(const n of world.crew){
       const p = n.p;
+      if(n.k === talkK){   /* in a chat with the commander: stand still, face them and wait */
+        const want = Math.atan2(pl.x-n.x, pl.z-n.z); let dy = want - p.rotation.y; while(dy>Math.PI) dy-=Math.PI*2; while(dy<-Math.PI) dy+=Math.PI*2; p.rotation.y += dy*Math.min(1,dt*5);
+        n.wait = Math.max(n.wait, 3); n.ph += dt*2; animPerson(p, n.ph, 0.02, false);
+        p.position.set(n.x, floorY(n.x, n.z), n.z); continue;
+      }
       if(n.path.length){
         const [tx,tz] = NAV[n.path[0]]; const dx = tx-n.x, dz = tz-n.z, d = Math.hypot(dx,dz);
         if(d < 0.15){ n.node = n.path.shift(); if(!n.path.length){ n.wait = 7 + Math.random()*9; } }
-        else { const sp = Math.min(d, 1.25*dt); n.x += dx/d*sp; n.z += dz/d*sp; const want = Math.atan2(dx,dz); let dy = want - p.rotation.y; while(dy>Math.PI) dy-=Math.PI*2; while(dy<-Math.PI) dy+=Math.PI*2; p.rotation.y += dy*Math.min(1,dt*8); n.ph += dt*7; animPerson(p, n.ph, 0.55, false); }
+        else { const sp = Math.min(d, 1.25*dt); let mx = dx/d, mz = dz/d;
+          /* someone in the way ahead: step to the right to pass, never walk through them */
+          for(const o of world.crew){ if(o===n) continue; const ox = o.x-n.x, oz = o.z-n.z, od = Math.hypot(ox,oz); if(od < 1.2 && (ox*mx+oz*mz) > 0.2*od){ mx += -mz*0.9; mz += (dx/d)*0.9; const m = Math.hypot(mx,mz)||1; mx/=m; mz/=m; break; } }
+          n.x += mx*sp; n.z += mz*sp; const want = Math.atan2(dx,dz); let dy = want - p.rotation.y; while(dy>Math.PI) dy-=Math.PI*2; while(dy<-Math.PI) dy+=Math.PI*2; p.rotation.y += dy*Math.min(1,dt*8); n.ph += dt*7; animPerson(p, n.ph, 0.55, false); }
       } else {
         const sp = SPOT[n.node] || {}; n.wait -= dt; n.ph += dt*(sp.run?9:2.2);
         if(sp.face){ const want = Math.atan2(sp.face[0]-n.x, sp.face[1]-n.z); let dy = want - p.rotation.y; while(dy>Math.PI) dy-=Math.PI*2; while(dy<-Math.PI) dy+=Math.PI*2; p.rotation.y += dy*Math.min(1,dt*4); }
@@ -833,6 +842,8 @@ const G3 = (()=>{
         if(mode==='walk' && Math.hypot(pl.x-n.x, pl.z-n.z) < 2.4){ const want = Math.atan2(pl.x-n.x, pl.z-n.z); let dy = want - p.rotation.y; while(dy>Math.PI) dy-=Math.PI*2; while(dy<-Math.PI) dy+=Math.PI*2; p.rotation.y += dy*Math.min(1,dt*5); n.wait = Math.max(n.wait, 1.5); animPerson(p, n.ph, 0.02, false); }
         if(n.wait <= 0){ const opts = n.def.spots.filter(s=>s!==n.node); const goal = opts[Math.floor(Math.random()*opts.length)]; n.path = route(n.node, goal).slice(1); }
       }
+      /* keep a personal space of 0.8 m between crew members */
+      for(const o of world.crew){ if(o===n) continue; let ox = n.x-o.x, oz = n.z-o.z, od = Math.hypot(ox,oz); if(od < 0.8){ if(od < 1e-3){ ox = 1; oz = 0; od = 1; } const push = (0.8-od)*0.5; n.x += ox/od*push; n.z += oz/od*push; } }
       const sp = SPOT[n.node]; const lift = (!n.path.length && sp && sp.run) ? 0.42 : 0;
       p.position.set(n.x, floorY(n.x, n.z) + lift, n.z);
     }
