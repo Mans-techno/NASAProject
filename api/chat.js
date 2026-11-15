@@ -7,19 +7,39 @@ import Anthropic from "@anthropic-ai/sdk";
 const client = process.env.ANTHROPIC_API_KEY ? new Anthropic() : null;
 const GROQ_MODEL = process.env.GROQ_MODEL || "llama-3.3-70b-versatile";
 
+// Groq retires models from time to time; when the configured one is gone (404), pick a current chat model from /models.
+let groqModel = GROQ_MODEL;
+const PREFER = [/llama-3\.3-70b/, /llama-4-maverick/, /llama-4/, /kimi/, /llama/, /gpt-oss-120b/, /gpt-oss/, /qwen/];
+async function pickGroqModel() {
+  const r = await fetch("https://api.groq.com/openai/v1/models", { headers: { Authorization: "Bearer " + process.env.GROQ_API_KEY } });
+  if (!r.ok) return null;
+  const ids = ((await r.json())?.data || []).filter((m) => m.active !== false).map((m) => String(m.id))
+    .filter((id) => !/whisper|guard|tts|embed|playai|orpheus|distil|compound|safeguard/i.test(id));
+  for (const re of PREFER) { const hit = ids.find((id) => re.test(id)); if (hit) return hit; }
+  return ids[0] || null;
+}
+
+async function groqCall(system, messages, signal) {
+  return fetch("https://api.groq.com/openai/v1/chat/completions", {
+    method: "POST",
+    signal,
+    headers: { "Content-Type": "application/json", Authorization: "Bearer " + process.env.GROQ_API_KEY },
+    body: JSON.stringify({ model: groqModel, max_tokens: 800, temperature: 0.5, messages: [{ role: "system", content: system }, ...messages] }),
+  });
+}
+
 async function askGroq(system, messages) {
   const ctl = new AbortController();
   const timer = setTimeout(() => ctl.abort(), 25_000);
   try {
-    const r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-      method: "POST",
-      signal: ctl.signal,
-      headers: { "Content-Type": "application/json", Authorization: "Bearer " + process.env.GROQ_API_KEY },
-      body: JSON.stringify({ model: GROQ_MODEL, max_tokens: 400, temperature: 0.5, messages: [{ role: "system", content: system }, ...messages] }),
-    });
-    if (!r.ok) return { status: r.status === 429 ? 429 : r.status === 401 ? 503 : 502, error: "groq " + r.status };
+    let r = await groqCall(system, messages, ctl.signal);
+    if (r.status === 404 || r.status === 400) {
+      const next = await pickGroqModel();
+      if (next && next !== groqModel) { console.log("groq model", groqModel, "->", next); groqModel = next; r = await groqCall(system, messages, ctl.signal); }
+    }
+    if (!r.ok) { console.log("groq error", r.status, groqModel, (await r.text()).slice(0, 300)); return { status: r.status === 429 ? 429 : r.status === 401 ? 503 : 502, error: "groq " + r.status }; }
     const j = await r.json();
-    const text = String(j?.choices?.[0]?.message?.content || "").trim();
+    const text = String(j?.choices?.[0]?.message?.content || "").replace(/<think>[\s\S]*?<\/think>/g, "").trim();
     return text ? { text } : { status: 502, error: "empty" };
   } catch {
     return { status: 504, error: "timeout" };
