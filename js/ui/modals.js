@@ -43,7 +43,7 @@ function showSpaceWx(){
   const rows = [];
   for(let d = s.day; d <= Math.min(P.days, s.day+2); d++){ const f = flareOn(s,d); const known = d <= s.day+1;
     rows.push(`<tr><td>${L('День','Day')} ${d}</td><td>${!known ? L('прогноз ещё не готов','no forecast yet') : f ? (f.s>0 ? L(`буря S${f.s} · вспышка ${esc(f.cls)}`,`storm S${f.s} · flare ${esc(f.cls)}`) : L(`вспышка ${esc(f.cls)}, без бури`,`flare ${esc(f.cls)}, no storm`)) : L('спокойно','calm')}</td><td>${known && f ? `${fmt(flareDose(s,d))} ${U.msv()}` : '—'}</td></tr>`); }
-  const real = w.f ? `<div class="wx-real"><b>${L('Настоящее событие','Real event')}: ${solarDate(w.f.date)} · ${esc(w.f.cls)}${w.f.s>0?` · S${w.f.s}`:''}</b><p>${esc(w.f.note[LANG]||w.f.note.ru)}</p><small>${L('Источник','Source')}: ${esc(w.f.src)}${w.f.pfu && w.f.pfu!=='—' ? ` · ${L('пик протонов','proton peak')} ${esc(w.f.pfu)} pfu` : ''}</small></div>` : '';
+  const real = w.f ? `<div class="wx-real"><b>${L('Настоящее событие','Real event')}: ${solarDate(w.f.date)} · ${esc(w.f.cls)}${w.f.s>0?` · S${w.f.s}`:''}</b><p>${esc(w.f.note[LANG]||w.f.note.ru)}</p><small>${L('Источник','Source')}: ${esc(typeof w.f.src==='string'?w.f.src:tr(w.f.src))}${w.f.pfu && w.f.pfu!=='—' ? ` · ${L('пик протонов','proton peak')} ${esc(w.f.pfu)} pfu` : ''}</small></div>` : '';
   openModal(`<div class="toprow"><div class="eyebrow">${L('Космическая погода','Space weather')}</div><button class="btn" type="button" data-cmd="close" data-focus aria-label="${L('Закрыть','Close')}">${ic('close')}</button></div>
     <h2 class="wx-h ${w.lvl}">${w.txt}</h2>
     <p class="pd">${L(`Защита сейчас: ${s.shield} ${plural(s.shield,'слой','слоя','слоёв')} реголита, доза внутри ×${fmt(SHIELD[s.shield],2)}. Опасна протонная буря (шкала NOAA S1–S5), а не яркость вспышки.`,`Shielding now: ${s.shield} regolith ${s.shield===1?'layer':'layers'}, dose inside ×${fmt(SHIELD[s.shield],2)}. The danger is the proton storm (NOAA scale S1–S5), not how bright the flare is.`)}</p>
@@ -115,7 +115,7 @@ function showStart(view){
 
 function realFlareHTML(f){
   const storm = f.s>0;
-  return `<div class="real"><span class="rk">${f.live?L('Настоящая вспышка · онлайн','Real flare · live'):L('Настоящее событие · архив','Real event · archive')}</span><span class="rv">${esc(f.cls)} · ${esc(S_NAME(f.s))}</span><span>${solarDate(f.date)}${f.ar?` · ${L('группа пятен','sunspot region')} ${esc(f.ar)}`:''}${storm&&f.pfu&&f.pfu!=='—'?` · ${L('пик потока протонов','peak proton flux')} ${esc(f.pfu)} pfu`:''}</span><span class="rn">${esc(tr(f.note))}</span><span class="rs">${L('Данные','Data')}: ${esc(f.src)}${f.live?L(', получено сейчас',', fetched now'):L(', архив',', archive')}</span></div>`;
+  return `<div class="real"><span class="rk">${f.live?L('Настоящая вспышка · онлайн','Real flare · live'):L('Настоящее событие · архив','Real event · archive')}</span><span class="rv">${esc(f.cls)} · ${esc(S_NAME(f.s))}</span><span>${solarDate(f.date)}${f.ar?` · ${L('группа пятен','sunspot region')} ${esc(f.ar)}`:''}${storm&&f.pfu&&f.pfu!=='—'?` · ${L('пик потока протонов','peak proton flux')} ${esc(f.pfu)} pfu`:''}</span><span class="rn">${esc(tr(f.note))}</span><span class="rs">${L('Данные','Data')}: ${esc(typeof f.src==='string'?f.src:tr(f.src))}${f.live?L(', получено сейчас',', fetched now'):L(', архив',', archive')}</span></div>`;
 }
 function showReport(b, s, info, ev, day){
   const P = PLANETS[s.pid];
@@ -201,7 +201,7 @@ function showFinal(){
 
 function showScience(){
   const back = S ? (S.over ? 'final' : 'close') : 'start';
-  const rows = SOLAR.map(f=>`<tr><td class="n">${f.date}</td><td class="n">${esc(f.cls)}</td><td class="n">${esc(S_NAME(f.s))}</td><td class="n">${esc(f.pfu)}</td><td>${esc(f.src)}</td><td class="n">${fmt(f.dose*PLANETS.moon.flareMul,0)} / ${fmt(f.dose*PLANETS.mars.flareMul,0)}</td></tr>`).join('');
+  const rows = SOLAR.map(f=>`<tr><td class="n">${f.date}</td><td class="n">${esc(f.cls)}</td><td class="n">${esc(S_NAME(f.s))}</td><td class="n">${esc(f.pfu)}</td><td>${esc(typeof f.src==='string'?f.src:tr(f.src))}</td><td class="n">${fmt(f.dose*PLANETS.moon.flareMul,0)} / ${fmt(f.dose*PLANETS.mars.flareMul,0)}</td></tr>`).join('');
   const row = (a,b,c)=>`<tr><td>${a}</td><td class="n">${b}</td><td>${c}</td></tr>`;
   const row2 = (a,b)=>`<tr><td>${a}</td><td>${b}</td></tr>`;
   openModal(`
