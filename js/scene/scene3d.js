@@ -99,7 +99,7 @@ const G3 = (()=>{
   renderer.setPixelRatio(Math.min(2, window.devicePixelRatio||1));
   renderer.shadowMap.enabled = true; renderer.shadowMap.type = T.PCFSoftShadowMap;
   renderer.outputEncoding = T.sRGBEncoding;
-  renderer.toneMapping = T.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05;
+  renderer.toneMapping = T.ACESFilmicToneMapping; renderer.toneMappingExposure = 0.8;
 
   /* ---------- noise ---------- */
   function hash(x,y,s){ let h = (x*374761393 + y*668265263 + s*1442695041)|0; h = (h^(h>>>13))*1274126177|0; return ((h^(h>>>16))>>>0)/4294967296; }
@@ -307,6 +307,34 @@ const G3 = (()=>{
       // ladder up the side
       [-0.25,0.25].forEach(dx=>add(new T.CylinderGeometry(0.03,0.03,2.1,6), steel, -1.6+dx, 1.15, -1.32));
       for(let k=0;k<6;k++) add(new T.CylinderGeometry(0.025,0.025,0.5,6), steel, -1.6, 0.35+k*0.32, -1.32, 0, 0, Math.PI/2);
+      // ---- extra detail ----
+      // hazard stripes along the skid edges
+      const hz = canvasTex(128, 16, (c,W,H)=>{ c.fillStyle='#f2c230'; c.fillRect(0,0,W,H); c.fillStyle='#1d1f24'; for(let x=-H;x<W;x+=16){ c.beginPath(); c.moveTo(x,H); c.lineTo(x+8,H); c.lineTo(x+8+H,0); c.lineTo(x+H,0); c.fill(); } });
+      hz.wrapS = T.RepeatWrapping; hz.repeat.set(4,1); const hzM = M({map:hz, roughness:0.7});
+      [-1.71,1.71].forEach(z=>add(new T.BoxGeometry(6.4, 0.12, 0.02), hzM, 0, 0.16, z));
+      // name plate on the unit: "O2 · ISRU" with a blue stripe
+      const plate = canvasTex(256, 96, (c,W,H)=>{ c.fillStyle='#f4f2ec'; c.fillRect(0,0,W,H); c.fillStyle='#2f6fb3'; c.fillRect(0,H-18,W,18); c.fillStyle='#1d2430'; c.font='bold 46px sans-serif'; c.fillText('O₂  ISRU', 16, 54); c.font='16px sans-serif'; c.fillText('CO₂ → O₂  ·  800 °C', 18, 74); });
+      add(new T.PlaneGeometry(1.5, 0.56), M({map:plate, roughness:0.6}), -1.6, 1.55, 1.235);
+      // control box with a small glowing screen and buttons
+      add(new T.BoxGeometry(0.6, 0.55, 0.22), body, -0.15, 1.05, 1.32);
+      add(new T.PlaneGeometry(0.4, 0.22), M({color:0x0b2030, emissive:0x3fd0ff, emissiveIntensity:0.6}), -0.15, 1.13, 1.435);
+      [0.12,-0.02,-0.16].forEach((dx,k)=>add(new T.CylinderGeometry(0.03,0.03,0.04,10), M({color:[0x2bd36b,0xf2c230,0xe0453a][k]}), -0.15+dx, 0.92, 1.44, Math.PI/2, 0, 0));
+      // radiator fins on the back to dump the heat of the hot stack
+      for(let k=0;k<9;k++) add(new T.BoxGeometry(0.04, 0.9, 0.7), steel, -2.7+k*0.27, 2.62, -0.75);
+      add(new T.BoxGeometry(2.4, 0.06, 0.74), steel, -1.62, 2.2, -0.75);
+      // handrail around the roof
+      const rail = (x0,z0,x1,z1)=>{ const L = Math.hypot(x1-x0,z1-z0); add(new T.CylinderGeometry(0.025,0.025,L,6), M({color:0xf2c230, roughness:0.6}), (x0+x1)/2, 3.0, (z0+z1)/2, 0, -Math.atan2(z1-z0,x1-x0), Math.PI/2); };
+      rail(-2.85,-1.15,-0.35,-1.15); rail(-2.85,1.15,-0.35,1.15); rail(-2.85,-1.15,-2.85,1.15);
+      [[-2.85,-1.15],[-0.35,-1.15],[-2.85,1.15],[-0.35,1.15],[-1.6,-1.15],[-1.6,1.15]].forEach(([x,z])=>add(new T.CylinderGeometry(0.025,0.025,0.8,6), M({color:0xf2c230, roughness:0.6}), x, 2.6, z));
+      // pressure gauges and hand-wheel valves on the tanks
+      [-0.75,0.75].forEach(z=>{ const gz = add(new T.CylinderGeometry(0.11,0.11,0.05,16), steel, -0.2, 1.42, z, 0, 0, Math.PI/2);
+        add(new T.CircleGeometry(0.09, 16), M({color:0xffffff, roughness:0.4}), -0.23, 1.42, z, 0, -Math.PI/2, 0);
+        add(new T.TorusGeometry(0.12, 0.02, 6, 16), M({color:0xe0453a, roughness:0.5}), 0.0, 1.2, z, 0, Math.PI/2, 0); });
+      // flanges on the outgoing pipe and a small antenna
+      [0.1, 0.9].forEach(x=>add(new T.CylinderGeometry(0.11,0.11,0.06,12), steel, 2.9+x, 0.95, 0, 0, 0, Math.PI/2));
+      add(new T.CylinderGeometry(0.015,0.015,0.9,6), steel, -0.5, 3.1, -1.0); add(new T.SphereGeometry(0.05, 8, 6), M({color:0xe0453a, emissive:0xe0453a, emissiveIntensity:1}), -0.5, 3.56, -1.0);
+      // dust drifted against the skid
+      add(new T.SphereGeometry(1, 16, 6, 0, Math.PI*2, 0, Math.PI/2), M({color:0xb97a52, roughness:1}), 0.4, 0, -1.9, 0, 0, 0).scale.set(2.6, 0.22, 0.5);
       g.userData.lamp = lamp;
       // supply line to the habitat on short stands, so it is not lying across the sand
       const a = new T.Vector3(ox+1.5, 0, oz+2.0), b = new T.Vector3(-8.2, 0, -13.2), n = 7;
@@ -705,9 +733,9 @@ const G3 = (()=>{
     rebuildSolids();
     // lighting
     const sunK = dark ? (mars ? 0.25 : 0.04) : 1;
-    sun.intensity = (mars ? 2.6 : 3.4) * sunK; LIT.sun = sun.intensity;
+    sun.intensity = (mars ? 1.75 : 2.2) * sunK; LIT.sun = sun.intensity; LIT.exp = mars ? 0.8 : 0.72;   /* outdoor exposure: the Moon's grey dust and Mars sand were glaring */
     sun.color.set(flare ? 0xffd2c0 : (mars ? 0xffe2c4 : 0xfff6ea));
-    hemi.intensity = mars ? (dark?0.55:0.45) : (dark?0.22:0.3); fill.intensity = mars ? 0.15 : (dark?0.35:0.45); LIT.hemi = hemi.intensity; LIT.fill = fill.intensity;
+    hemi.intensity = mars ? (dark?0.45:0.32) : (dark?0.16:0.2); fill.intensity = mars ? 0.1 : (dark?0.25:0.3); LIT.hemi = hemi.intensity; LIT.fill = fill.intensity;
     sunSprite.material.opacity = dark ? (mars?0.15:0) : 1; sunCore.material.opacity = sunSprite.material.opacity;
     sunSprite.material.color.set(flare ? 0xffb0a0 : 0xfff2d8);
     if(mars){ scene.fog.near = dark ? 8 : 120; scene.fog.far = dark ? 110 : 700; scene.fog.color.set(dark?0x9a6440:0xc98b5c); w.sky.material.color.set(dark?0x9a7060:0xffffff); }
@@ -1006,7 +1034,7 @@ const G3 = (()=>{
     { const want = (walking && pl.indoor && !drv.on) ? 1 : 0; LIT.k += (want - LIT.k)*Math.min(1, dt*5); const k = LIT.k;
       sun.intensity = LIT.sun*(1-k); fill.intensity = LIT.fill*(1-k);
       hemi.intensity = LIT.hemi*(1-k) + 0.62*k; hemi.color.lerpColors(LIT.sky, LIT.skyIn, k); hemi.groundColor.lerpColors(LIT.gnd, LIT.gndIn, k);
-      renderer.toneMappingExposure = 1.05*(1-k) + 0.9*k; }
+      renderer.toneMappingExposure = (LIT.exp||0.7)*(1-k) + 0.9*k; }   // outside a bit darker: the bright sand and dust were glaring
     if(w.berm){ const cp = camera.position; w.berm.visible = !(cp.x*cp.x + cp.y*cp.y + cp.z*cp.z < 118); }   // inside the dome the berm is behind the wall: skip it (no spikes, less to draw)
     else { camera.position.set(cam.tx + Math.cos(cam.az)*Math.cos(cam.el)*cam.r, cam.ty + Math.sin(cam.el)*cam.r, cam.tz + Math.sin(cam.az)*Math.cos(cam.el)*cam.r); camera.lookAt(cam.tx, cam.ty, cam.tz); }
     stepCrew(dt);
