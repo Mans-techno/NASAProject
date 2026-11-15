@@ -252,8 +252,7 @@ const G3 = (()=>{
      - the habitat wears a 3D-printed regolith shell (the idea from NASA's 3D-Printed Habitat Challenge):
        rust-red, with the printer's horizontal layers, openings left for the three tunnels
      - an oxygen plant that makes O2 from the CO2 air (like the MOXIE test on Perseverance)
-     - a small scout helicopter on its pad (like Ingenuity)
-     - a sand fence against dust storms */
+     - a small scout helicopter on its pad (like Ingenuity) */
   function marsBase(w, group){
     const layerTex = canvasTex(64, 256, (c,W,H)=>{ for(let y=0;y<H;y+=8){ const g=c.createLinearGradient(0,y,0,y+8); g.addColorStop(0,'#c47a52'); g.addColorStop(0.55,'#a65c3a'); g.addColorStop(1,'#7c3f26'); c.fillStyle=g; c.fillRect(0,y,W,8); } });
     layerTex.wrapS = layerTex.wrapT = T.RepeatWrapping; layerTex.repeat.set(10, 1.3);
@@ -276,16 +275,46 @@ const G3 = (()=>{
     }
     const metal = M({color:0xd5d8de, roughness:0.5, metalness:0.15}), white = M({color:0xf1efe9, roughness:0.6}), dark = M({color:0x30343c, roughness:0.6, metalness:0.3}), orange = M({color:0xe8752a, roughness:0.6});
     const gy = (x,z)=>groundAt(x,z);
-    { // oxygen plant (CO2 in, O2 out) with two tanks and a pipe to the habitat
-      const ox = -22, oz = -24, g = new T.Group(); g.position.set(ox, gy(ox,oz), oz); group.add(g);
-      const box = mesh(new T.BoxGeometry(4.2, 2.4, 2.6), white); box.position.y = 1.2; g.add(box);
-      const band = mesh(new T.BoxGeometry(4.25, 0.25, 2.65), orange); band.position.y = 1.9; g.add(band);
-      for(let k=0;k<3;k++){ const fan = mesh(new T.CylinderGeometry(0.45,0.45,0.12,20), dark); fan.position.set(-1.3+k*1.3, 2.46, 0); g.add(fan); }
-      [[-1.2,2.4],[1.2,2.4]].forEach(([x,z])=>{ const t = mesh(new T.CylinderGeometry(0.75,0.75,2.6,24), metal); t.position.set(x,1.3,z); g.add(t);
-        const cap = mesh(new T.SphereGeometry(0.75,24,10,0,Math.PI*2,0,Math.PI/2), metal); cap.position.set(x,2.6,z); g.add(cap);
-        const lab = mesh(new T.BoxGeometry(0.02,0.5,0.9), M({color:0x3c8dde})); lab.position.set(x+0.76,1.4,z); g.add(lab); });
-      const pipe = mesh(new T.CylinderGeometry(0.12,0.12,1,10), metal); const a = new T.Vector3(ox+2.1, 0.5, oz), b = new T.Vector3(-8.6, 0.5, -12.8);
-      pipe.scale.y = a.distanceTo(b); pipe.position.copy(a).add(b).multiplyScalar(0.5); pipe.position.y = gy(pipe.position.x, pipe.position.z) + 0.25; pipe.lookAt(b.x, pipe.position.y, b.z); pipe.rotateX(Math.PI/2); group.add(pipe);
+    { // oxygen plant (CO2 in, O2 out): a skid with the processing unit, two O2 tanks lying in cradles,
+      // an air intake with a dust filter, piping, a status light, and a pipe on low stands to the habitat
+      const ox = -22, oz = -24, g = new T.Group(); g.position.set(ox, gy(ox,oz), oz); g.rotation.y = 0.3; group.add(g);
+      const steel = M({color:0x8c9099, roughness:0.55, metalness:0.5}), body = M({color:0xe9e6df, roughness:0.55}), panelM = M({color:0xcfcac0, roughness:0.6}),
+            grill = M({color:0x2a2e35, roughness:0.7}), tankM = M({color:0xdfe3e8, roughness:0.35, metalness:0.2}), blue = M({color:0x2f6fb3, roughness:0.5}), gold = M({color:0xc9a24a, roughness:0.35, metalness:0.7});
+      const add = (geo, m, x, y, z, rx=0, ry=0, rz=0)=>{ const o = mesh(geo, m); o.position.set(x,y,z); o.rotation.set(rx,ry,rz); g.add(o); return o; };
+      // skid frame
+      add(new T.BoxGeometry(6.4, 0.18, 3.4), steel, 0, 0.12, 0);
+      [-1.6,1.6].forEach(z=>add(new T.BoxGeometry(6.6, 0.22, 0.22), grill, 0, 0.11, z));
+      // processing unit: body with recessed panels, vents and a gold-foil hot section
+      add(new T.BoxGeometry(2.6, 2.0, 2.4), body, -1.6, 1.21, 0);
+      for(let k=0;k<3;k++) add(new T.BoxGeometry(0.72, 1.5, 0.04), panelM, -2.45+k*0.85, 1.25, 1.21);
+      for(let k=0;k<5;k++) add(new T.BoxGeometry(1.9, 0.06, 0.05), grill, -1.6, 0.65+k*0.12, -1.22);
+      add(new T.BoxGeometry(1.0, 0.7, 0.9), gold, -1.6, 2.56, 0.4);    // insulated electrolysis stack (the hot part, wrapped in foil)
+      add(new T.BoxGeometry(2.62, 0.16, 2.42), blue, -1.6, 1.95, 0);    // blue band
+      // air intake: a short stack with a dust-filter hood
+      add(new T.CylinderGeometry(0.28, 0.28, 0.9, 16), steel, -2.4, 2.65, -0.6);
+      add(new T.CylinderGeometry(0.5, 0.32, 0.35, 16), grill, -2.4, 3.2, -0.6);
+      // status light
+      const lamp = add(new T.SphereGeometry(0.1, 12, 8), M({color:0x2bd36b, emissive:0x2bd36b, emissiveIntensity:1.6}), -0.4, 2.3, 1.0);
+      // two O2 tanks lying in cradles
+      [-0.75, 0.75].forEach(z=>{ const t = add(new T.CylinderGeometry(0.55, 0.55, 2.6, 24), tankM, 1.6, 0.95, z, 0, 0, Math.PI/2);
+        [0.3, 2.9].forEach(x=>add(new T.SphereGeometry(0.55, 20, 12), tankM, x, 0.95, z));
+        [0.8, 2.4].forEach(x=>add(new T.BoxGeometry(0.16, 0.5, 1.0), steel, x, 0.45, z));
+        add(new T.BoxGeometry(1.2, 0.02, 0.55), blue, 1.6, 1.51, z);       // O2 label band on top
+        add(new T.CylinderGeometry(0.05,0.05,0.5,8), steel, 0.05, 1.2, z, 0, 0, Math.PI/2); });   // tank valve
+      // pipes from the unit to the tanks
+      add(new T.CylinderGeometry(0.06,0.06,1.9,8), steel, -0.2, 1.6, 0, Math.PI/2, 0, 0);
+      [-0.75,0.75].forEach(z=>add(new T.CylinderGeometry(0.06,0.06,0.45,8), steel, -0.2, 1.38, z));
+      // ladder up the side
+      [-0.25,0.25].forEach(dx=>add(new T.CylinderGeometry(0.03,0.03,2.1,6), steel, -1.6+dx, 1.15, -1.32));
+      for(let k=0;k<6;k++) add(new T.CylinderGeometry(0.025,0.025,0.5,6), steel, -1.6, 0.35+k*0.32, -1.32, 0, 0, Math.PI/2);
+      g.userData.lamp = lamp;
+      // supply line to the habitat on short stands, so it is not lying across the sand
+      const a = new T.Vector3(ox+1.5, 0, oz+2.0), b = new T.Vector3(-8.2, 0, -13.2), n = 7;
+      const pipeM = M({color:0xc9ccd2, roughness:0.45, metalness:0.4});
+      const L = a.distanceTo(b), mid = a.clone().add(b).multiplyScalar(0.5), hy = Math.max(gy(a.x,a.z), gy(b.x,b.z), gy(mid.x,mid.z)) + 0.55;
+      const pipe = mesh(new T.CylinderGeometry(0.07,0.07,L,10), pipeM); pipe.position.set(mid.x, hy, mid.z); pipe.lookAt(b.x, hy, b.z); pipe.rotateX(Math.PI/2); group.add(pipe);
+      for(let k=0;k<=n;k++){ const q = k/n, x = a.x+(b.x-a.x)*q, z = a.z+(b.z-a.z)*q, y0 = gy(x,z); const st = mesh(new T.CylinderGeometry(0.04,0.04,hy-y0,6), steel); st.position.set(x, (hy+y0)/2, z); group.add(st);
+        const ft = mesh(new T.BoxGeometry(0.3,0.05,0.3), steel); ft.position.set(x, y0+0.025, z); group.add(ft); }
       w.marsO2 = g; }
     { // scout helicopter on a landing pad
       const hx = 12, hz = 30, g = new T.Group(); g.position.set(hx, gy(hx,hz)+0.05, hz); group.add(g);
@@ -297,11 +326,6 @@ const G3 = (()=>{
       const panel = mesh(new T.BoxGeometry(0.55,0.03,0.4), M({color:0x1b2a55, roughness:0.3, metalness:0.5})); panel.position.y = 1.67; g.add(panel);
       const rotors = new T.Group(); [1.05,1.25].forEach((y,i)=>{ const r = mesh(new T.BoxGeometry(2.4,0.02,0.12), dark); r.position.y = y; r.rotation.y = i*0.8; rotors.add(r); }); g.add(rotors);
       w.heli = g; w.heliRotors = rotors; }
-    { // sand fence on the windward side: posts with a mesh screen
-      const fm = M({color:0x6b6f78, roughness:0.8, metalness:0.4}), net = M({color:0xd0b48c, roughness:1, transparent:true, opacity:0.55, side:T.DoubleSide});
-      for(let k=0;k<9;k++){ const a = -2.2 + k*0.12, r = 48, x = Math.cos(a)*r, z = Math.sin(a)*r, y = gy(x,z);
-        const post = mesh(new T.CylinderGeometry(0.06,0.06,2.2,8), fm); post.position.set(x, y+1.1, z); group.add(post);
-        if(k<8){ const a2 = a+0.06, nx = Math.cos(a2)*r, nz = Math.sin(a2)*r; const n = mesh(new T.PlaneGeometry(r*0.12, 1.6), net, false, false); n.position.set(nx, gy(nx,nz)+1.2, nz); n.rotation.y = -a2; group.add(n); } } }
   }
   function rocks(pid, group){
     const mars = pid==='mars', r = mulberry32(mars?5:6);
@@ -411,7 +435,7 @@ const G3 = (()=>{
     if(w.reactor.visible) SOLID.push([SLOT.reactor().x, SLOT.reactor().z, 5.6]);
     SOLID.push([SLOT.dish().x, SLOT.dish().z, 1.2],[SLOT.quarry().x, SLOT.quarry().z, 3.8],[33.4,-18.6,2.2],[25.2,-21.4,1.0],[22.4,-19.2,0.9],
       [SLOT.drill(w.pid).x, SLOT.drill(w.pid).z, 1.0],[27,5,0.25]);
-    if(w.marsO2) SOLID.push([-23.2,-24,1.6],[-20.8,-24,1.6],[-23.2,-21.6,0.9],[-20.8,-21.6,0.9]);
+    if(w.marsO2) [-2.4,-0.8,0.8,2.4].forEach(lx=>SOLID.push([-22 + lx*Math.cos(0.3), -24 - lx*Math.sin(0.3), 1.8]));
     if(w.heli) SOLID.push([12,30,0.6]);
     if(w.viking) SOLID.push([w.viking.position.x, w.viking.position.z, 1.9]);
     w.crates.forEach(c=>SOLID.push([c[0],c[1],0.75]));
